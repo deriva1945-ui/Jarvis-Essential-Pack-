@@ -1,0 +1,7 @@
+{
+  "name": "portero-claude",
+  "owner": { "name": "portero-claude" },
+  "plugins": [
+    { "name": "portero", "source": "./", "description": "Clasifica cada petición: ligeras con el modelo de la sesión, pesadas delegadas a un subagente potente." }
+  ]
+}

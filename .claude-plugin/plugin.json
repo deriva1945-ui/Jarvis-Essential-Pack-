@@ -1,0 +1,1 @@
+{ "name": "portero", "version": "0.1.0", "description": "Clasifica cada petición: las ligeras las resuelve el modelo ligero de la sesión, las pesadas se delegan a un subagente potente (Opus)." }
