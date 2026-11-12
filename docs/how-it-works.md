@@ -29,4 +29,4 @@ All five mods follow the same path: **events → hooks → data → screen**.
 
 - **They do not break the session.** If a mod fails, it lets the event through unchanged.
 - **They only listen to what they need.** A mod does not see events it does not ask for.
-- **They do not store your conversation.** The only things written to disk are `consumo`'s files in `C:\CLAUDE\consumo`: the page, `datos.js` (numbers, model names, each subagent's short description and plan task titles) and `estado.json` / `estado.js` (whether the HUD is open).
+- **They do not store your conversation.** The only things written to disk are `consumo`'s files in its data folder (`dataDir` option, default `~/CLAUDE/consumo`): the page, `datos.js` (numbers, model names, each subagent's short description and plan task titles) and `estado.json` / `estado.js` (whether the HUD is open).

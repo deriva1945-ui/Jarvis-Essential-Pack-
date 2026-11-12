@@ -58,24 +58,24 @@ Se adapta al tamaño de la ventana:
 `/jarvis` abre o cierra el HUD:
 
 - Si el HUD está cerrado, lo abre como al iniciar la sesión (Edge o Chrome con `--app`).
-- Si está abierto, lo cierra. El mod no cierra la ventana del navegador por su cuenta, porque tendría que matar procesos de Edge que no son suyos. En su lugar escribe `C:\CLAUDE\consumo\estado.json` con `{"abierto": false}` (y `{"abierto": true}` antes de abrir). La página lo lee cada segundo y, al ver `abierto: false`, llama a `window.close()`.
+- Si está abierto, lo cierra. El mod no cierra la ventana del navegador por su cuenta, porque tendría que matar procesos de Edge que no son suyos. En su lugar escribe `estado.json` en la [carpeta de datos](#es-carpeta) con `{"abierto": false}` (y `{"abierto": true}` antes de abrir). La página lo lee cada segundo y, al ver `abierto: false`, llama a `window.close()`.
 - Si `window.close()` no cierra la ventana, la página muestra "HUD cerrado. Escribe /jarvis para abrirlo." **`window.close()` puede no funcionar en todas las versiones de Edge: en ese caso cierra la ventana a mano.**
-- Si no hay navegador, `/jarvis` lo dice y te indica que abras `C:\CLAUDE\consumo\index.html` a mano.
+- Si no hay navegador, `/jarvis` lo dice y te indica la ruta de `index.html` para que lo abras a mano.
 
 El mod no tiene comando `/consumo`: `/jarvis` es su único comando.
 
 ## Cómo funciona
 
-1. **Al iniciar la sesión** registra `/jarvis`, escribe la página `C:\CLAUDE\consumo\index.html` y la abre con Edge (o Chrome si no hay Edge).
+1. **Al iniciar la sesión** registra `/jarvis`, escribe la página `index.html` en la carpeta de datos y la abre con Edge (o Chrome si no hay Edge).
 2. Escucha los eventos de **turno terminado**, **herramienta** y **subagente** (`turn.complete`, `tool.call`, `agent.spawn`).
 3. En cada turno suma los tokens de entrada, salida y caché por agente y por modelo, y guarda los últimos 20 turnos. Un turno repetido no se cuenta dos veces.
 4. El **coste** sale del contador de la propia sesión: el coste de un turno es lo que sube ese contador. No usa tabla de precios.
 5. Las llamadas a `TaskCreate` y `TaskUpdate` alimentan la barra del plan.
-6. Todo se escribe en `C:\CLAUDE\consumo\datos.js` tras cada turno o herramienta, y además cada 3 segundos como latido.
+6. Todo se escribe en `datos.js` (en la carpeta de datos) tras cada turno o herramienta, y además cada 3 segundos como latido.
 7. **La página recarga `datos.js` cada segundo** y redibuja. Si en 10 segundos no llega un latido nuevo, muestra "sin señal".
 8. La página también carga `estado.js` cada segundo. Es una copia de `estado.json` en forma de script, porque el navegador no deja leer un `.json` desde `file://`.
 
-Archivos que crea en tu PC, todos en `C:\CLAUDE\consumo`: `index.html` (la página), `datos.js` (los datos), `estado.json` y `estado.js` (si el HUD está abierto).
+Archivos que crea en tu PC, todos en la carpeta de datos: `index.html` (la página), `datos.js` (los datos), `estado.json` y `estado.js` (si el HUD está abierto).
 
 ## Cómo se instala
 
@@ -88,9 +88,40 @@ O cárgalo con `--plugin-dir` (ver el [README principal](../README.md#es-cargar)
 
 Requisitos: Windows con Edge o Chrome.
 
+<a id="es-carpeta"></a>
+
+## Carpeta de datos
+
+La opción **`dataDir`** dice dónde se escriben `index.html`, `datos.js`, `estado.json` y `estado.js`.
+
+- **Valor por defecto:** `~/CLAUDE/consumo`. `~` es tu carpeta de usuario: `%USERPROFILE%` en Windows (por ejemplo `C:\Users\<tú>\CLAUDE\consumo`), `$HOME` en macOS y Linux.
+- Acepta una ruta absoluta o una que empiece por `~`. Una ruta relativa cuenta desde tu carpeta de usuario.
+- La carpeta se crea sola si no existe.
+- Si el mod no sabe cuál es tu carpeta de usuario (ni `USERPROFILE` ni `HOME`), usa la carpeta `datos` dentro del propio plugin.
+
+Para cambiarla en un mod instalado:
+
+```
+claude plugin configure consumo@jarvis-essential-pack
+```
+
+Sin más argumentos muestra las opciones y su valor. Para guardar un valor nuevo, pásalo en JSON por la entrada estándar (en Windows usa `/` o dobla las `\\` dentro del JSON):
+
+```
+echo '{"dataDir": "~/CLAUDE/consumo"}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
+
+También puedes cambiarla dentro de Claude Code con `/plugin configure consumo@jarvis-essential-pack` o en `/config`. Si cargas el mod con `--plugin-dir`, guarda el valor en `~/.claude/settings.json`:
+
+```json
+{ "pluginConfigs": { "consumo": { "options": { "dataDir": "~/CLAUDE/consumo" } } } }
+```
+
+El cambio se aplica al reiniciar Claude Code.
+
 ## Qué no hace / límites
 
-- No funciona fuera de Windows: la ruta `C:\CLAUDE\consumo` y el comando `start` son de Windows.
+- Abrir la ventana solo funciona en Windows: usa `cmd /c start` con Edge o Chrome. En otros sistemas los datos se escriben igual en la carpeta de datos y puedes abrir `index.html` a mano.
 - No se ha probado en todos los PC. Puede variar con la versión de Windows, el navegador o el escalado de pantalla.
 - Sin navegador no abre la ventana. Los datos se siguen guardando y puedes abrir la página a mano.
 - `/jarvis` no puede forzar el cierre: si `window.close()` no funciona en tu Edge, cierra la ventana a mano.
@@ -163,24 +194,24 @@ It adapts to the window size:
 `/jarvis` opens or closes the HUD:
 
 - If the HUD is closed, it opens it the same way as at session start (Edge or Chrome with `--app`).
-- If it is open, it closes it. The mod does not close the browser window itself, because that would mean killing Edge processes it does not own. Instead it writes `C:\CLAUDE\consumo\estado.json` with `{"abierto": false}` (and `{"abierto": true}` before opening). The page reads it every second and, when it sees `abierto: false`, calls `window.close()`.
+- If it is open, it closes it. The mod does not close the browser window itself, because that would mean killing Edge processes it does not own. Instead it writes `estado.json` in the [data folder](#en-folder) with `{"abierto": false}` (and `{"abierto": true}` before opening). The page reads it every second and, when it sees `abierto: false`, calls `window.close()`.
 - If `window.close()` does not close the window, the page shows "HUD cerrado. Escribe /jarvis para abrirlo." (HUD closed. Type /jarvis to open it.) **`window.close()` may not work in every Edge version: in that case close the window by hand.**
-- With no browser, `/jarvis` says so and tells you to open `C:\CLAUDE\consumo\index.html` by hand.
+- With no browser, `/jarvis` says so and gives you the path of `index.html` so you can open it by hand.
 
 The mod has no `/consumo` command: `/jarvis` is its only command.
 
 ## How it works
 
-1. **When the session starts** it registers `/jarvis`, writes the page `C:\CLAUDE\consumo\index.html` and opens it with Edge (or Chrome if Edge is missing).
+1. **When the session starts** it registers `/jarvis`, writes the page `index.html` in the data folder and opens it with Edge (or Chrome if Edge is missing).
 2. It listens to the **turn ended**, **tool** and **subagent** events (`turn.complete`, `tool.call`, `agent.spawn`).
 3. On each turn it adds up input, output and cache tokens per agent and per model, and keeps the last 20 turns. A repeated turn is not counted twice.
 4. **Cost** comes from the session's own counter: a turn's cost is how much that counter went up. No price table.
 5. Calls to `TaskCreate` and `TaskUpdate` feed the plan bar.
-6. Everything is written to `C:\CLAUDE\consumo\datos.js` after each turn or tool, and every 3 seconds as a heartbeat.
+6. Everything is written to `datos.js` (in the data folder) after each turn or tool, and every 3 seconds as a heartbeat.
 7. **The page reloads `datos.js` every second** and redraws. If no new heartbeat arrives in 10 seconds, it shows "sin señal".
 8. The page also loads `estado.js` every second. It is a script copy of `estado.json`, because the browser does not let a page read a `.json` file from `file://`.
 
-Files it creates on your PC, all in `C:\CLAUDE\consumo`: `index.html` (the page), `datos.js` (the data), `estado.json` and `estado.js` (whether the HUD is open).
+Files it creates on your PC, all in the data folder: `index.html` (the page), `datos.js` (the data), `estado.json` and `estado.js` (whether the HUD is open).
 
 ## Install
 
@@ -193,9 +224,40 @@ Or load it with `--plugin-dir` (see the [main README](../README.md#en-load)).
 
 Requirements: Windows with Edge or Chrome.
 
+<a id="en-folder"></a>
+
+## Data folder
+
+The **`dataDir`** option sets where `index.html`, `datos.js`, `estado.json` and `estado.js` are written.
+
+- **Default:** `~/CLAUDE/consumo`. `~` is your user folder: `%USERPROFILE%` on Windows (for example `C:\Users\<you>\CLAUDE\consumo`), `$HOME` on macOS and Linux.
+- It takes an absolute path or one starting with `~`. A relative path counts from your user folder.
+- The folder is created if it does not exist.
+- If the mod cannot tell your user folder (neither `USERPROFILE` nor `HOME` is set), it uses the `datos` folder inside the plugin itself.
+
+To change it for an installed mod:
+
+```
+claude plugin configure consumo@jarvis-essential-pack
+```
+
+With no other arguments it shows the options and their values. To save a new value, pass it as JSON on standard input (on Windows use `/`, or double the `\\` inside the JSON):
+
+```
+echo '{"dataDir": "~/CLAUDE/consumo"}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
+
+You can also change it inside Claude Code with `/plugin configure consumo@jarvis-essential-pack` or in `/config`. If you load the mod with `--plugin-dir`, save the value in `~/.claude/settings.json`:
+
+```json
+{ "pluginConfigs": { "consumo": { "options": { "dataDir": "~/CLAUDE/consumo" } } } }
+```
+
+The change applies when you restart Claude Code.
+
 ## What it does not do / limits
 
-- It does not work outside Windows: the `C:\CLAUDE\consumo` path and the `start` command are Windows-only.
+- Opening the window only works on Windows: it uses `cmd /c start` with Edge or Chrome. On other systems the data is still written to the data folder and you can open `index.html` by hand.
 - It has not been tested on every PC. It may vary with the Windows version, the browser or display scaling.
 - With no browser, it does not open the window. Data is still saved and you can open the page by hand.
 - `/jarvis` cannot force the window shut: if `window.close()` does not work in your Edge, close the window by hand.

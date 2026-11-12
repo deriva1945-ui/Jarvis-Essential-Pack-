@@ -5,6 +5,27 @@ Format based on Keep a Changelog. Versions follow SemVer.
 
 Cada versión del pack agrupa las versiones de los mods que cambian. · Each pack version groups the mod versions that change.
 
+## [0.3.0] - 2026-11-12
+
+Pack `jarvis-essential-pack` 0.3.0: consumo 0.4.0 y mods-estado 0.3.0. portero y resumen-sesion siguen en 0.1.0 y jarvis-banda en 0.2.0. · consumo 0.4.0 and mods-estado 0.3.0. portero and resumen-sesion stay at 0.1.0 and jarvis-banda at 0.2.0.
+
+### consumo 0.4.0
+
+- **ES:** Sin rutas fijas de Windows. Nueva opción **`dataDir`** (`userConfig` en `plugin.json`): la carpeta donde se escriben `index.html`, `datos.js`, `estado.json` y `estado.js`. Por defecto `~/CLAUDE/consumo`, con `~` como tu carpeta de usuario (`USERPROFILE` en Windows, `HOME` en macOS y Linux). Se cambia con `claude plugin configure consumo@jarvis-essential-pack`, con `/config` o, con `--plugin-dir`, en `pluginConfigs` de `settings.json`. Si no se conoce la carpeta de usuario, usa la carpeta `datos` del propio plugin.
+- **ES:** La URL de la página se construye a partir de esa carpeta (con espacios y acentos codificados).
+- **EN:** No fixed Windows paths. New **`dataDir`** option (`userConfig` in `plugin.json`): the folder where `index.html`, `datos.js`, `estado.json` and `estado.js` are written. Defaults to `~/CLAUDE/consumo`, with `~` as your user folder (`USERPROFILE` on Windows, `HOME` on macOS and Linux). Change it with `claude plugin configure consumo@jarvis-essential-pack`, with `/config` or, with `--plugin-dir`, under `pluginConfigs` in `settings.json`. If the user folder is unknown, it uses the plugin's own `datos` folder.
+- **EN:** The page URL is built from that folder (spaces and accents encoded).
+
+### mods-estado 0.3.0
+
+- **ES:** Sin rutas fijas de Windows. Nueva opción **`modsDir`**: la carpeta de tu copia local del pack. Por defecto `~/CLAUDE/mods`. Se cambia igual que `dataDir` (`claude plugin configure mods-estado@jarvis-essential-pack`).
+- **EN:** No fixed Windows paths. New **`modsDir`** option: the folder of your local copy of the pack. Defaults to `~/CLAUDE/mods`. Change it the same way as `dataDir` (`claude plugin configure mods-estado@jarvis-essential-pack`).
+
+### Documentación · Docs
+
+- **ES:** Los READMEs explican cómo configurar las carpetas. La función de PowerShell usa `$env:USERPROFILE`.
+- **EN:** The READMEs explain how to configure the folders. The PowerShell function uses `$env:USERPROFILE`.
+
 ## [0.2.0] - 2026-11-12
 
 Pack `jarvis-essential-pack` 0.2.0: consumo 0.3.0, jarvis-banda 0.2.0 y mods-estado 0.2.0. portero y resumen-sesion siguen en 0.1.0. · consumo 0.3.0, jarvis-banda 0.2.0 and mods-estado 0.2.0. portero and resumen-sesion stay at 0.1.0.
@@ -12,10 +33,10 @@ Pack `jarvis-essential-pack` 0.2.0: consumo 0.3.0, jarvis-banda 0.2.0 y mods-est
 ### consumo 0.3.0
 
 - **ES:** Nuevo panel **Comparativa · Haiku frente a Opus**: coste real de la sesión, lo que habría costado si el trabajo de Haiku hubiera ido a Opus (con el coste por token de tus propios turnos) y el ahorro en USD y %. Sin más de 1000 tokens de cada modelo muestra "sin datos de Opus todavía" (o de Haiku) y no estima. Tokens y coste por modelo debajo.
-- **ES:** Nuevo comando **`/jarvis`**: abre el HUD si está cerrado y lo cierra si está abierto. Escribe `estado.json` y `estado.js` en `C:\CLAUDE\consumo`; la página los lee y llama a `window.close()`. Si la ventana no se cierra, muestra "HUD cerrado. Escribe /jarvis para abrirlo.". `/jarvis` es el único comando del mod (no hay `/consumo`).
+- **ES:** Nuevo comando **`/jarvis`**: abre el HUD si está cerrado y lo cierra si está abierto. Escribe `estado.json` y `estado.js` en la carpeta de datos (entonces fija; configurable desde 0.4.0); la página los lee y llama a `window.close()`. Si la ventana no se cierra, muestra "HUD cerrado. Escribe /jarvis para abrirlo.". `/jarvis` es el único comando del mod (no hay `/consumo`).
 - **ES:** Si no hay navegador, `/jarvis` explica el motivo y dice dónde está la página para abrirla a mano.
 - **EN:** New **Haiku versus Opus comparison** panel: the session's real cost, what it would have cost if Haiku's work had gone to Opus (using the cost per token of your own turns), and the saving in USD and %. With 1000 tokens or fewer from either model it shows "sin datos de Opus todavía" (no Opus data yet, or Haiku) and estimates nothing. Tokens and cost per model below.
-- **EN:** New **`/jarvis`** command: opens the HUD when closed and closes it when open. It writes `estado.json` and `estado.js` in `C:\CLAUDE\consumo`; the page reads them and calls `window.close()`. If the window stays open, it shows "HUD cerrado. Escribe /jarvis para abrirlo.". `/jarvis` is the mod's only command (there is no `/consumo`).
+- **EN:** New **`/jarvis`** command: opens the HUD when closed and closes it when open. It writes `estado.json` and `estado.js` in the data folder (fixed then; configurable since 0.4.0); the page reads them and calls `window.close()`. If the window stays open, it shows "HUD cerrado. Escribe /jarvis para abrirlo.". `/jarvis` is the mod's only command (there is no `/consumo`).
 - **EN:** With no browser, `/jarvis` explains why and says where the page is so you can open it by hand.
 
 ### consumo 0.2.0
@@ -59,8 +80,9 @@ Primera publicación del pack `jarvis-essential-pack`. · First release of the `
 
 ### mods-estado 0.1.0
 
-- **ES:** Comando `/mods`: ejecuta `claude plugin list`, marca los mods del pack y mira la copia local en `C:\CLAUDE\mods`.
-- **EN:** `/mods` command: runs `claude plugin list`, marks the pack mods and checks the local copy in `C:\CLAUDE\mods`.
+- **ES:** Comando `/mods`: ejecuta `claude plugin list`, marca los mods del pack y mira la copia local del pack (carpeta fija entonces; configurable desde 0.3.0).
+- **EN:** `/mods` command: runs `claude plugin list`, marks the pack mods and checks the local copy of the pack (fixed folder then; configurable since 0.3.0).
 
-[0.2.0]: https://github.com/deriva1945-ui/portero-claude/tree/publicar-pack
+[0.3.0]: https://github.com/deriva1945-ui/portero-claude/tree/main
+[0.2.0]: https://github.com/deriva1945-ui/portero-claude/commit/8d12284
 [0.1.0]: https://github.com/deriva1945-ui/portero-claude/commit/1bff027

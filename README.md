@@ -7,7 +7,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="Licencia MIT" src="https://img.shields.io/badge/licencia-MIT-22d3ee"></a>
   <a href="https://docs.claude.com/en/docs/claude-code"><img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-mods-d97757"></a>
-  <a href="CHANGELOG.md"><img alt="Versión 0.2.0" src="https://img.shields.io/badge/versi%C3%B3n-0.2.0-64748b"></a>
+  <a href="CHANGELOG.md"><img alt="Versión 0.3.0" src="https://img.shields.io/badge/versi%C3%B3n-0.3.0-64748b"></a>
   <a href="CONTRIBUTING.md"><img alt="Contribuciones bienvenidas" src="https://img.shields.io/badge/contribuciones-bienvenidas-34d399"></a>
 </p>
 
@@ -23,6 +23,7 @@
 - [Los mods](#es-mods)
 - [Instalación](#es-instalacion)
 - [Cargar los mods en cada sesión](#es-cargar)
+- [Configurar las carpetas](#es-carpetas)
 - [Cómo funciona por dentro](#es-funciona)
 - [Requisitos](#es-requisitos)
 - [Limitaciones conocidas](#es-limites)
@@ -32,6 +33,10 @@
 <a id="es-novedades"></a>
 
 ## Novedades
+
+**Versión 0.3.0 del pack**
+
+- **consumo 0.4.0 y mods-estado 0.3.0:** sin rutas fijas de Windows. La carpeta de datos del HUD (`dataDir`) y la carpeta del pack (`modsDir`) se configuran con `claude plugin configure`; por defecto, `~/CLAUDE/consumo` y `~/CLAUDE/mods` dentro de tu carpeta de usuario. Ver [Configurar las carpetas](#es-carpetas).
 
 **Versión 0.2.0 del pack**
 
@@ -49,9 +54,9 @@ Todos los cambios en [CHANGELOG.md](CHANGELOG.md).
 |---|---|---|
 | **[portero](portero/)**<br><sub>v0.1.0</sub> | Mira cada petición y decide quién la hace. Lo ligero, el modelo de la sesión. Lo pesado, un subagente Opus. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
 | **[resumen-sesion](resumen-sesion/)**<br><sub>v0.1.0</sub> | Si vuelves tras 2 horas sin escribir, Haiku escribe un resumen de traspaso para seguir en una sesión nueva. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
-| **[consumo](consumo/)**<br><sub>v0.3.0</sub> | Ventana HUD en directo, en blanco-cian: barra del plan, contexto usado, coste, tokens por agente y por modelo, y comparativa Haiku frente a Opus. `/jarvis` la abre o la cierra. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
+| **[consumo](consumo/)**<br><sub>v0.4.0</sub> | Ventana HUD en directo, en blanco-cian: barra del plan, contexto usado, coste, tokens por agente y por modelo, y comparativa Haiku frente a Opus. `/jarvis` la abre o la cierra. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
 | **[jarvis-banda](jarvis-banda/)**<br><sub>v0.2.0</sub> | Una línea encima del prompt con el estado en vivo: esperando, procesando, ejecutando o delegando. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
-| **[mods-estado](mods-estado/)**<br><sub>v0.2.0</sub> | Comando `/mods`: lista los plugins activos y marca los del pack. `/mods on` y `/mods off` activan o desactivan un mod. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
+| **[mods-estado](mods-estado/)**<br><sub>v0.3.0</sub> | Comando `/mods`: lista los plugins activos y marca los del pack. `/mods on` y `/mods off` activan o desactivan un mod. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
 
 Cada mod es independiente. Instala solo los que quieras.
 
@@ -82,9 +87,9 @@ Ejemplo: `/plugin install consumo@jarvis-essential-pack`.
 
 Otra opción, sin instalar: guarda los mods en una carpeta tuya y Claude Code los carga con `--plugin-dir`.
 
-### Copia local en `C:\CLAUDE\mods`
+### Copia local en una carpeta tuya
 
-1. Copia las carpetas `portero`, `resumen-sesion`, `consumo`, `jarvis-banda` y `mods-estado` de este repo en `C:\CLAUDE\mods`. Una carpeta por mod.
+1. Copia las carpetas `portero`, `resumen-sesion`, `consumo`, `jarvis-banda` y `mods-estado` de este repo en una carpeta tuya, una carpeta por mod. En el ejemplo es `CLAUDE\mods` dentro de tu carpeta de usuario (`$env:USERPROFILE\CLAUDE\mods`), que es donde `mods-estado` busca por defecto.
 2. Abre tu perfil de PowerShell con `notepad $PROFILE`.
 3. Pega la función de abajo y guarda.
 4. Abre una ventana nueva de PowerShell y escribe `claude`. Los mods se cargan solos.
@@ -95,7 +100,8 @@ Otra opción, sin instalar: guarda los mods en una carpeta tuya y Claude Code lo
 # Abre Claude Code con todos los mods del pack cargados.
 function claude {
     $exe  = (Get-Command claude -CommandType Application | Select-Object -First 1).Source
-    $mods = 'C:\CLAUDE\mods'
+    # Ejemplo: cambia la ruta si guardaste los mods en otra carpeta.
+    $mods = Join-Path $env:USERPROFILE 'CLAUDE\mods'
     $dirs = 'portero', 'resumen-sesion', 'consumo', 'jarvis-banda', 'mods-estado' |
         ForEach-Object { '--plugin-dir'; Join-Path $mods $_ }
     & $exe @dirs @args
@@ -107,6 +113,43 @@ function claude {
 
 > [!WARNING]
 > No mezcles los dos métodos. Si instalas un mod con `/plugin install`, quítalo de la lista de la función.
+
+En macOS o Linux vale lo mismo con `claude --plugin-dir ~/CLAUDE/mods/portero --plugin-dir ~/CLAUDE/mods/consumo …` o con un alias de tu shell.
+
+<a id="es-carpetas"></a>
+
+## Configurar las carpetas
+
+Ningún mod usa rutas fijas. Dos mods tienen una opción de carpeta (`userConfig` en su `plugin.json`):
+
+| Mod | Opción | Para qué | Valor por defecto |
+|---|---|---|---|
+| `consumo` | `dataDir` | dónde se escriben `index.html`, `datos.js`, `estado.json` y `estado.js` | `~/CLAUDE/consumo` |
+| `mods-estado` | `modsDir` | dónde está tu copia local del pack | `~/CLAUDE/mods` |
+
+`~` es tu carpeta de usuario (`%USERPROFILE%` en Windows, `$HOME` en macOS y Linux). Acepta también una ruta absoluta.
+
+**Mods instalados.** Al instalar, Claude Code te deja poner el valor. Después:
+
+```
+claude plugin configure consumo@jarvis-essential-pack
+echo '{"dataDir": "~/CLAUDE/consumo"}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
+
+La primera línea muestra las opciones y su valor; la segunda guarda uno nuevo (en el JSON usa `/` o dobla las `\\`). Dentro de Claude Code tienes `/plugin configure <mod>@jarvis-essential-pack` y `/config`.
+
+**Mods cargados con `--plugin-dir`.** Pon los valores en `~/.claude/settings.json`:
+
+```json
+{
+  "pluginConfigs": {
+    "consumo": { "options": { "dataDir": "~/CLAUDE/consumo" } },
+    "mods-estado": { "options": { "modsDir": "~/CLAUDE/mods" } }
+  }
+}
+```
+
+Los cambios se aplican al reiniciar Claude Code. Más detalle en el README de [consumo](consumo/README.md#es-carpeta) y de [mods-estado](mods-estado/README.md#es-carpeta).
 
 <a id="es-funciona"></a>
 
@@ -128,7 +171,7 @@ Más detalle y un diagrama en [docs/como-funciona.md](docs/como-funciona.md).
 ## Requisitos
 
 - Claude Code con soporte de mods de terminal (plugins con `hooks/register.tsx`).
-- `consumo`: Windows con Edge o Chrome. La ventana se abre en modo aplicación (`--app`).
+- `consumo`: Windows con Edge o Chrome para abrir la ventana, en modo aplicación (`--app`). En otros sistemas los datos se escriben igual y la página se abre a mano.
 - `mods-estado`: el comando `claude` en el PATH.
 
 <a id="es-limites"></a>
@@ -174,6 +217,7 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE). Cada mod lleva también su propio 
 - [The mods](#en-mods)
 - [Install](#en-install)
 - [Load the mods in every session](#en-load)
+- [Configure the folders](#en-folders)
 - [How it works inside](#en-how)
 - [Requirements](#en-requirements)
 - [Known limitations](#en-limits)
@@ -183,6 +227,10 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE). Cada mod lleva también su propio 
 <a id="en-whats-new"></a>
 
 ## What's new
+
+**Pack version 0.3.0**
+
+- **consumo 0.4.0 and mods-estado 0.3.0:** no fixed Windows paths. The HUD data folder (`dataDir`) and the pack folder (`modsDir`) are set with `claude plugin configure`; by default, `~/CLAUDE/consumo` and `~/CLAUDE/mods` inside your user folder. See [Configure the folders](#en-folders).
 
 **Pack version 0.2.0**
 
@@ -200,9 +248,9 @@ Every change is in [CHANGELOG.md](CHANGELOG.md).
 |---|---|---|
 | **[portero](portero/)**<br><sub>v0.1.0</sub> | Looks at each request and decides who handles it. Light work: the session model. Heavy work: an Opus subagent. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
 | **[resumen-sesion](resumen-sesion/)**<br><sub>v0.1.0</sub> | When you come back after 2 hours without typing, Haiku writes a handover summary so you can continue in a new session. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
-| **[consumo](consumo/)**<br><sub>v0.3.0</sub> | Live white-cyan HUD window: plan bar, context used, cost, tokens per agent and per model, and a Haiku versus Opus comparison. `/jarvis` opens or closes it. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
+| **[consumo](consumo/)**<br><sub>v0.4.0</sub> | Live white-cyan HUD window: plan bar, context used, cost, tokens per agent and per model, and a Haiku versus Opus comparison. `/jarvis` opens or closes it. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
 | **[jarvis-banda](jarvis-banda/)**<br><sub>v0.2.0</sub> | One line above the prompt with the live state: waiting, processing, running a tool, or delegating. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
-| **[mods-estado](mods-estado/)**<br><sub>v0.2.0</sub> | `/mods` command: lists active plugins and marks the ones from this pack. `/mods on` and `/mods off` enable or disable a mod. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
+| **[mods-estado](mods-estado/)**<br><sub>v0.3.0</sub> | `/mods` command: lists active plugins and marks the ones from this pack. `/mods on` and `/mods off` enable or disable a mod. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
 
 Each mod works on its own. Install only the ones you want.
 
@@ -233,9 +281,9 @@ Example: `/plugin install consumo@jarvis-essential-pack`.
 
 Another option, without installing: keep the mods in your own folder and Claude Code loads them with `--plugin-dir`.
 
-### Local copy in `C:\CLAUDE\mods`
+### Local copy in a folder of yours
 
-1. Copy the `portero`, `resumen-sesion`, `consumo`, `jarvis-banda` and `mods-estado` folders from this repo into `C:\CLAUDE\mods`. One folder per mod.
+1. Copy the `portero`, `resumen-sesion`, `consumo`, `jarvis-banda` and `mods-estado` folders from this repo into a folder of yours, one folder per mod. The example uses `CLAUDE\mods` inside your user folder (`$env:USERPROFILE\CLAUDE\mods`), which is where `mods-estado` looks by default.
 2. Open your PowerShell profile with `notepad $PROFILE`.
 3. Paste the function below and save.
 4. Open a new PowerShell window and type `claude`. The mods load on their own.
@@ -246,7 +294,8 @@ Another option, without installing: keep the mods in your own folder and Claude 
 # Starts Claude Code with every mod of the pack loaded.
 function claude {
     $exe  = (Get-Command claude -CommandType Application | Select-Object -First 1).Source
-    $mods = 'C:\CLAUDE\mods'
+    # Example: change the path if you keep the mods in another folder.
+    $mods = Join-Path $env:USERPROFILE 'CLAUDE\mods'
     $dirs = 'portero', 'resumen-sesion', 'consumo', 'jarvis-banda', 'mods-estado' |
         ForEach-Object { '--plugin-dir'; Join-Path $mods $_ }
     & $exe @dirs @args
@@ -258,6 +307,43 @@ function claude {
 
 > [!WARNING]
 > Do not mix both methods. If you install a mod with `/plugin install`, remove it from the function's list.
+
+On macOS or Linux the same works with `claude --plugin-dir ~/CLAUDE/mods/portero --plugin-dir ~/CLAUDE/mods/consumo …` or a shell alias.
+
+<a id="en-folders"></a>
+
+## Configure the folders
+
+No mod uses fixed paths. Two mods have a folder option (`userConfig` in their `plugin.json`):
+
+| Mod | Option | What for | Default |
+|---|---|---|---|
+| `consumo` | `dataDir` | where `index.html`, `datos.js`, `estado.json` and `estado.js` are written | `~/CLAUDE/consumo` |
+| `mods-estado` | `modsDir` | where your local copy of the pack is | `~/CLAUDE/mods` |
+
+`~` is your user folder (`%USERPROFILE%` on Windows, `$HOME` on macOS and Linux). An absolute path works too.
+
+**Installed mods.** Claude Code lets you set the value when you install. Afterwards:
+
+```
+claude plugin configure consumo@jarvis-essential-pack
+echo '{"dataDir": "~/CLAUDE/consumo"}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
+
+The first line shows the options and their values; the second saves a new one (in the JSON use `/` or double the `\\`). Inside Claude Code you have `/plugin configure <mod>@jarvis-essential-pack` and `/config`.
+
+**Mods loaded with `--plugin-dir`.** Put the values in `~/.claude/settings.json`:
+
+```json
+{
+  "pluginConfigs": {
+    "consumo": { "options": { "dataDir": "~/CLAUDE/consumo" } },
+    "mods-estado": { "options": { "modsDir": "~/CLAUDE/mods" } }
+  }
+}
+```
+
+Changes apply when you restart Claude Code. More detail in the [consumo](consumo/README.md#en-folder) and [mods-estado](mods-estado/README.md#en-folder) READMEs.
 
 <a id="en-how"></a>
 
@@ -279,7 +365,7 @@ More detail and a diagram in [docs/how-it-works.md](docs/how-it-works.md).
 ## Requirements
 
 - Claude Code with terminal mod support (plugins with `hooks/register.tsx`).
-- `consumo`: Windows with Edge or Chrome. The window opens in app mode (`--app`).
+- `consumo`: Windows with Edge or Chrome to open the window, in app mode (`--app`). On other systems the data is still written and you open the page by hand.
 - `mods-estado`: the `claude` command on your PATH.
 
 <a id="en-limits"></a>

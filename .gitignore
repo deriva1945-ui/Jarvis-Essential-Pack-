@@ -1,5 +1,6 @@
-C:\\CLAUDE*
 # Generados al desarrollar o probar los mods
 **/.claude-plugin/types/
 **/tsconfig.json
 **/datos.js
+# Carpeta de datos de reserva de consumo (si no se conoce la carpeta de usuario)
+**/datos/

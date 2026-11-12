@@ -29,4 +29,4 @@ Los cinco mods siguen el mismo camino: **eventos → hooks → datos → pantall
 
 - **No rompen la sesión.** Si un mod falla, deja pasar el evento sin cambios.
 - **Solo escuchan lo que necesitan.** Un mod no ve los eventos que no pide.
-- **No guardan tu conversación.** Lo único que se escribe en disco son los archivos de `consumo` en `C:\CLAUDE\consumo`: la página, `datos.js` (números, nombres de modelo, la descripción corta de cada subagente y los títulos de tareas del plan) y `estado.json` / `estado.js` (si el HUD está abierto).
+- **No guardan tu conversación.** Lo único que se escribe en disco son los archivos de `consumo` en su carpeta de datos (opción `dataDir`, por defecto `~/CLAUDE/consumo`): la página, `datos.js` (números, nombres de modelo, la descripción corta de cada subagente y los títulos de tareas del plan) y `estado.json` / `estado.js` (si el HUD está abierto).
