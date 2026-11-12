@@ -30,6 +30,50 @@ test('the page has the key sections, the size breakpoints and the density toggle
   expect(PAGE).not.toContain('#6b7a90')
 })
 
+// Temas: bloque de variables por tema en html[data-tema="..."]; sin atributo, hibrido.
+const TEMAS = ['hibrido', 'mark-ii', 'mark-l', 'stark', 'claro']
+const VARS_TEMA = ['--bg', '--panel', '--txt', '--sub', '--acc', '--acc2', '--warn', '--crit', '--ok', '--modelo-opus', '--modelo-haiku', '--modelo-fable', '--modelo-otro']
+function bloqueTema(t: string): string {
+  const sel = `html[data-tema="${t}"]{`
+  const i = PAGE.indexOf(sel)
+  return i < 0 ? '' : PAGE.slice(i + sel.length, PAGE.indexOf('\n}', i))
+}
+
+test('the page defines the five themes, each with every color variable', () => {
+  for (const t of TEMAS) {
+    const b = bloqueTema(t)
+    expect(b.length > 0).toBe(true)
+    for (const v of VARS_TEMA) expect(b).toContain(`${v}:#`)
+  }
+})
+
+test('the default theme (no data-tema attribute) is hibrido', () => {
+  // El bloque de :root es el mismo que el de hibrido; los demás temas solo se aplican con su atributo.
+  expect(PAGE).toContain(':root,html[data-tema="hibrido"]{')
+  for (const t of TEMAS.filter(x => x !== 'hibrido')) {
+    expect(PAGE).not.toContain(`:root,html[data-tema="${t}"]`)
+    expect(PAGE).toContain(`\nhtml[data-tema="${t}"]{`)
+  }
+  expect(PAGE.indexOf(':root,html[data-tema="hibrido"]{') < PAGE.indexOf('html[data-tema="mark-ii"]{')).toBe(true)
+  // El HTML no fija ningún tema: lo pone quien abre la página.
+  expect(PAGE).toContain('<html lang="es">')
+})
+
+test('themes keep red for alerts only and drop effects in compact mode', () => {
+  for (const t of TEMAS) {
+    const b = bloqueTema(t)
+    const crit = /--crit:(#[0-9a-f]{6})/.exec(b)?.[1] ?? ''
+    expect(crit.length).toBe(7)
+    // El rojo del tema no se usa como acento ni como color de familia.
+    for (const v of ['--acc', '--acc2', '--ok', '--warn', '--modelo-opus', '--modelo-haiku', '--modelo-fable', '--modelo-otro']) {
+      expect(b).not.toContain(`${v}:${crit}`)
+    }
+  }
+  expect(PAGE).toContain('body.compact{--glow:0;--cristal:none}')
+  expect(PAGE).toContain('@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px)))')
+  expect(PAGE).toContain('@media (prefers-reduced-motion:reduce)')
+})
+
 test('session.start writes the page and the data and opens the window, without a side pane', PRUEBA, async ($, on) => {
   mock.clock(on, { now: 1_000 })
   const writes: { path: string; text: string }[] = []
