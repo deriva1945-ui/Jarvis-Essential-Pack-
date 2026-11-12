@@ -162,7 +162,7 @@ test('(a) a half-written datos.js is ignored, the last good data stays and the p
   expect(L.valido(datos(T0))).toBe(true)
   expect(PAGE).toContain(LOGICA)
   expect(PAGE).toContain('window.CONSUMO=undefined')
-  expect(PAGE).toContain("window.onerror=function(msg,src){if(src&&String(src).indexOf('datos.js')>=0)return true}")
+  expect(PAGE).toContain("window.onerror=function(msg,src){if(src&&(String(src).indexOf('datos.js')>=0||String(src).indexOf('estado.js')>=0))return true}")
 })
 
 test('(b) a 3 s heartbeat read every 1 s never shows a false SIN SEÑAL, and a real stop does', () => {
@@ -348,4 +348,85 @@ test('(h) plan: all tasks completed is 100 %, and a task completed twice counts 
   expect(resumen(v)).toEqual({ total: 1, completadas: 1, enCurso: 0, porcentaje: 100, tareas: [{ titulo: 'A', estado: 'completada' }] })
   expect(idCreada({ task: { id: '9', subject: 'x' } })).toEqual({ id: '9', subject: 'x' })
   expect(idCreada(undefined)).toBeNull()
+})
+
+const JARVIS = {
+  command: 'jarvis',
+  args: '',
+  origin: { kind: 'composer' },
+  presentation: { isFullscreen: false, columns: 100 },
+} as const
+
+const hudBase: TestBody = ($, on) => {
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.model', () => ({ value: 'claude-haiku-5-5' }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 0, window: 100, percent: 0 }, rateLimits: [] } }))
+}
+
+test('/jarvis toggles the HUD (close, open, close) and /consumo is gone', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  hudBase($, on)
+  const writes: { path: string; text: string }[] = []
+  const runs: (readonly string[])[] = []
+  const names: string[] = []
+  on('command.register', (_, e) => {
+    names.push(e.name)
+    return { value: { command: e.name } }
+  })
+  on('fs.write', (_, e) => {
+    writes.push(e)
+    return { value: undefined }
+  })
+  on('process.run', (_, e) => {
+    runs.push(e.argv)
+    return ok
+  })
+  const last = (end: string) => writes.filter(w => w.path.endsWith(end)).at(-1)?.text ?? ''
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  expect(names).toContain('jarvis')
+  expect(names).not.toContain('consumo')
+  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: true })
+  const opened = runs.length
+  expect(opened).toBeGreaterThan(0)
+
+  const r1 = await $.command.run(JARVIS)
+  expect(r1.text).toContain('HUD cerrado')
+  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: false })
+  expect(last('\\estado.js')).toBe('window.CONSUMO_ESTADO = {"abierto":false};')
+  // Cerrar no lanza ningún proceso: no se mata ninguna ventana.
+  expect(runs.length).toBe(opened)
+
+  const r2 = await $.command.run(JARVIS)
+  expect(r2.text).toContain('HUD abierto')
+  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: true })
+  expect(runs.length).toBeGreaterThan(opened)
+  expect(runs.at(-1)?.some(x => x.includes('--app=file:///C:/CLAUDE/consumo/index.html'))).toBe(true)
+
+  const r3 = await $.command.run(JARVIS)
+  expect(r3.text).toContain('HUD cerrado')
+  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: false })
+})
+
+test('/jarvis answers clearly when no browser can be opened', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  hudBase($, on)
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('fs.write', () => ({ value: undefined }))
+  on('process.run', () => {
+    throw new Error('spawn cmd ENOENT')
+  })
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  // Al iniciar no se abrió, así que /jarvis intenta abrir y explica el fallo.
+  const { text } = await $.command.run(JARVIS)
+  expect(text).toContain('No se pudo abrir el HUD')
+  expect(text).toContain('index.html')
+})
+
+test('the page reads estado.js, calls window.close() and shows the closed notice', () => {
+  expect(PAGE).toContain("s.src='estado.js?'+now")
+  expect(PAGE).toContain('window.close()')
+  expect(PAGE).toContain('HUD cerrado. Escribe /jarvis para abrirlo.')
+  expect(PAGE).toContain('loadEstado()')
 })

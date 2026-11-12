@@ -20,7 +20,15 @@ Mod para Claude Code que abre una ventana HUD con lo que gasta la sesión.
 |---|---|
 | ![900x600](../images/consumo-900x600.png) | ![420x860](../images/consumo-420x860.png) |
 
-Archivos que crea en tu PC: `C:\CLAUDE\consumo\index.html` (la página) y `C:\CLAUDE\consumo\datos.js` (los datos, se reescribe cada 3 segundos).
+## Comando /jarvis
+
+`/jarvis` abre o cierra el HUD:
+
+- Si el HUD está cerrado, lo abre como al iniciar la sesión (Edge o Chrome con `--app`).
+- Si está abierto, lo cierra. El mod no cierra la ventana del navegador por su cuenta, porque tendría que matar procesos de Edge que no son suyos. En su lugar escribe `C:\CLAUDE\consumo\estado.json` con `{"abierto": false}` (y `{"abierto": true}` antes de abrir). La página lo lee cada segundo, junto con `datos.js`, y al ver `abierto: false` llama a `window.close()`.
+- Si `window.close()` no cierra la ventana, la página muestra "HUD cerrado. Escribe /jarvis para abrirlo." **`window.close()` puede no funcionar en todas las versiones de Edge: en ese caso cierra la ventana a mano.**
+
+Archivos que crea en tu PC: `C:\CLAUDE\consumo\index.html` (la página), `C:\CLAUDE\consumo\datos.js` (los datos, se reescribe cada 3 segundos) y `C:\CLAUDE\consumo\estado.json` (si el HUD está abierto). También escribe `estado.js`, una copia de `estado.json` que la página carga como script, porque el navegador no deja leer un `.json` desde `file://`.
 
 El coste sale del contador de la propia sesión. No usa una tabla de precios.
 
@@ -68,7 +76,15 @@ A Claude Code mod that opens a HUD window showing what the session spends.
 |---|---|
 | ![900x600](../images/consumo-900x600.png) | ![420x860](../images/consumo-420x860.png) |
 
-Files it creates on your PC: `C:\CLAUDE\consumo\index.html` (the page) and `C:\CLAUDE\consumo\datos.js` (the data, rewritten every 3 seconds).
+## The /jarvis command
+
+`/jarvis` opens or closes the HUD:
+
+- If the HUD is closed, it opens it the same way as at session start (Edge or Chrome with `--app`).
+- If it is open, it closes it. The mod does not close the browser window itself, because that would mean killing Edge processes it does not own. Instead it writes `C:\CLAUDE\consumo\estado.json` with `{"abierto": false}` (and `{"abierto": true}` before opening). The page reads it every second, together with `datos.js`, and when it sees `abierto: false` it calls `window.close()`.
+- If `window.close()` does not close the window, the page shows "HUD cerrado. Escribe /jarvis para abrirlo." (HUD closed. Type /jarvis to open it.) **`window.close()` may not work in every Edge version: in that case close the window by hand.**
+
+Files it creates on your PC: `C:\CLAUDE\consumo\index.html` (the page), `C:\CLAUDE\consumo\datos.js` (the data, rewritten every 3 seconds) and `C:\CLAUDE\consumo\estado.json` (whether the HUD is open). It also writes `estado.js`, a copy of `estado.json` that the page loads as a script, because the browser does not let a page read a `.json` file from `file://`.
 
 Cost comes from the session's own counter. It does not use a price table.
 

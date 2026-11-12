@@ -309,8 +309,13 @@ body.compact .scan,body.compact .gring svg .g2{display:none}
   th .sh{display:inline}
 }
 @media (max-width:640px){.share .seg,th .lg{display:none}th .sh{display:inline}}
+/* HUD cerrado con /jarvis: si window.close() no cierra la ventana, queda este aviso encima de todo. */
+.hudoff{display:none;position:fixed;inset:0;z-index:50;align-items:center;justify-content:center;padding:16px;text-align:center;background:#050a12;color:#eaffff;font:600 clamp(16px,2.4vw,22px)/1.4 system-ui,sans-serif;letter-spacing:.04em}
+body.hud-off .hudoff{display:flex}
+body.hud-off .wrap,body.hud-off .neb,body.hud-off .floor,body.hud-off .scan{visibility:hidden}
 </style></head>
 <body>
+<div class="hudoff" id="hudoff" role="status">HUD cerrado. Escribe /jarvis para abrirlo.</div>
 <div class="neb" aria-hidden="true"></div>
 <div class="floor" aria-hidden="true"><i></i></div>
 <div class="scan" aria-hidden="true"></div>
@@ -676,7 +681,7 @@ function pintaSenal(){
   document.body.classList.toggle('sig-off',r.alerta);
 }
 // Un error de sintaxis en datos.js (escritura a medias) no debe ensuciar la consola ni parar nada.
-window.onerror=function(msg,src){if(src&&String(src).indexOf('datos.js')>=0)return true};
+window.onerror=function(msg,src){if(src&&(String(src).indexOf('datos.js')>=0||String(src).indexOf('estado.js')>=0))return true};
 // Una sola lectura a la vez: si una tarda, no se mezclan respuestas viejas con nuevas.
 var cargando=0;
 function load(){
@@ -693,6 +698,28 @@ function load(){
     pintaSenal();
   };
   s.onerror=function(){s.remove();cargando=0;alFallar(ST);pintaSenal()};
+  document.head.appendChild(s);
+}
+// Interruptor /jarvis: el mod escribe estado.json y su copia estado.js ({"abierto": false} al cerrar).
+// Desde file:// el navegador no deja leer un .json con fetch, así que se carga estado.js como script.
+// Con abierto:false se intenta window.close(); si la ventana sigue ahí, se queda el aviso.
+var HUD_CERRADO=false;
+function aplicaEstado(e){
+  if(!e||typeof e.abierto!=='boolean')return;
+  if(e.abierto===false){
+    if(!HUD_CERRADO){HUD_CERRADO=true;document.body.classList.add('hud-off');try{window.close()}catch(err){}}
+  }else if(HUD_CERRADO){HUD_CERRADO=false;document.body.classList.remove('hud-off')}
+}
+var cargandoEstado=0;
+function loadEstado(){
+  var now=Date.now();
+  if(cargandoEstado&&now-cargandoEstado<5000)return;
+  cargandoEstado=now;
+  window.CONSUMO_ESTADO=undefined;
+  var s=document.createElement('script');
+  s.src='estado.js?'+now;
+  s.onload=function(){s.remove();cargandoEstado=0;try{aplicaEstado(window.CONSUMO_ESTADO)}catch(err){}};
+  s.onerror=function(){s.remove();cargandoEstado=0};
   document.head.appendChild(s);
 }
 function tick(){$id('clock').textContent=new Date().toLocaleTimeString('es-ES')}
@@ -738,7 +765,7 @@ var rz;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeou
 tick();
 // Sin datos.js todavía la página no se queda en blanco: se pinta vacía y espera.
 try{render(VACIO)}catch(err){}
-pintaSenal();load();
-setInterval(function(){tick();load()},1000);
+pintaSenal();load();loadEstado();
+setInterval(function(){tick();load();loadEstado()},1000);
 </script>
 </body></html>`

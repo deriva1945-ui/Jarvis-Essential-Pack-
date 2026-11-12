@@ -39,6 +39,8 @@ declare module 'claude-code' {
       ctx: Shaped<CtxSnap | null>
       ledger: Shaped<Ledger>
       plan: Shaped<PlanState>
+      // Si el HUD está abierto (session.start o /jarvis lo cambian).
+      abierto: Shaped<boolean>
     }
   }
 }

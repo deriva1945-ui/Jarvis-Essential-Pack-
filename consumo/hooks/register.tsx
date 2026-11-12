@@ -25,6 +25,8 @@ const ctx = atom({ plugin: 'consumo', key: 'ctx' } as const, null as CtxSnap | n
 const LEDGER0: Ledger = { last: null, base: 0, ids: [], turn: null }
 const ledger = atom({ plugin: 'consumo', key: 'ledger' } as const, LEDGER0, SHAPE2)
 const plan = atom({ plugin: 'consumo', key: 'plan' } as const, PLAN0, { shape: 'consumo-plan-1' })
+// Si el HUD está abierto, según lo último que hizo el mod (session.start o /jarvis).
+const abierto = atom({ plugin: 'consumo', key: 'abierto' } as const, false, { shape: 'consumo-abierto-1' })
 
 type Familia = 'haiku' | 'opus' | 'fable' | 'sonnet' | 'otro'
 
@@ -185,8 +187,63 @@ async function writeData($: Ctx): Promise<void> {
   }
 }
 
+const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err))
+
+// Interruptor del HUD. El mod no puede cerrar la ventana del navegador sin matar procesos ajenos,
+// así que deja el estado en estado.json (y en estado.js, que es lo que la página puede cargar
+// desde file://) y la página, al leer abierto:false, llama a window.close().
+async function writeEstado($: Ctx, isOpen: boolean): Promise<string | null> {
+  const json = JSON.stringify({ abierto: isOpen })
+  try {
+    await $.fs.write(`${DIR}\\estado.json`, json)
+    await $.fs.write(`${DIR}\\estado.js`, `window.CONSUMO_ESTADO = ${json};`)
+    return null
+  } catch (err) {
+    return errorText(err)
+  }
+}
+
+type Apertura = { isOpen: true } | { isOpen: false; reason: string }
+
+// Escribe la página, los datos y el estado, y abre Edge (o Chrome) en modo --app.
+async function abrirHud($: Ctx): Promise<Apertura> {
+  // Cada paso por separado: si datos.js no se puede escribir, la ventana se abre igual
+  // y la página muestra "sin señal" en vez de quedarse en blanco.
+  try {
+    await $.fs.write(`${DIR}\\index.html`, PAGE)
+  } catch (err) {
+    // Sin página no hay ventana que abrir.
+    return { isOpen: false, reason: `no se pudo escribir ${DIR}\\index.html (${errorText(err)})` }
+  }
+  try {
+    await $.fs.write(`${DIR}\\datos.js`, payload(toData({ ...EMPTY, t: await read($, ledger), p: await read($, plan), model: await $.session.model() }, await $.clock.now())))
+  } catch {
+    // El latido lo vuelve a intentar cada 3 s.
+  }
+  // Antes de abrir: una ventana vieja que se quedó con el aviso de cerrado vuelve a pintar el HUD.
+  await writeEstado($, true)
+  const failures: string[] = []
+  for (const browser of ['msedge', 'chrome']) {
+    try {
+      const run = await $.process.run(['cmd', '/c', 'start', '', browser, `--app=${PAGE_URL}`])
+      if (run.exitCode === 0) return { isOpen: true }
+      failures.push(`${browser}: código ${run.exitCode}`)
+    } catch (err) {
+      failures.push(`${browser}: ${errorText(err)}`)
+    }
+  }
+  // Sin navegador: los datos se siguen guardando por si se abre a mano.
+  return { isOpen: false, reason: `no se pudo abrir Edge ni Chrome (${failures.join('; ')})` }
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
+    try {
+      await $.command.register({ name: 'jarvis', description: 'Abre o cierra el HUD de consumo' })
+    } catch {
+      // Sin comando el HUD se abre igual al iniciar la sesión.
+    }
+
     // Punto de partida del contador de coste: el coste de cada turno es lo que sube desde aquí.
     // Al reanudar o tras /clear el contador puede volver a empezar: observe() lo pasa a base.
     try {
@@ -196,30 +253,11 @@ export const register: Register = on => {
       // Sin contador todavía: el primer turno queda sin coste, no con todo lo acumulado.
     }
 
-    // Cada paso por separado: si datos.js no se puede escribir, la ventana se abre igual
-    // y la página muestra "sin señal" en vez de quedarse en blanco.
-    let pageOk = false
     try {
-      await $.fs.write(`${DIR}\\index.html`, PAGE)
-      pageOk = true
+      const r = await abrirHud($)
+      await update($, abierto, () => r.isOpen)
     } catch {
-      // Sin página no hay ventana que abrir.
-    }
-    try {
-      await $.fs.write(`${DIR}\\datos.js`, payload(toData({ ...EMPTY, t: await read($, ledger), p: await read($, plan), model: await $.session.model() }, await $.clock.now())))
-    } catch {
-      // El latido lo vuelve a intentar cada 3 s.
-    }
-    if (pageOk) {
-      try {
-        await $.process.run(['cmd', '/c', 'start', '', 'msedge', `--app=${PAGE_URL}`])
-      } catch {
-        try {
-          await $.process.run(['cmd', '/c', 'start', '', 'chrome', `--app=${PAGE_URL}`])
-        } catch {
-          // Sin navegador: los datos se siguen guardando por si se abre a mano.
-        }
-      }
+      // El HUD es opcional: la sesión sigue.
     }
     try {
       beat?.cancel()
@@ -229,6 +267,36 @@ export const register: Register = on => {
     }
     return next(e)
   }).catch(($, e, next) => next(e))
+
+  // /jarvis: si el HUD está cerrado lo abre; si está abierto lo cierra.
+  on('command.run', { command: 'jarvis' }, async $ => {
+    if (await read($, abierto)) {
+      const failed = await writeEstado($, false)
+      await update($, abierto, () => false)
+      if (failed !== null) {
+        return {
+          text:
+            `No se pudo escribir ${DIR}\\estado.json (${failed}), así que la ventana no se enterará. ` +
+            'Ciérrala a mano. Escribe /jarvis para abrir el HUD.',
+        }
+      }
+      return {
+        text:
+          'HUD cerrado. Si la ventana sigue abierta (window.close() no funciona en todas las versiones de Edge), ' +
+          'ciérrala a mano. Escribe /jarvis para abrirlo.',
+      }
+    }
+    const r = await abrirHud($)
+    await update($, abierto, () => r.isOpen)
+    if (!r.isOpen) {
+      return {
+        text: `No se pudo abrir el HUD: ${r.reason}. Puedes abrir ${DIR}\\index.html a mano.`,
+      }
+    }
+    return { text: 'HUD abierto. Escribe /jarvis otra vez para cerrarlo.' }
+  }).catch(($, e, next) =>
+    next.called ? next(e) : { text: 'consumo: no se pudo cambiar el estado del HUD con /jarvis.' },
+  )
 
   on('agent.spawn', async ($, e, next) => {
     const r = await next(e)
