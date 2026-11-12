@@ -1,0 +1,1 @@
+window.CONSUMO = {"modelo":"claude-haiku-5-5","contexto":{"tokens":0,"window":1,"percent":0},"coste":0,"agentes":[],"actualizado":1794443211053};
