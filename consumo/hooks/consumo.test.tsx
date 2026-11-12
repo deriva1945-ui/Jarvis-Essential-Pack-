@@ -2,6 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
 import { calcular, COMP0, sumar } from './comparativa'
+import { CONFIG_DEFAULT, leerConfig, PANELES } from './config'
 import { observe } from './ledger'
 import { PAGE } from './page'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
@@ -629,4 +630,83 @@ test('dataDir: with no user folder known the data goes to the datos folder insid
 
   expect(writes.some(p => /consumo[\\/]datos[\\/]index\.html$/.test(p))).toBe(true)
   expect(writes.some(p => p.includes('CLAUDE'))).toBe(false)
+})
+
+// ---------- Personalización (userConfig) ----------
+
+// Arranca la sesión con las opciones del test y devuelve el config de datos.js y las líneas del log.
+const arrancar = async ($: Parameters<TestBody>[0], on: Parameters<TestBody>[1]) => {
+  mock.clock(on, { now: 1_000 })
+  const writes: { path: string; text: string }[] = []
+  const logs: string[] = []
+  on('fs.write', (_, e) => {
+    writes.push(e)
+    return { value: undefined }
+  })
+  on('ui.log', (_, e) => {
+    logs.push(e.text)
+    return { value: undefined }
+  })
+  on('process.run', () => ok)
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.model', () => ({ value: 'claude-haiku-5-5' }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 0, window: 200000, percent: 0 }, rateLimits: [] } }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const d = writes.filter(w => w.path === '/prueba/consumo/datos.js').at(-1)?.text ?? ''
+  expect(d.startsWith('window.CONSUMO = ')).toBe(true)
+  const data = JSON.parse(d.slice('window.CONSUMO = '.length, -1)) as { config: unknown }
+  return { config: data.config, logs: logs.filter(l => l.startsWith('consumo:')) }
+}
+
+test('config: with no options datos.js carries the defaults and nothing is logged', PRUEBA, async ($, on) => {
+  const { config, logs } = await arrancar($, on)
+  expect(config).toEqual({
+    tema: 'hibrido',
+    acento: '#7fe7ff',
+    densidad: 'comodo',
+    idioma: 'es',
+    actualizacion: 1,
+    paneles: ['contexto', 'coste', 'reparto', 'agentes', 'historial', 'grafica', 'comparativa', 'plan'],
+  })
+  expect(config).toEqual(CONFIG_DEFAULT)
+  expect(logs).toHaveLength(0)
+})
+
+test(
+  'config: valid values reach datos.js (hex in lower case, panels in the HUD order)',
+  { options: { dataDir: '/prueba/consumo', tema: 'stark', acento: '#FF0080', densidad: 'compacto', idioma: 'en', actualizacion: 3, paneles: ['plan', 'coste'] } },
+  async ($, on) => {
+    const { config, logs } = await arrancar($, on)
+    expect(config).toEqual({ tema: 'stark', acento: '#ff0080', densidad: 'compacto', idioma: 'en', actualizacion: 3, paneles: ['coste', 'plan'] })
+    expect(logs).toHaveLength(0)
+  },
+)
+
+test(
+  'config: a non-hex accent and an out-of-range refresh fall back to the defaults and log a warning',
+  { options: { dataDir: '/prueba/consumo', acento: 'rojo', actualizacion: 9, tema: 'mark-l' } },
+  async ($, on) => {
+    const { config, logs } = await arrancar($, on)
+    expect(config).toEqual({ ...CONFIG_DEFAULT, tema: 'mark-l' })
+    expect(logs.some(l => l.includes('acento') && l.includes('#7fe7ff'))).toBe(true)
+    expect(logs.some(l => l.includes('actualizacion') && l.includes('1–5'))).toBe(true)
+  },
+)
+
+test('config: leerConfig rejects bad values one by one and keeps the good ones', () => {
+  const bad = leerConfig({ tema: 'iron', densidad: 'enorme', idioma: 'fr', acento: '#12', actualizacion: 0, paneles: ['foo'] })
+  expect(bad.config).toEqual(CONFIG_DEFAULT)
+  expect(bad.avisos).toHaveLength(7)
+  for (const k of ['tema', 'densidad', 'idioma', 'acento', 'actualizacion', 'foo']) expect(bad.avisos.some(a => a.includes(k))).toBe(true)
+
+  expect(leerConfig({ actualizacion: 5.5 }).config.actualizacion).toBe(1)
+  expect(leerConfig({ actualizacion: 5 }).config.actualizacion).toBe(5)
+  expect(leerConfig({ acento: '#abc' }).config.acento).toBe('#abc')
+  expect(leerConfig({ acento: '7fe7ff' }).config.acento).toBe('#7fe7ff')
+  const mix = leerConfig({ paneles: ['grafica', 'nada', 'contexto', 'grafica'] })
+  expect(mix.config.paneles).toEqual(['contexto', 'grafica'])
+  expect(mix.avisos).toHaveLength(1)
+  expect(leerConfig({ paneles: 'plan, coste' }).config.paneles).toEqual(['coste', 'plan'])
+  expect(leerConfig({}).config.paneles).toEqual([...PANELES])
+  expect(leerConfig({}).avisos).toHaveLength(0)
 })

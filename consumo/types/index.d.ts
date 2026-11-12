@@ -54,6 +54,24 @@ export type Ledger = {
 export type PlanEstado = 'pending' | 'in_progress' | 'completed'
 export type PlanState = { orden: string[]; tareas: Record<string, { titulo: string; estado: PlanEstado }> }
 
+// Personalización del HUD (userConfig de plugin.json), ya validada. Va en datos.js como "config":
+// la página la lee y no la cambia.
+export type HudTema = 'mark-ii' | 'mark-l' | 'stark' | 'hibrido' | 'claro'
+export type HudDensidad = 'comodo' | 'compacto'
+export type HudIdioma = 'es' | 'en'
+export type HudPanel = 'contexto' | 'coste' | 'reparto' | 'agentes' | 'historial' | 'grafica' | 'comparativa' | 'plan'
+export type HudConfig = {
+  tema: HudTema
+  // Color de acento en hex, en minúsculas (#rgb o #rrggbb).
+  acento: string
+  densidad: HudDensidad
+  idioma: HudIdioma
+  // Segundos entre lecturas de datos.js, de 1 a 5.
+  actualizacion: number
+  // Paneles visibles, en el orden fijo del HUD.
+  paneles: HudPanel[]
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'consumo': {

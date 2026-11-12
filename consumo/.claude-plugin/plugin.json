@@ -11,6 +11,67 @@
       "title": "Carpeta de datos",
       "description": "Carpeta donde consumo escribe index.html, datos.js, estado.json y estado.js. Ruta absoluta o empezando por ~ (tu carpeta de usuario). Por defecto: ~/CLAUDE/consumo.",
       "default": "~/CLAUDE/consumo"
+    },
+    "tema": {
+      "type": "string",
+      "title": "Tema / Theme",
+      "description": "Tema de color del HUD: mark-ii, mark-l, stark, hibrido o claro. Por defecto: hibrido. / HUD colour theme: mark-ii, mark-l, stark, hibrido (hybrid) or claro (light). Default: hibrido.",
+      "options": [
+        "mark-ii",
+        "mark-l",
+        "stark",
+        "hibrido",
+        "claro"
+      ],
+      "default": "hibrido"
+    },
+    "acento": {
+      "type": "string",
+      "title": "Color de acento / Accent colour",
+      "description": "Color de acento en hex (#rgb o #rrggbb). Un valor que no sea hex usa el defecto y deja un aviso en el log. Por defecto: #7fe7ff. / Accent colour in hex (#rgb or #rrggbb). A non-hex value falls back to the default and logs a warning. Default: #7fe7ff.",
+      "default": "#7fe7ff"
+    },
+    "densidad": {
+      "type": "string",
+      "title": "Densidad / Density",
+      "description": "Espaciado del HUD: comodo o compacto. Por defecto: comodo. / HUD spacing: comodo (comfortable) or compacto (compact). Default: comodo.",
+      "options": [
+        "comodo",
+        "compacto"
+      ],
+      "default": "comodo"
+    },
+    "idioma": {
+      "type": "string",
+      "title": "Idioma / Language",
+      "description": "Idioma de los textos del HUD: es (español) o en (inglés). Por defecto: es. / Language of the HUD labels: es (Spanish) or en (English). Default: es.",
+      "options": [
+        "es",
+        "en"
+      ],
+      "default": "es"
+    },
+    "actualizacion": {
+      "type": "number",
+      "title": "Actualización (s) / Refresh (s)",
+      "description": "Segundos entre lecturas de datos.js, de 1 a 5. Fuera de ese rango se usa el defecto y se deja un aviso en el log. Por defecto: 1. / Seconds between reads of datos.js, 1 to 5. Out of range falls back to the default and logs a warning. Default: 1.",
+      "default": 1
+    },
+    "paneles": {
+      "type": "string",
+      "multiple": true,
+      "title": "Paneles visibles / Visible panels",
+      "description": "Paneles que se muestran: contexto, coste, reparto, agentes, historial, grafica, comparativa, plan. Los nombres desconocidos se ignoran. Por defecto: todos. / Panels to show: contexto (context), coste (cost), reparto (split by model), agentes (agents), historial (history), grafica (chart), comparativa (Haiku vs Opus), plan. Unknown names are ignored. Default: all.",
+      "default": [
+        "contexto",
+        "coste",
+        "reparto",
+        "agentes",
+        "historial",
+        "grafica",
+        "comparativa",
+        "plan"
+      ]
     }
   },
   "types": "./types/index.d.ts"
