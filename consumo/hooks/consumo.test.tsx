@@ -1,6 +1,9 @@
 import { expect, mock, test } from 'claude-code/testing'
+import type { TestBody } from 'claude-code/testing'
 
+import { observe } from './ledger'
 import { PAGE } from './page'
+import { alCargar, alFallar, LOGICA, nuevoEstado, senal, valido } from './senal'
 
 const ok = { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
 
@@ -106,4 +109,165 @@ test('datos.js splits the work by model and carries the history, the alert and a
   await clock.advance(3_000)
   expect(last().latido).toBeGreaterThan(before)
   expect(last().actualizado).toBe(d.actualizado)
+})
+
+// ---------- Sincronía de datos ----------
+
+type On = Parameters<TestBody>[1]
+const L = { nuevoEstado, valido, alCargar, alFallar, senal }
+const logica = () => L
+const T0 = 1_800_000_000_000
+const datos = (latido: number) => ({ contexto: { tokens: 1, window: 2, percent: 50 }, coste: 0.1, latido, actualizado: latido })
+
+const base = (on: On, usd: () => number | undefined) => {
+  const writes: { path: string; text: string }[] = []
+  on('fs.write', (_, e) => {
+    writes.push(e)
+    return { value: undefined }
+  })
+  on('process.run', () => ok)
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.model', () => ({ value: 'claude-fable-5' }))
+  on('session.usage', () => {
+    const c = usd()
+    return { value: { startedAt: 0, context: { tokens: 10, window: 100, percent: 10 }, rateLimits: [], ...(c === undefined ? {} : { cost: { usd: c } }) } }
+  })
+  on('turn.complete', () => ({ text: '' }))
+  const last = () => {
+    const w = writes.filter(x => x.path.endsWith('datos.js')).at(-1)
+    return JSON.parse((w?.text ?? '').replace(/^window\.CONSUMO = /, '').replace(/;$/, ''))
+  }
+  return { writes, last }
+}
+const turnOf = (turnId: string, agentId: string | undefined, model: string, input: number) => ({
+  answer: '', durationMs: 1, isAborted: false, reason: 'answer', turnId, ...(agentId ? { agentId } : {}),
+  usage: { model, input_tokens: input, output_tokens: 10, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+}) as const
+
+test('(a) a half-written datos.js is ignored, the last good data stays and the page keeps going', () => {
+  const L = logica()
+  const st = L.nuevoEstado(T0)
+  expect(L.alCargar(st, datos(T0), T0)).toBe(true)
+  // Truncado: el script no llega a definir CONSUMO, o lo define sin campos.
+  for (const roto of [undefined, null, {}, { contexto: { tokens: 1 } }, 'window.CONSUMO = {"mod']) {
+    expect(L.alCargar(st, roto, T0 + 1000)).toBe(false)
+  }
+  expect(st.fails).toBe(5)
+  expect(st.loadOk).toBe(true)
+  expect(L.senal(st, T0 + 2000).alerta).toBe(false)
+  expect(L.alCargar(st, datos(T0 + 3000), T0 + 3000)).toBe(true)
+  expect(st.fails).toBe(0)
+  // La página borra CONSUMO antes de cada lectura y silencia el error de sintaxis de datos.js.
+  expect(L.valido(datos(T0))).toBe(true)
+  expect(PAGE).toContain(LOGICA)
+  expect(PAGE).toContain('window.CONSUMO=undefined')
+  expect(PAGE).toContain("window.onerror=function(msg,src){if(src&&String(src).indexOf('datos.js')>=0)return true}")
+})
+
+test('(b) a 3 s heartbeat read every 1 s never shows a false SIN SEÑAL, and a real stop does', () => {
+  const L = logica()
+  const st = L.nuevoEstado(T0)
+  let beat = T0
+  for (let t = 0; t <= 60_000; t += 1000) {
+    if (t % 3000 === 0) beat = T0 + t
+    // Una lectura de cada siete falla (archivo a medio escribir o bloqueado).
+    if (t % 7000 === 3000) L.alFallar(st)
+    else L.alCargar(st, datos(beat), T0 + t)
+    expect(L.senal(st, T0 + t).alerta).toBe(false)
+  }
+  // El plugin deja de latir: se avisa al pasar 10 s, no antes.
+  for (let t = 61_000; t <= 75_000; t += 1000) {
+    L.alCargar(st, datos(beat), T0 + t)
+    expect(L.senal(st, T0 + t).alerta).toBe(T0 + t - (T0 + 60_000) > 10_000)
+  }
+  expect(L.senal(st, T0 + 75_000).aviso).toBe('Sin señal hace 15 s')
+  // Un datos.js que ya era viejo al abrir la página no cuenta como señal.
+  const viejo = L.nuevoEstado(T0)
+  L.alCargar(viejo, datos(T0 - 60_000), T0)
+  expect(L.senal(viejo, T0 + 11_000).alerta).toBe(true)
+})
+
+test('(c) parallel subagents and a repeated turn.complete do not duplicate turns', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  let usd = 1
+  const { last } = base(on, () => usd)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  usd = 1.4
+  await Promise.all([
+    $.turn.complete(turnOf('t1', 'a1', 'claude-haiku-5-5', 100)),
+    $.turn.complete(turnOf('t2', 'a2', 'claude-haiku-5-5', 200)),
+    $.turn.complete(turnOf('t3', 'a3', 'claude-opus-5-5', 300)),
+  ])
+  await $.turn.complete(turnOf('t2', 'a2', 'claude-haiku-5-5', 200))
+  const d = last()
+  expect(d.historial).toHaveLength(3)
+  expect(new Set(d.historial.map((h: { agente: string }) => h.agente)).size).toBe(3)
+  expect(d.agentes.reduce((a: number, x: { turns: number }) => a + x.turns, 0)).toBe(3)
+  expect(d.modelos.reduce((a: number, x: { turnos: number }) => a + x.turnos, 0)).toBe(3)
+  // El coste de los tres turnos suma lo que subió el contador, sin contarlo dos veces.
+  const sum = d.historial.reduce((a: number, h: { coste: number | null }) => a + (h.coste ?? 0), 0)
+  expect(Math.round(sum * 1e6) / 1e6).toBe(0.4)
+  expect(d.coste).toBe(1.4)
+})
+
+test('(d) the cost per turn is never negative nor counted twice after /clear or a resume', async ($, on) => {
+  // Lógica pura.
+  let l = observe({ last: null, base: 0, ids: [], turn: null }, undefined, 'x0')
+  expect(l.turn?.cost).toBeNull()
+  l = observe(l, 2, 'x1')
+  expect(l.turn?.cost).toBeNull() // sin lectura previa no se imputa todo lo acumulado
+  l = observe(l, 2.5, 'x2')
+  expect(l.turn?.cost).toBe(0.5)
+  l = observe(l, 0.2, 'x3') // el contador volvió a empezar
+  expect(l.turn?.cost).toBe(0.2)
+  expect(l.base + (l.last ?? 0)).toBe(2.7)
+  expect(observe(l, 9, 'x3').turn).toEqual({ id: 'x3', dup: true, cost: null })
+
+  // Con los hooks: arranque, un turno, /clear (contador a cero), reanudar (session.start otra vez).
+  mock.clock(on, { now: 1_000 })
+  let usd = 0.5
+  const { last } = base(on, () => usd)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  usd = 0.75
+  await $.turn.complete(turnOf('t1', undefined, 'claude-fable-5', 10))
+  usd = 0.1
+  await $.turn.complete(turnOf('t2', undefined, 'claude-fable-5', 10))
+  usd = 0
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  usd = 0.05
+  await $.turn.complete(turnOf('t3', undefined, 'claude-fable-5', 10))
+  const d = last()
+  expect(d.historial.map((h: { coste: number }) => h.coste)).toEqual([0.25, 0.1, 0.05])
+  expect(d.historial.every((h: { coste: number }) => h.coste >= 0)).toBe(true)
+  expect(d.coste).toBe(0.9)
+})
+
+test('(e) with datos.js missing the window still opens and the page shows an empty HUD that warns', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  const runs: (readonly string[])[] = []
+  on('fs.write', (_, e) => {
+    if (e.path.endsWith('datos.js')) throw new Error('EBUSY')
+    return { value: undefined }
+  })
+  on('process.run', (_, e) => {
+    runs.push(e.argv)
+    return ok
+  })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.model', () => ({ value: 'claude-fable-5' }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 0, window: 100, percent: 0 }, rateLimits: [] } }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(runs.length).toBeGreaterThan(0)
+
+  // La página se pinta vacía desde el principio y no avisa hasta pasados 10 s.
+  expect(PAGE).toContain('render(VACIO)')
+  const L = logica()
+  const st = L.nuevoEstado(T0)
+  for (let t = 1000; t <= 12_000; t += 1000) {
+    L.alFallar(st)
+    const s = L.senal(st, T0 + t)
+    expect(s.alerta).toBe(t > 10_000)
+    if (t <= 10_000) expect(s.texto).toBe('Esperando')
+  }
+  expect(L.senal(st, T0 + 12_000).aviso).toBe('datos.js no responde')
 })

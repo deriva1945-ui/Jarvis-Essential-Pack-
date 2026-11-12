@@ -9,6 +9,8 @@
 //   < 900       una columna: contexto, coste, reparto por modelo, agentes, últimos turnos.
 //   Mínimo 420 px de ancho sin desplazamiento horizontal.
 // Tecla D o botón de la cabecera: modo cómodo / compacto (se guarda en localStorage).
+import { LOGICA } from './senal'
+
 export const PAGE = `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -19,7 +21,7 @@ export const PAGE = `<!doctype html>
   --am:#ffb347;--rd:#ff5f6e;--txt:#e6f6fc;--sub:#a9cbdb;--faint:#163040;
   --f-opus:#ffb347;--f-haiku:#4fd8ff;--f-fable:#7cffc4;--f-sonnet:#c4adff;--f-otro:#b4c7d4;
   --fa:rgba(79,216,255,.75);--fb:rgba(255,179,71,.6);--glow:rgba(79,216,255,.22);
-  --cut:14px;
+  --cut:14px;--hl:79,216,255;--grid:rgba(79,216,255,.38);
   --mono:'Cascadia Mono','Cascadia Code',Consolas,'JetBrains Mono','DejaVu Sans Mono','Liberation Mono',monospace;
   /* Texto: etiquetas >= 14 px, valores >= 16 px; crecen con la ventana. */
   --fk:clamp(14px,calc(.32vw + .38vh + 5px),18px);
@@ -28,22 +30,27 @@ export const PAGE = `<!doctype html>
   --gap:clamp(10px,1vw,18px);
   --pad:clamp(12px,1vw,20px);
 }
-body.lv-w{--fa:rgba(255,179,71,.85);--fb:rgba(255,179,71,.5);--glow:rgba(255,179,71,.28)}
-body.lv-x{--fa:rgba(255,95,110,.9);--fb:rgba(255,95,110,.55);--glow:rgba(255,95,110,.35)}
+body.lv-w{--hl:255,179,71;--grid:rgba(255,179,71,.34);--fa:rgba(255,179,71,.85);--fb:rgba(255,179,71,.5);--glow:rgba(255,179,71,.28)}
+body.lv-x{--hl:255,95,110;--grid:rgba(255,95,110,.4);--fa:rgba(255,95,110,.9);--fb:rgba(255,95,110,.55);--glow:rgba(255,95,110,.35)}
 body.compact{--gap:clamp(8px,.6vw,12px);--pad:clamp(10px,.7vw,14px);--fbig:clamp(30px,calc(1.3vw + 1.8vh),52px)}
 *{box-sizing:border-box}
 html,body{min-height:100%}
 body{margin:0;background:var(--bg);color:var(--txt);font:var(--fv)/1.4 var(--mono);overflow-x:hidden;min-width:0;
-  background-image:radial-gradient(ellipse at 30% 20%,rgba(29,143,184,.12),transparent 60%),
-  linear-gradient(rgba(79,216,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(79,216,255,.03) 1px,transparent 1px);
-  background-size:auto,40px 40px,40px 40px}
+  background-image:radial-gradient(ellipse at 50% 110%,rgba(29,143,184,.28),transparent 60%),radial-gradient(ellipse at 20% 0%,rgba(29,143,184,.14),transparent 55%)}
+/* Fondo: suelo de rejilla en perspectiva que avanza, y una capa de partículas y escaneo en canvas */
+.floor{position:fixed;left:0;right:0;bottom:0;height:52vh;perspective:380px;perspective-origin:50% 0;overflow:hidden;pointer-events:none;z-index:0;
+  -webkit-mask-image:linear-gradient(transparent,#000 55%);mask-image:linear-gradient(transparent,#000 55%);opacity:.5;transition:opacity .8s}
+.floor .plane{position:absolute;left:-60%;right:-60%;top:0;height:220%;transform:rotateX(64deg);transform-origin:50% 0;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:64px 64px;
+  animation:floor 3.5s linear infinite;transition:background-color .8s}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
 body:after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
   background:repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 3px)}
 body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;transition:opacity .6s;
   box-shadow:inset 0 0 120px rgba(255,95,110,.45)}
 body.lv-x:before{opacity:1;animation:alarm 1.6s ease-in-out infinite}
 body.lv-w:before{opacity:.5;box-shadow:inset 0 0 90px rgba(255,179,71,.3)}
-.wrap{min-height:100vh;display:flex;flex-direction:column;gap:var(--gap);padding:var(--pad) clamp(16px,1.4vw,26px);max-width:2200px;margin:0 auto}
+.wrap{position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column;gap:var(--gap);padding:var(--pad) clamp(16px,1.4vw,26px);max-width:2200px;margin:0 auto}
 .k{color:var(--sub);font-size:var(--fk);letter-spacing:.06em;text-transform:uppercase}
 .num{font-variant-numeric:tabular-nums}
 
@@ -73,12 +80,17 @@ h1 .brand{color:var(--sub)}
 #dens kbd{font:inherit;color:var(--am);border:1px solid var(--am);padding:0 5px;margin-right:8px}
 
 /* Paneles con esquinas recortadas y brillo */
-.pnl{position:relative;filter:drop-shadow(0 0 5px var(--glow));min-width:0;min-height:0}
+.pnl{position:relative;filter:drop-shadow(0 0 7px var(--glow));transition:filter .8s;min-width:0;min-height:0}
 .pnl>.fr{position:absolute;inset:0;background:linear-gradient(135deg,var(--fa),rgba(79,216,255,.2) 40%,rgba(79,216,255,.2) 60%,var(--fb));transition:background .6s;
   clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut))}
 .pnl>.in{position:relative;margin:1px;height:calc(100% - 2px);padding:var(--pad);
-  background:linear-gradient(180deg,rgba(8,22,32,.97),rgba(3,9,14,.97));
+  background:linear-gradient(180deg,rgba(10,30,44,.74),rgba(3,10,16,.84));overflow:hidden;
   clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut));display:flex;flex-direction:column;min-height:0}
+.pnl>.in:before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(var(--hl),.7),transparent);pointer-events:none}
+.pnl>.in:after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:30%;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(var(--hl),.07),transparent);animation:sheen 9s ease-in-out infinite}
+.pnl:nth-child(2)>.in:after{animation-delay:1.5s}.pnl:nth-child(3)>.in:after{animation-delay:3s}.pnl:nth-child(4)>.in:after{animation-delay:4.5s}
+.pnl:nth-child(5)>.in:after{animation-delay:6s}.pnl:nth-child(6)>.in:after{animation-delay:7.5s}
 .pnl:before,.pnl:after{content:"";position:absolute;width:18px;height:18px;z-index:2;pointer-events:none}
 .pnl:before{right:-3px;top:-3px;border-top:2px solid var(--am);border-right:2px solid var(--am)}
 .pnl:after{left:-3px;bottom:-3px;border-bottom:2px solid var(--am);border-left:2px solid var(--am)}
@@ -98,7 +110,26 @@ body.compact .grid{grid-template-areas:"ctx" "cost" "mod" "agt"}
 /* Contexto */
 .ctxb{display:flex;flex-direction:column;align-items:center;gap:var(--gap);flex:1;min-height:0;justify-content:center}
 .reactor{position:relative;width:100%;max-width:min(300px,34vh);aspect-ratio:1;flex:none}
-.reactor svg{width:100%;height:100%;display:block;overflow:visible}
+.reactor svg{position:relative;width:100%;height:100%;display:block;overflow:visible}
+/* Anillos holográficos 3D y núcleo de reactor: capas que giran en ejes distintos */
+.holo{position:absolute;inset:0;perspective:640px;pointer-events:none;color:#4fd8ff;transition:color .8s}
+body.lv-w .holo{color:#ffb347}body.lv-x .holo{color:#ff5f6e}
+.rig{position:absolute;inset:0;transform-style:preserve-3d;animation:sway 12s ease-in-out infinite alternate}
+.ring{position:absolute;border-radius:50%;border:1.5px solid currentColor;transform-style:preserve-3d;opacity:.55;
+  box-shadow:0 0 10px currentColor,inset 0 0 10px currentColor}
+.ring.r1{inset:23%;animation:r1 13s linear infinite;border-style:dashed;opacity:.7}
+.ring.r2{inset:27%;animation:r2 9s linear infinite;border-color:#ffb347;color:#ffb347;opacity:.45}
+.ring.r3{inset:21%;animation:r3 19s linear infinite;border-width:1px;opacity:.4}
+.ring.r1:before{content:"";position:absolute;left:50%;top:-4px;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
+.core3d{position:absolute;inset:31%;transform-style:preserve-3d}
+.cl{position:absolute;border-radius:50%}
+.cl.c1{inset:8%;background:radial-gradient(circle,#f4fdff 0,currentColor 30%,transparent 70%);opacity:.5;animation:pulse 3.2s ease-in-out infinite}
+.cl.c2{inset:0;background:repeating-conic-gradient(currentColor 0 14deg,transparent 14deg 30deg);opacity:.32;
+  -webkit-mask:radial-gradient(circle,transparent 58%,#000 60%,#000 72%,transparent 74%);mask:radial-gradient(circle,transparent 58%,#000 60%,#000 72%,transparent 74%);animation:spin 7s linear infinite}
+.cl.c3{inset:14%;border:2px solid currentColor;border-left-color:transparent;border-right-color:transparent;opacity:.6;animation:c3 4.5s linear infinite}
+.cl.c4{inset:24%;border-radius:0;background:currentColor;opacity:.22;clip-path:polygon(50% 4%,96% 84%,4% 84%);animation:c4 6s linear infinite}
+.rc{z-index:1}
+.rc .p{background:radial-gradient(closest-side,rgba(3,9,14,.75),transparent);padding:.25em .35em;border-radius:50%}
 .spin{transform-origin:100px 100px;animation:spin 40s linear infinite}
 .spinr{transform-origin:100px 100px;animation:spin 26s linear infinite reverse}
 body.lv-x .spin{animation-duration:8s}
@@ -110,6 +141,7 @@ body.lv-x .spinr{animation-duration:5s}
 .mark{stroke-width:1.5}
 #arc{transition:stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1),stroke .5s}
 .core{animation:pulse 3.2s ease-in-out infinite}
+#pct,#coste{transition:color .8s,text-shadow .8s}
 .rc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
 .rc .p{font-size:var(--fbig);color:#f0fbff;text-shadow:0 0 14px rgba(79,216,255,.9),0 0 30px rgba(79,216,255,.5);line-height:1;transition:color .5s}
 .rc .p small{font-size:max(16px,.45em);color:var(--cy)}
@@ -187,8 +219,22 @@ body.compact footer{display:none}
 @keyframes pulse{0%,100%{opacity:.75}50%{opacity:1}}
 @keyframes blink{to{opacity:.6}}
 @keyframes alarm{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes floor{to{background-position:0 64px,0 0}}
+@keyframes sheen{0%,70%{transform:translateX(0)}100%{transform:translateX(520%)}}
+@keyframes sway{from{transform:rotateX(14deg) rotateY(-16deg)}to{transform:rotateX(-10deg) rotateY(16deg)}}
+@keyframes r1{from{transform:rotateX(72deg) rotateZ(0)}to{transform:rotateX(72deg) rotateZ(360deg)}}
+@keyframes r2{from{transform:rotateY(68deg) rotateZ(0)}to{transform:rotateY(68deg) rotateZ(-360deg)}}
+@keyframes r3{from{transform:rotateX(48deg) rotateY(38deg) rotateZ(0)}to{transform:rotateX(48deg) rotateY(38deg) rotateZ(360deg)}}
+@keyframes c3{from{transform:rotateX(0)}to{transform:rotateX(360deg)}}
+@keyframes c4{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+@keyframes shift{from{opacity:.9;transform:scale(.2)}to{opacity:0;transform:scale(2.4)}}
+.shift{position:fixed;left:50%;top:50%;width:60vmin;height:60vmin;margin:-30vmin 0 0 -30vmin;border-radius:50%;pointer-events:none;z-index:7;
+  border:2px solid currentColor;box-shadow:0 0 40px currentColor,inset 0 0 40px currentColor;animation:shift 1.1s ease-out forwards}
 @keyframes flash{from{background:rgba(79,216,255,.22)}to{background:transparent}}
-@media (prefers-reduced-motion:reduce){.spin,.spinr,.core,.dot,.logo:after,.al.on,body.lv-x:before{animation:none}}
+@media (prefers-reduced-motion:reduce){.spin,.spinr,.core,.dot,.logo:after,.al.on,body.lv-x:before,.floor .plane,.pnl>.in:after,.rig,.ring,.cl,.shift{animation:none}.shift{display:none}}
+/* Compacto: menos capas de efecto, la lectura primero */
+body.compact .ring.r3,body.compact .cl.c4,body.compact .pnl>.in:after{display:none}
+body.compact .floor{opacity:.3}
 
 /* < 900 px: una columna. Estrecho: menos columnas en las tablas. */
 @media (max-width:899px){
@@ -241,6 +287,8 @@ body.compact footer{display:none}
 @media (max-width:640px){.share .seg,th .lg{display:none}th .sh{display:inline}}
 </style></head>
 <body>
+<div class="floor" aria-hidden="true"><div class="plane"></div></div>
+<canvas id="fx" aria-hidden="true"></canvas>
 <div class="wrap">
 <header>
   <div class="logo"></div>
@@ -278,8 +326,12 @@ body.compact footer{display:none}
           <line class="mark" x1="100" y1="8" x2="100" y2="34" stroke="#ff5f6e" transform="rotate(306 100 100)"/>
           <g class="spinr"><circle cx="100" cy="100" r="58" fill="none" stroke="#ffb347" stroke-opacity=".6" stroke-width="1.2" stroke-dasharray="26 6 4 6"/></g>
           <circle cx="100" cy="100" r="52" fill="none" stroke="#163040" stroke-width="1"/>
-          <circle class="core" id="core" cx="100" cy="100" r="48" fill="url(#g)" opacity=".35"/>
+          <circle class="core" id="core" cx="100" cy="100" r="48" fill="url(#g)" opacity=".2"/>
         </svg>
+        <div class="holo" aria-hidden="true"><div class="rig">
+          <i class="ring r3"></i><i class="ring r1"></i><i class="ring r2"></i>
+          <div class="core3d"><i class="cl c2"></i><i class="cl c3"></i><i class="cl c4"></i><i class="cl c1"></i></div>
+        </div></div>
         <div class="rc"><div class="p num" id="pct">0<small>%</small></div><div class="k">usado</div></div>
       </div>
       <div class="kv">
@@ -336,8 +388,14 @@ body.compact footer{display:none}
 </div>
 <script>
 var FAM={opus:'Opus',haiku:'Haiku',fable:'Fable',sonnet:'Sonnet',otro:'Otro'};
-var WARN=70,CRIT=85,STALE=10000,NT=60,DKEY='consumo.densidad';
-var lastData=null,lastBeat=null,beatSeen=0,loadOk=false,seenTurns={},firstRender=true;
+var WARN=70,CRIT=85,NT=60,DKEY='consumo.densidad';
+var lastData=null,seenTurns={},firstRender=true;
+// Señal y lectura de datos.js: funciones de senal.ts, probadas en consumo.test.tsx.
+/*LOGICA*/
+` + LOGICA + `
+/*FIN*/
+var ST=nuevoEstado(Date.now());
+var VACIO={modelo:'',contexto:{tokens:0,window:0,percent:0},alerta:'normal',coste:0,modelos:[],agentes:[],historial:[],actualizado:0,latido:0};
 function $id(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function n(x){return Number(x||0).toLocaleString('es-ES')}
@@ -478,7 +536,7 @@ function renderHist(d){
       '<td class="num">'+kn(t.entrada+t.salida)+'</td>'+
       '<td class="num amc">'+(t.coste!=null?Number(t.coste).toFixed(4):'—')+'</td></tr>';
   }).join(''):'<tr><td colspan="5" class="empty-row">Sin turnos todavía</td></tr>';
-  seenTurns=fresh;firstRender=false;
+  seenTurns=fresh;if(hs.length)firstRender=false;
   var last=d.historial&&d.historial[d.historial.length-1];
   $id('clast').textContent=last&&last.coste!=null?('Último turno ≈ '+Number(last.coste).toFixed(4)+' USD'):(last?'Último turno sin coste':'Sin turnos todavía');
 }
@@ -497,10 +555,25 @@ function renderAgents(d){
   }).join(''):'<tr><td colspan="5" class="empty-row">Sin turnos todavía</td></tr>';
 }
 
+// Transiciones: los números grandes se deslizan al valor nuevo y un cambio de nivel lanza una onda.
+var nivel=null,tw={};
+function tween(id,to,fmt){
+  var el=$id(id),t=tw[id]||(tw[id]={v:to,raf:0});
+  if(t.raf)cancelAnimationFrame(t.raf);
+  var from=t.v,t0=performance.now(),dur=650;
+  if(from===to||document.hidden){t.v=to;el.innerHTML=fmt(to);return}
+  (function step(now){var k=Math.min(1,(now-t0)/dur);k=1-Math.pow(1-k,3);t.v=from+(to-from)*k;el.innerHTML=fmt(t.v);if(k<1)t.raf=requestAnimationFrame(step);else{t.v=to;t.raf=0}})(t0);
+}
+function onda(lvl){
+  var o=document.createElement('div');o.className='shift';
+  o.style.color=lvl==='x'?'#ff5f6e':lvl==='w'?'#ffb347':'#4fd8ff';
+  document.body.appendChild(o);setTimeout(function(){o.remove()},1200);
+}
 function renderCtx(d){
   var c=d.contexto||{tokens:0,window:1,percent:0};
   var p=Math.max(0,Math.min(100,Number(c.percent)||0));
   var lvl=d.alerta?(d.alerta==='critica'?'x':d.alerta==='alta'?'w':''):(p>=CRIT?'x':p>=WARN?'w':'');
+  if(lvl!==nivel){if(nivel!==null)onda(lvl);nivel=lvl}
   document.body.classList.toggle('lv-w',lvl==='w');
   document.body.classList.toggle('lv-x',lvl==='x');
   var on=Math.round(p*NT/100),ts=document.querySelectorAll('.tick');
@@ -508,7 +581,7 @@ function renderCtx(d){
   var arc=$id('arc'),hex=lvl==='x'?'#ff5f6e':lvl==='w'?'#ffb347':'#4fd8ff';
   arc.style.strokeDashoffset=(590.6*(1-p/100)).toFixed(1);
   arc.setAttribute('stroke',hex);arc.style.color=hex;
-  $id('pct').innerHTML=pc(p)+'<small>%</small>';
+  tween('pct',p,function(v){return pc(v)+'<small>%</small>'});
   var st=$id('ctxstate');
   st.textContent=lvl==='x'?'Crítico':lvl==='w'?'Alto':'Nominal';
   st.style.color=lvl==='x'?'var(--rd)':lvl==='w'?'var(--am)':'';
@@ -524,7 +597,7 @@ function render(d){
   if(!d)return;
   lastData=d;
   renderCtx(d);
-  $id('coste').innerHTML=Number(d.coste||0).toFixed(4)+'<small>USD</small>';
+  tween('coste',Number(d.coste||0),function(v){return v.toFixed(4)+'<small>USD</small>'});
   $id('modelo').textContent=d.modelo||'—';
   renderModels(d);
   renderChart(d);
@@ -533,35 +606,67 @@ function render(d){
   $id('ts').textContent='Último dato: '+hhmm(d.actualizado);
 }
 
-// Señal: datos.js debe cambiar (latido) al menos cada 10 s. Se mide con el reloj de la página.
-function signal(){
-  var now=Date.now(),age=beatSeen?now-beatSeen:Infinity;
-  var ok=loadOk&&age<=STALE;
-  var l=$id('link'),a=$id('al-sig');
-  if(!beatSeen&&!loadOk){l.innerHTML='<span class="dot wait"></span>Esperando';}
-  else l.innerHTML='<span class="dot'+(ok?'':' off')+'"></span>'+(ok?'En línea':'Sin señal');
-  var secs=isFinite(age)?Math.round(age/1000):null;
-  a.className='al'+(ok||(!beatSeen&&!loadOk&&now-started<STALE)?'':' on');
-  a.textContent=!loadOk?'datos.js no responde':'Sin señal hace '+secs+' s';
-  $id('beat').textContent='Latido: '+(secs==null?'—':'hace '+secs+' s');
+function pintaSenal(){
+  var r=senal(ST,Date.now());
+  $id('link').innerHTML='<span class="dot'+(r.estado==='ok'?'':r.estado==='espera'?' wait':' off')+'"></span>'+r.texto;
+  var a=$id('al-sig');
+  a.className='al'+(r.alerta?' on':'');
+  a.textContent=r.aviso;
+  $id('beat').textContent='Latido: '+(r.segundos==null?'—':'hace '+r.segundos+' s');
+  document.body.classList.toggle('sig-off',r.alerta);
 }
-var started=Date.now();
+// Un error de sintaxis en datos.js (escritura a medias) no debe ensuciar la consola ni parar nada.
+window.onerror=function(msg,src){if(src&&String(src).indexOf('datos.js')>=0)return true};
+// Una sola lectura a la vez: si una tarda, no se mezclan respuestas viejas con nuevas.
+var cargando=0;
 function load(){
+  var now=Date.now();
+  if(cargando&&now-cargando<5000)return;
+  cargando=now;
+  window.CONSUMO=undefined;
   var s=document.createElement('script');
-  s.src='datos.js?'+Date.now();
+  s.src='datos.js?'+now;
   s.onload=function(){
-    s.remove();loadOk=true;
+    s.remove();cargando=0;
     var d=window.CONSUMO;
-    if(d){var b=d.latido||d.actualizado||JSON.stringify(d).length;if(b!==lastBeat){lastBeat=b;beatSeen=Date.now()}}
-    try{render(d)}catch(err){}
-    signal();
+    if(alCargar(ST,d,Date.now())){try{render(d)}catch(err){}}
+    pintaSenal();
   };
-  s.onerror=function(){s.remove();loadOk=false;signal()};
+  s.onerror=function(){s.remove();cargando=0;alFallar(ST);pintaSenal()};
   document.head.appendChild(s);
 }
 function tick(){$id('clock').textContent=new Date().toLocaleTimeString('es-ES')}
 var rz;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeout(function(){if(lastData)renderChart(lastData)},120)});
-tick();load();
+// Partículas y línea de escaneo. Se para con la ventana oculta y con movimiento reducido.
+(function(){
+  var cv=$id('fx'),cx=cv.getContext&&cv.getContext('2d');if(!cx)return;
+  var mq=window.matchMedia?window.matchMedia('(prefers-reduced-motion: reduce)'):null;
+  var W=0,H=0,ps=[],last=0,scan=0;
+  function size(){var r=window.devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*r;cv.height=H*r;cx.setTransform(r,0,0,r,0,0);
+    var nP=Math.min(90,Math.round(W*H/22000));ps=[];for(var i=0;i<nP;i++)ps.push(nueva(true))}
+  function nueva(any){return {x:Math.random()*W,y:any?Math.random()*H:H+5,r:Math.random()*1.6+.4,v:Math.random()*14+6,a:Math.random()*.5+.15,f:Math.random()*6.28}}
+  function rgb(){return document.body.classList.contains('lv-x')?'255,95,110':document.body.classList.contains('lv-w')?'255,179,71':'79,216,255'}
+  function frame(t){
+    requestAnimationFrame(frame);
+    if(document.hidden||(mq&&mq.matches)){if(last){cx.clearRect(0,0,W,H);last=0}return}
+    if(t-last<33)return;
+    var dt=last?Math.min(.1,(t-last)/1000):0;last=t;
+    cx.clearRect(0,0,W,H);
+    var c=rgb(),lim=document.body.classList.contains('compact')?Math.ceil(ps.length/2):ps.length;
+    for(var i=0;i<lim;i++){var p=ps[i];p.y-=p.v*dt;p.x+=Math.sin(t/1000+p.f)*.15;if(p.y<-5)ps[i]=p=nueva(false);
+      var al=p.a*(.6+.4*Math.sin(t/600+p.f));cx.fillStyle='rgba('+c+','+al.toFixed(3)+')';cx.beginPath();cx.arc(p.x,p.y,p.r,0,6.283);cx.fill()}
+    scan=(scan+dt*H/7)%(H+160);
+    var y=scan-80,g=cx.createLinearGradient(0,y-60,0,y+60);
+    g.addColorStop(0,'rgba('+c+',0)');g.addColorStop(.5,'rgba('+c+',.07)');g.addColorStop(1,'rgba('+c+',0)');
+    cx.fillStyle=g;cx.fillRect(0,y-60,W,120);
+    cx.fillStyle='rgba('+c+',.18)';cx.fillRect(0,y,W,1);
+  }
+  size();window.addEventListener('resize',size);requestAnimationFrame(frame);
+})();
+tick();
+// Sin datos.js todavía la página no se queda en blanco: se pinta vacía y espera.
+try{render(VACIO)}catch(err){}
+pintaSenal();load();
 setInterval(function(){tick();load()},1000);
 </script>
 </body></html>`

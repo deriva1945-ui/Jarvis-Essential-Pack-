@@ -1,10 +1,12 @@
 import { atom, read, update } from 'claude-code'
 import type { Hook, Register, Timer } from 'claude-code'
 
-import type { AgentRow, CtxSnap, ModelRow, TurnRec } from '../types'
+import type { AgentRow, CtxSnap, Ledger, ModelRow, TurnRec } from '../types'
+import { observe } from './ledger'
 import { PAGE } from './page'
 
 const SHAPE = { shape: 'consumo-1' }
+const SHAPE2 = { shape: 'consumo-2' }
 const DIR = 'C:\\CLAUDE\\consumo'
 const PAGE_URL = 'file:///C:/CLAUDE/consumo/index.html'
 const HIST_MAX = 20
@@ -18,7 +20,8 @@ const models = atom({ plugin: 'consumo', key: 'models' } as const, {} as Record<
 const hist = atom({ plugin: 'consumo', key: 'hist' } as const, [] as TurnRec[], SHAPE)
 const labels = atom({ plugin: 'consumo', key: 'labels' } as const, {} as Record<string, string>, SHAPE)
 const ctx = atom({ plugin: 'consumo', key: 'ctx' } as const, null as CtxSnap | null, SHAPE)
-const total = atom({ plugin: 'consumo', key: 'total' } as const, 0, SHAPE)
+const LEDGER0: Ledger = { last: null, base: 0, ids: [], turn: null }
+const ledger = atom({ plugin: 'consumo', key: 'ledger' } as const, LEDGER0, SHAPE2)
 
 type Familia = 'haiku' | 'opus' | 'fable' | 'sonnet' | 'otro'
 
@@ -76,6 +79,8 @@ const alerta = (c: CtxSnap | null): Data['alerta'] =>
 
 const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part * 1000) / whole) / 10 : 0)
 
+const spent = (l: Ledger) => l.base + (l.last ?? 0)
+
 const agentName = (k: string, lb: Record<string, string>) => (k === 'main' ? 'Principal' : (lb[k] ?? k))
 
 const toModelos = (m: Record<string, ModelRow>, r: Record<string, AgentRow>, model: string): ModeloData[] => {
@@ -108,7 +113,7 @@ type Snap = {
   h: TurnRec[]
   lb: Record<string, string>
   c: CtxSnap | null
-  t: number
+  t: Ledger
   model: string
   updated: number
 }
@@ -117,7 +122,7 @@ const toData = ({ r, m, h, lb, c, t, model, updated }: Snap, now: number): Data 
   modelo: model,
   contexto: c ?? { tokens: 0, window: 1, percent: 0 },
   alerta: alerta(c),
-  coste: t,
+  coste: Math.round(spent(t) * 1e6) / 1e6,
   modelos: toModelos(m, r, model),
   agentes: Object.keys(r).flatMap(k => {
     const a = r[k]
@@ -139,7 +144,7 @@ const toData = ({ r, m, h, lb, c, t, model, updated }: Snap, now: number): Data 
   latido: now,
 })
 
-const EMPTY: Snap = { r: {}, m: {}, h: [], lb: {}, c: null, t: 0, model: '', updated: 0 }
+const EMPTY: Snap = { r: {}, m: {}, h: [], lb: {}, c: null, t: LEDGER0, model: '', updated: 0 }
 
 // Escribe los datos que lee la página. Un fallo aquí no debe romper la sesión.
 const payload = (data: Data) => `window.CONSUMO = ${JSON.stringify(data)};`
@@ -157,7 +162,7 @@ async function snap($: Ctx): Promise<Snap> {
     h: await read($, hist),
     lb: await read($, labels),
     c: await read($, ctx),
-    t: await read($, total),
+    t: await read($, ledger),
     model: await $.session.model(),
     updated: updatedAt,
   }
@@ -175,23 +180,38 @@ async function writeData($: Ctx): Promise<void> {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     // Punto de partida del contador de coste: el coste de cada turno es lo que sube desde aquí.
+    // Al reanudar o tras /clear el contador puede volver a empezar: observe() lo pasa a base.
     try {
       const u = await $.session.usage()
-      await update($, total, () => u.cost?.usd ?? 0)
+      await update($, ledger, v => observe(v, u.cost?.usd))
     } catch {
-      // Sin contador todavía: el primer turno se lleva lo acumulado.
+      // Sin contador todavía: el primer turno queda sin coste, no con todo lo acumulado.
     }
 
+    // Cada paso por separado: si datos.js no se puede escribir, la ventana se abre igual
+    // y la página muestra "sin señal" en vez de quedarse en blanco.
+    let pageOk = false
     try {
       await $.fs.write(`${DIR}\\index.html`, PAGE)
-      await $.fs.write(`${DIR}\\datos.js`, payload(toData({ ...EMPTY, model: await $.session.model() }, await $.clock.now())))
+      pageOk = true
+    } catch {
+      // Sin página no hay ventana que abrir.
+    }
+    try {
+      await $.fs.write(`${DIR}\\datos.js`, payload(toData({ ...EMPTY, t: await read($, ledger), model: await $.session.model() }, await $.clock.now())))
+    } catch {
+      // El latido lo vuelve a intentar cada 3 s.
+    }
+    if (pageOk) {
       try {
         await $.process.run(['cmd', '/c', 'start', '', 'msedge', `--app=${PAGE_URL}`])
       } catch {
-        await $.process.run(['cmd', '/c', 'start', '', 'chrome', `--app=${PAGE_URL}`])
+        try {
+          await $.process.run(['cmd', '/c', 'start', '', 'chrome', `--app=${PAGE_URL}`])
+        } catch {
+          // Sin navegador: los datos se siguen guardando por si se abre a mano.
+        }
       }
-    } catch {
-      // Sin ventana aparte: los datos se siguen guardando por si se abre a mano.
     }
     try {
       beat?.cancel()
@@ -214,9 +234,11 @@ export const register: Register = on => {
     const key = e.agentId ?? 'main'
     const u = e.usage
     const s = await $.session.usage()
-    const cost = s.cost?.usd
-    const prevTotal = await read($, total)
-    if (u) {
+    // Primero el libro: decide en un solo paso atómico si el turno es nuevo y cuánto costó.
+    // Con subagentes en paralelo cada turno lee el contador una vez y no se pisan.
+    const l = await update($, ledger, v => observe(v, s.cost?.usd, u ? e.turnId : undefined))
+    const turn = u && l.turn && l.turn.id === e.turnId ? l.turn : null
+    if (u && turn && !turn.dup) {
       await update($, rows, r => {
         const cur = r[key] ?? { model: '', input: 0, output: 0, cacheRead: 0, turns: 0 }
         return {
@@ -246,22 +268,26 @@ export const register: Register = on => {
         }
       })
       const at = await $.clock.now()
-      await update($, hist, prev => [
-        ...prev,
-        {
-          at,
-          agent: key,
-          model: id,
-          input: u.input_tokens,
-          output: u.output_tokens,
-          cacheRead: u.cache_read_input_tokens,
-          cacheWrite: u.cache_creation_input_tokens,
-          cost: cost === undefined ? null : Math.max(0, cost - prevTotal),
-        },
-      ].slice(-HIST_MAX))
+      await update($, hist, prev =>
+        prev.some(x => x.id === e.turnId)
+          ? prev
+          : [
+              ...prev,
+              {
+                id: e.turnId,
+                at,
+                agent: key,
+                model: id,
+                input: u.input_tokens,
+                output: u.output_tokens,
+                cacheRead: u.cache_read_input_tokens,
+                cacheWrite: u.cache_creation_input_tokens,
+                cost: turn.cost,
+              },
+            ].slice(-HIST_MAX),
+      )
     }
     await update($, ctx, () => ({ tokens: s.context.tokens ?? 0, window: s.context.window, percent: s.context.percent ?? 0 }))
-    await update($, total, () => cost ?? 0)
     updatedAt = await $.clock.now()
     await writeData($)
     return next(e)
