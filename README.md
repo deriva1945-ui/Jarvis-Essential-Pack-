@@ -23,3 +23,11 @@ Para cambiar el modelo pesado, edita `HEAVY_MODEL` en `hooks/register.tsx` (`opu
 ## Límites
 - No cambia el modelo del hilo principal. Si la sesión está en Opus, lo ligero también corre en Opus. Pon la sesión en Haiku con `/model` para ahorrar.
 - El subagente solo ve los últimos mensajes, no todo el historial.
+
+## resumen-sesion
+
+Segundo plugin de este repo. Tras 2 horas sin escribir, genera un resumen de traspaso con Haiku y sugiere retomar en una sesión nueva. Instalación:
+
+```
+/plugin install resumen-sesion@portero-claude
+```

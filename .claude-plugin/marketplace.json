@@ -1,7 +1,8 @@
 {
   "name": "portero-claude",
-  "owner": { "name": "portero-claude" },
+  "owner": { "name": "deriva1945-ui" },
   "plugins": [
-    { "name": "portero", "source": "./", "description": "Clasifica cada petición: ligeras con el modelo de la sesión, pesadas delegadas a un subagente potente." }
+    { "name": "portero", "source": "./", "description": "Clasifica cada petición: ligeras con el modelo de la sesión, pesadas delegadas a un subagente potente." },
+    { "name": "resumen-sesion", "source": "./resumen-sesion", "description": "Tras un rato sin escribir, resume la sesión con Haiku para retomarla en una sesión nueva." }
   ]
 }
