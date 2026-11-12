@@ -5,7 +5,11 @@ import { calcular, COMP0, sumar } from './comparativa'
 import { observe } from './ledger'
 import { PAGE } from './page'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
+import { DATA_DIR_DEFAULT, expandir, fileUrl, unir } from './rutas'
 import { alCargar, alFallar, LOGICA, nuevoEstado, senal, valido } from './senal'
+
+// Carpeta de prueba para la opción dataDir: los tests no dependen de ninguna ruta real.
+const PRUEBA = { options: { dataDir: '/prueba/consumo' } }
 
 const ok = { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
 
@@ -26,7 +30,7 @@ test('the page has the key sections, the size breakpoints and the density toggle
   expect(PAGE).not.toContain('#6b7a90')
 })
 
-test('session.start writes the page and the data and opens the window, without a side pane', async ($, on) => {
+test('session.start writes the page and the data and opens the window, without a side pane', PRUEBA, async ($, on) => {
   mock.clock(on, { now: 1_000 })
   const writes: { path: string; text: string }[] = []
   const runs: (readonly string[])[] = []
@@ -52,11 +56,11 @@ test('session.start writes the page and the data and opens the window, without a
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
 
   expect(opens).toHaveLength(0)
-  expect(writes.find(w => w.path.endsWith('index.html'))?.text).toBe(PAGE)
-  const d = writes.find(w => w.path.endsWith('datos.js'))?.text ?? ''
+  expect(writes.find(w => w.path === '/prueba/consumo/index.html')?.text).toBe(PAGE)
+  const d = writes.find(w => w.path === '/prueba/consumo/datos.js')?.text ?? ''
   expect(d).toContain('window.CONSUMO = ')
   expect(d).toContain('claude-haiku-5-5')
-  expect(runs.some(a => a.some(x => x.includes('--app=file:///C:/CLAUDE/consumo/index.html')))).toBe(true)
+  expect(runs.some(a => a.some(x => x.includes('--app=file:///prueba/consumo/index.html')))).toBe(true)
 })
 
 test('datos.js splits the work by model and carries the history, the alert and a heartbeat', async ($, on) => {
@@ -497,7 +501,7 @@ const hudBase: TestBody = ($, on) => {
   on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 0, window: 100, percent: 0 }, rateLimits: [] } }))
 }
 
-test('/jarvis toggles the HUD (close, open, close) and /consumo is gone', async ($, on) => {
+test('/jarvis toggles the HUD (close, open, close) and /consumo is gone', PRUEBA, async ($, on) => {
   mock.clock(on, { now: 1_000 })
   hudBase($, on)
   const writes: { path: string; text: string }[] = []
@@ -520,26 +524,26 @@ test('/jarvis toggles the HUD (close, open, close) and /consumo is gone', async 
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
   expect(names).toContain('jarvis')
   expect(names).not.toContain('consumo')
-  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: true })
+  expect(JSON.parse(last('/prueba/consumo/estado.json'))).toEqual({ abierto: true })
   const opened = runs.length
   expect(opened).toBeGreaterThan(0)
 
   const r1 = await $.command.run(JARVIS)
   expect(r1.text).toContain('HUD cerrado')
-  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: false })
-  expect(last('\\estado.js')).toBe('window.CONSUMO_ESTADO = {"abierto":false};')
+  expect(JSON.parse(last('/prueba/consumo/estado.json'))).toEqual({ abierto: false })
+  expect(last('/prueba/consumo/estado.js')).toBe('window.CONSUMO_ESTADO = {"abierto":false};')
   // Cerrar no lanza ningún proceso: no se mata ninguna ventana.
   expect(runs.length).toBe(opened)
 
   const r2 = await $.command.run(JARVIS)
   expect(r2.text).toContain('HUD abierto')
-  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: true })
+  expect(JSON.parse(last('/prueba/consumo/estado.json'))).toEqual({ abierto: true })
   expect(runs.length).toBeGreaterThan(opened)
-  expect(runs.at(-1)?.some(x => x.includes('--app=file:///C:/CLAUDE/consumo/index.html'))).toBe(true)
+  expect(runs.at(-1)?.some(x => x.includes('--app=file:///prueba/consumo/index.html'))).toBe(true)
 
   const r3 = await $.command.run(JARVIS)
   expect(r3.text).toContain('HUD cerrado')
-  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: false })
+  expect(JSON.parse(last('/prueba/consumo/estado.json'))).toEqual({ abierto: false })
 })
 
 test('/jarvis answers clearly when no browser can be opened', async ($, on) => {
@@ -563,4 +567,66 @@ test('the page reads estado.js, calls window.close() and shows the closed notice
   expect(PAGE).toContain('window.close()')
   expect(PAGE).toContain('HUD cerrado. Escribe /jarvis para abrirlo.')
   expect(PAGE).toContain('loadEstado()')
+})
+
+test('dataDir: by default the data goes to ~/CLAUDE/consumo in the user folder (HOME or USERPROFILE)', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  const writes: string[] = []
+  const runs: (readonly string[])[] = []
+  on('env.get', (_, e) => ({ value: e.name === 'HOME' ? '/usuarios/prueba' : undefined }))
+  on('fs.write', (_, e) => {
+    writes.push(e.path)
+    return { value: undefined }
+  })
+  on('process.run', (_, e) => {
+    runs.push(e.argv)
+    return ok
+  })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.model', () => ({ value: 'claude-haiku-5-5' }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 0, window: 200000, percent: 0 }, rateLimits: [] } }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+
+  expect(DATA_DIR_DEFAULT).toBe('~/CLAUDE/consumo')
+  expect(writes).toContain('/usuarios/prueba/CLAUDE/consumo/index.html')
+  expect(writes).toContain('/usuarios/prueba/CLAUDE/consumo/datos.js')
+  expect(writes).toContain('/usuarios/prueba/CLAUDE/consumo/estado.json')
+  expect(runs.some(a => a.some(x => x.includes('--app=file:///usuarios/prueba/CLAUDE/consumo/index.html')))).toBe(true)
+})
+
+test('dataDir: "~" uses the Windows user folder with backslashes, and the page URL is a valid file URL', () => {
+  // Carpeta de usuario de ejemplo en otra unidad: solo prueba el formato de las rutas de Windows.
+  const dir = expandir('~/CLAUDE/consumo', 'D:\\Usuarios\\Ana María')
+  expect(dir).toBe('D:\\Usuarios\\Ana María\\CLAUDE\\consumo')
+  expect(unir(dir ?? '', 'index.html')).toBe('D:\\Usuarios\\Ana María\\CLAUDE\\consumo\\index.html')
+  expect(fileUrl('D:\\Usuarios\\Ana María\\CLAUDE\\consumo\\index.html')).toBe(
+    'file:///D:/Usuarios/Ana%20Mar%C3%ADa/CLAUDE/consumo/index.html',
+  )
+  expect(fileUrl('/prueba/con #/index.html')).toBe('file:///prueba/con%20%23/index.html')
+  // Ruta absoluta: se usa tal cual. Relativa: cuenta desde la carpeta del usuario.
+  expect(expandir('/datos/hud', '/usuarios/prueba')).toBe('/datos/hud')
+  expect(expandir('hud', '/usuarios/prueba')).toBe('/usuarios/prueba/hud')
+  // Vacía, o "~" sin carpeta de usuario conocida: null (el mod usa entonces la carpeta del plugin).
+  expect(expandir('  ', '/usuarios/prueba')).toBe(null)
+  expect(expandir('~/CLAUDE/consumo', undefined)).toBe(null)
+})
+
+test('dataDir: with no user folder known the data goes to the datos folder inside the plugin', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  const writes: string[] = []
+  on('env.get', () => ({ value: undefined }))
+  on('fs.write', (_, e) => {
+    writes.push(e.path)
+    return { value: undefined }
+  })
+  on('process.run', () => ok)
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.model', () => ({ value: 'claude-haiku-5-5' }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 0, window: 200000, percent: 0 }, rateLimits: [] } }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+
+  expect(writes.some(p => /consumo[\\/]datos[\\/]index\.html$/.test(p))).toBe(true)
+  expect(writes.some(p => p.includes('CLAUDE'))).toBe(false)
 })

@@ -1,5 +1,7 @@
 import type { Hook, Register } from 'claude-code'
 
+import { esAbsoluta, expandir, MODS_DIR_DEFAULT, unir } from './rutas'
+
 // Los mods del pack jarvis-essential-pack que /mods vigila.
 const PACK = ['portero', 'resumen-sesion', 'consumo', 'jarvis-banda'] as const
 
@@ -9,8 +11,10 @@ const ALLOWED: readonly string[] = [...PACK, 'mods-estado']
 const USAGE = 'Uso: /mods, /mods on <nombre> o /mods off <nombre>.'
 const DONE = 'Hecho. El cambio se aplica en la próxima sesión; reinicia Claude Code.'
 
-// Donde el usuario guarda su copia local de los mods (Windows).
-const LOCAL_DIR = 'C:\\CLAUDE\\mods'
+// Valor de la opción modsDir (userConfig): la carpeta donde el usuario guarda su copia local
+// de los mods. register() lo fija al cargar el módulo; un cambio en la configuración recarga el
+// módulo con el valor nuevo.
+let modsDirOption = MODS_DIR_DEFAULT
 
 type Listed = { name: string; source: string; version: string; status: string; isActive: boolean }
 
@@ -21,6 +25,24 @@ type ListOutcome =
   | { isOk: false; reason: string }
 
 type Ctx = Parameters<Hook<'command.run'>>[0]
+
+// Carpeta de la copia local. "~" es la carpeta del usuario: USERPROFILE en Windows, HOME en
+// macOS y Linux. Devuelve null si hace falta y no se conoce.
+async function carpetaMods($: Ctx): Promise<string | null> {
+  let home: string | undefined
+  try {
+    home = (await $.env.get('USERPROFILE')) || (await $.env.get('HOME')) || undefined
+  } catch {
+    home = undefined
+  }
+  return expandir(modsDirOption, home)
+}
+
+// Si la ruta "file" está dentro de la carpeta "dir" (sin distinguir "/" de "\" ni mayúsculas).
+const dentroDe = (file: string, dir: string) => {
+  const norm = (p: string) => p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
+  return esAbsoluta(dir) && norm(file).startsWith(norm(dir) + '/')
+}
 
 // Lee la salida de "claude plugin list":
 //   > nombre@marketplace
@@ -92,7 +114,10 @@ async function toggle($: Ctx, sub: 'on' | 'off', rest: string[]): Promise<string
   return DONE
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  const opt = options['modsDir']
+  modsDirOption = typeof opt === 'string' && opt.trim() !== '' ? opt : MODS_DIR_DEFAULT
+
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'mods',
@@ -115,23 +140,28 @@ export const register: Register = on => {
       ? { isOk: true, stdout: cli.stdout, plugins: parsePluginList(cli.stdout) }
       : cli
 
-    // 2. Copia local en C:\CLAUDE\mods: qué carpetas del pack hay.
+    // 2. Copia local en la carpeta modsDir: qué carpetas del pack hay.
+    const localDir = await carpetaMods($)
     let localNames = new Set<string>()
     let localNote = ''
-    try {
-      if (await $.fs.exists(LOCAL_DIR)) {
-        const entries = await $.fs.list(LOCAL_DIR)
-        localNames = new Set(entries.filter(x => x.kind !== 'file').map(x => x.name.toLowerCase()))
-        localNote = `${LOCAL_DIR}: ${localNames.size} carpeta(s)`
-      } else {
-        localNote = `${LOCAL_DIR}: sin copia local`
+    if (localDir === null) {
+      localNote = `${modsDirOption}: sin copia local (no se sabe cuál es tu carpeta de usuario; pon una ruta absoluta en modsDir)`
+    } else {
+      try {
+        if (await $.fs.exists(localDir)) {
+          const entries = await $.fs.list(localDir)
+          localNames = new Set(entries.filter(x => x.kind !== 'file').map(x => x.name.toLowerCase()))
+          localNote = `${localDir}: ${localNames.size} carpeta(s)`
+        } else {
+          localNote = `${localDir}: sin copia local`
+        }
+      } catch (err) {
+        localNote = `${localDir}: sin copia local (no se pudo leer: ${errorText(err)})`
       }
-    } catch (err) {
-      localNote = `${LOCAL_DIR}: sin copia local (no se pudo leer: ${errorText(err)})`
     }
 
     const root = $.plugin.root
-    const isRootLocal = root.replace(/\//g, '\\').toLowerCase().startsWith(LOCAL_DIR.toLowerCase() + '\\')
+    const isRootLocal = localDir !== null && dentroDe(root, localDir)
 
     // 3. Resumen del pack.
     const listed = outcome.isOk ? outcome.plugins : []
@@ -139,7 +169,7 @@ export const register: Register = on => {
     const missing: string[] = []
     const rows = PACK.map(name => {
       const found = listed.find(p => p.name.toLowerCase() === name)
-      const local = localNames.has(name) ? `copia local: ${LOCAL_DIR}\\${name}` : 'sin copia local'
+      const local = localDir !== null && localNames.has(name) ? `copia local: ${unir(localDir, name)}` : 'sin copia local'
       let state: string
       if (!outcome.isOk) state = 'estado desconocido'
       else if (!found) state = 'no instalado'

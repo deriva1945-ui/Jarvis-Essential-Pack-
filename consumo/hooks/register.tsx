@@ -7,11 +7,10 @@ import { observe } from './ledger'
 import type { PlanData } from './plan'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
 import { PAGE } from './page'
+import { DATA_DIR_DEFAULT, expandir, fileUrl, unir } from './rutas'
 
 const SHAPE = { shape: 'consumo-1' }
 const SHAPE2 = { shape: 'consumo-2' }
-const DIR = 'C:\\CLAUDE\\consumo'
-const PAGE_URL = 'file:///C:/CLAUDE/consumo/index.html'
 const HIST_MAX = 20
 // Cada cuánto se reescribe datos.js aunque no haya turnos: la página avisa si pasan 10 s sin latido.
 const BEAT_MS = 3000
@@ -156,6 +155,23 @@ const payload = (data: Data) => `window.CONSUMO = ${JSON.stringify(data)};`
 
 type Ctx = Parameters<Hook<'tool.call'>>[0]
 
+// Valor de la opción dataDir (userConfig). register() lo fija al cargar el módulo; un cambio
+// en la configuración recarga el módulo con el valor nuevo.
+let dataDirOption = DATA_DIR_DEFAULT
+
+// Carpeta donde se escriben index.html, datos.js, estado.json y estado.js. "~" es la carpeta del
+// usuario: USERPROFILE en Windows, HOME en macOS y Linux. Sin ninguna de las dos, la carpeta
+// datos dentro del propio plugin.
+async function carpeta($: Ctx): Promise<string> {
+  let home: string | undefined
+  try {
+    home = (await $.env.get('USERPROFILE')) || (await $.env.get('HOME')) || undefined
+  } catch {
+    home = undefined
+  }
+  return expandir(dataDirOption, home) ?? expandir(DATA_DIR_DEFAULT, home) ?? unir($.plugin.root, 'datos')
+}
+
 let beat: Timer | undefined
 // Hora del último cambio real de datos (turno o herramienta); el latido no la mueve.
 let updatedAt = 0
@@ -178,7 +194,7 @@ async function snap($: Ctx): Promise<Snap> {
 async function writeData($: Ctx): Promise<void> {
   try {
     const s = await snap($)
-    await $.fs.write(`${DIR}\\datos.js`, payload(toData(s, await $.clock.now())))
+    await $.fs.write(unir(await carpeta($), 'datos.js'), payload(toData(s, await $.clock.now())))
   } catch {
     // La página se queda con los últimos datos y avisa cuando falta el latido.
   }
@@ -192,8 +208,9 @@ const errorText = (err: unknown): string => (err instanceof Error ? err.message 
 async function writeEstado($: Ctx, isOpen: boolean): Promise<string | null> {
   const json = JSON.stringify({ abierto: isOpen })
   try {
-    await $.fs.write(`${DIR}\\estado.json`, json)
-    await $.fs.write(`${DIR}\\estado.js`, `window.CONSUMO_ESTADO = ${json};`)
+    const dir = await carpeta($)
+    await $.fs.write(unir(dir, 'estado.json'), json)
+    await $.fs.write(unir(dir, 'estado.js'), `window.CONSUMO_ESTADO = ${json};`)
     return null
   } catch (err) {
     return errorText(err)
@@ -204,16 +221,18 @@ type Apertura = { isOpen: true } | { isOpen: false; reason: string }
 
 // Escribe la página, los datos y el estado, y abre Edge (o Chrome) en modo --app.
 async function abrirHud($: Ctx): Promise<Apertura> {
+  const dir = await carpeta($)
+  const page = unir(dir, 'index.html')
   // Cada paso por separado: si datos.js no se puede escribir, la ventana se abre igual
   // y la página muestra "sin señal" en vez de quedarse en blanco.
   try {
-    await $.fs.write(`${DIR}\\index.html`, PAGE)
+    await $.fs.write(page, PAGE)
   } catch (err) {
     // Sin página no hay ventana que abrir.
-    return { isOpen: false, reason: `no se pudo escribir ${DIR}\\index.html (${errorText(err)})` }
+    return { isOpen: false, reason: `no se pudo escribir ${page} (${errorText(err)})` }
   }
   try {
-    await $.fs.write(`${DIR}\\datos.js`, payload(toData({ ...EMPTY, t: await read($, ledger), p: await read($, plan), k: await read($, comp), model: await $.session.model() }, await $.clock.now())))
+    await $.fs.write(unir(dir, 'datos.js'), payload(toData({ ...EMPTY, t: await read($, ledger), p: await read($, plan), k: await read($, comp), model: await $.session.model() }, await $.clock.now())))
   } catch {
     // El latido lo vuelve a intentar cada 3 s.
   }
@@ -222,7 +241,7 @@ async function abrirHud($: Ctx): Promise<Apertura> {
   const failures: string[] = []
   for (const browser of ['msedge', 'chrome']) {
     try {
-      const run = await $.process.run(['cmd', '/c', 'start', '', browser, `--app=${PAGE_URL}`])
+      const run = await $.process.run(['cmd', '/c', 'start', '', browser, `--app=${fileUrl(page)}`])
       if (run.exitCode === 0) return { isOpen: true }
       failures.push(`${browser}: código ${run.exitCode}`)
     } catch (err) {
@@ -233,7 +252,10 @@ async function abrirHud($: Ctx): Promise<Apertura> {
   return { isOpen: false, reason: `no se pudo abrir Edge ni Chrome (${failures.join('; ')})` }
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  const opt = options['dataDir']
+  dataDirOption = typeof opt === 'string' && opt.trim() !== '' ? opt : DATA_DIR_DEFAULT
+
   on('session.start', async ($, e, next) => {
     try {
       await $.command.register({ name: 'jarvis', description: 'Abre o cierra el HUD de consumo' })
@@ -273,7 +295,7 @@ export const register: Register = on => {
       if (failed !== null) {
         return {
           text:
-            `No se pudo escribir ${DIR}\\estado.json (${failed}), así que la ventana no se enterará. ` +
+            `No se pudo escribir ${unir(await carpeta($), 'estado.json')} (${failed}), así que la ventana no se enterará. ` +
             'Ciérrala a mano. Escribe /jarvis para abrir el HUD.',
         }
       }
@@ -287,7 +309,7 @@ export const register: Register = on => {
     await update($, abierto, () => r.isOpen)
     if (!r.isOpen) {
       return {
-        text: `No se pudo abrir el HUD: ${r.reason}. Puedes abrir ${DIR}\\index.html a mano.`,
+        text: `No se pudo abrir el HUD: ${r.reason}. Puedes abrir ${unir(await carpeta($), 'index.html')} a mano.`,
       }
     }
     return { text: 'HUD abierto. Escribe /jarvis otra vez para cerrarlo.' }

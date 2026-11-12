@@ -63,11 +63,15 @@ test('/mods lists every plugin of the pack and warns about the one not loaded', 
   expect(text).toContain('sin copia local')
 })
 
-test('/mods reports the local copy folders when C:\\CLAUDE\\mods exists', async ($, on) => {
+test('/mods reports the local copy folders in the modsDir folder', { options: { modsDir: '/prueba/mods' } }, async ($, on) => {
+  const looked: string[] = []
   on('command.register', (_, e) => ({ value: { command: e.name } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('process.run', () => ({ value: ok(LIST) }))
-  on('fs.exists', () => ({ value: true }))
+  on('fs.exists', (_, e) => {
+    looked.push(e.path)
+    return { value: true }
+  })
   on('fs.list', () => ({
     value: [
       { name: 'portero', kind: 'dir', size: 0, mtimeMs: 0, isLink: false },
@@ -78,8 +82,31 @@ test('/mods reports the local copy folders when C:\\CLAUDE\\mods exists', async 
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
   const { text } = await $.command.run(MODS)
 
-  expect(text).toContain('copia local: C:\\CLAUDE\\mods\\portero')
-  expect(text).toContain('copia local: C:\\CLAUDE\\mods\\consumo')
+  expect(looked).toEqual(['/prueba/mods'])
+  expect(text).toContain('copia local: /prueba/mods/portero')
+  expect(text).toContain('copia local: /prueba/mods/consumo')
+  expect(text).toContain('/prueba/mods: 2 carpeta(s)')
+})
+
+test('/mods looks in ~/CLAUDE/mods by default, with "~" as the user folder', async ($, on) => {
+  const looked: string[] = []
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('process.run', () => ({ value: ok(LIST) }))
+  on('env.get', (_, e) => ({ value: e.name === 'USERPROFILE' ? 'D:\\Usuarios\\prueba' : undefined }))
+  on('fs.exists', (_, e) => {
+    looked.push(e.path)
+    return { value: false }
+  })
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const { text } = await $.command.run(MODS)
+
+  // Carpeta de usuario de ejemplo (formato de Windows) en otra unidad. Fuera de Windows el motor
+  // trata esa ruta como relativa y le antepone una carpeta, así que solo se mira el final.
+  expect(looked).toHaveLength(1)
+  expect(looked[0]?.endsWith('D:\\Usuarios\\prueba\\CLAUDE\\mods')).toBe(true)
+  expect(text).toContain('D:\\Usuarios\\prueba\\CLAUDE\\mods: sin copia local')
 })
 
 test('/mods answers clearly when claude is not on the PATH', async ($, on) => {

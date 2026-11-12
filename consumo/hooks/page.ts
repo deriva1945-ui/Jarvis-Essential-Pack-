@@ -1,4 +1,4 @@
-// Página del panel. Se escribe en C:\CLAUDE\consumo\index.html al iniciar la sesión.
+// Página del panel. Se escribe como index.html en la carpeta de datos (opción dataDir) al iniciar la sesión.
 // Lee datos.js cada segundo (recargado con un script nuevo) y redibuja.
 // Sin acentos graves, sin dólar-llave y sin barras invertidas dentro: es un template literal.
 // Todo en línea, sin CDN: tiene que funcionar offline desde file://.
