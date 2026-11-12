@@ -4,7 +4,7 @@
 
 **Español** · [English](#en)
 
-Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens.
+Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens. Estética blanco-cian sobre fondo azul-negro, con la barra del plan arriba.
 
 ![HUD de consumo](../images/consumo-1920x1080.jpg)
 
@@ -14,7 +14,7 @@ Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y t
 - Arriba, una barra de progreso del plan de Claude (las tareas que crea y actualiza), con la lista plegable.
 - Contexto usado y su porcentaje, coste acumulado y tokens por agente y por modelo.
 - Reparto del trabajo entre modelos, gráfica de tokens por turno y los últimos 20 turnos.
-- Avisa cuando el contexto pasa del **70 %** y del **85 %**.
+- Avisa cuando el contexto pasa del **70 %** y del **85 %**: por encima del 85 % el HUD entero pasa a rojo de alerta.
 - Si los datos dejan de llegar 10 segundos, marca "sin señal".
 - Funciona sin conexión: todo va dentro de la página.
 - La tecla `D` (o el botón de la cabecera) cambia entre modo cómodo y compacto. La elección se recuerda.
@@ -30,6 +30,12 @@ Se adapta al tamaño de la ventana:
 | 900 × 600 | 420 × 860 |
 |---|---|
 | ![900x600](../images/consumo-900x600.png) | ![420x860](../images/consumo-420x860.png) |
+
+| Plan completo | Contexto crítico |
+|---|---|
+| ![Plan completo](../images/consumo-plan-completo.jpg) | ![Contexto crítico](../images/consumo-critico.jpg) |
+
+*Capturas con datos de ejemplo.*
 
 ## Cómo funciona
 
@@ -71,7 +77,7 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE).
 
 [Español](#es) · **English**
 
-Opens a live HUD window with what the session spends: context, cost and tokens.
+Opens a live HUD window with what the session spends: context, cost and tokens. White-cyan look on a blue-black background, with the plan bar at the top.
 
 ![consumo HUD](../images/consumo-1920x1080.jpg)
 
@@ -81,7 +87,7 @@ Opens a live HUD window with what the session spends: context, cost and tokens.
 - At the top, a progress bar for Claude's plan (the tasks it creates and updates), with a collapsible list.
 - Context used and its percentage, total cost, and tokens per agent and per model.
 - How work is split between models, a tokens-per-turn chart, and the last 20 turns.
-- It warns when context goes over **70 %** and **85 %**.
+- It warns when context goes over **70 %** and **85 %**: above 85 % the whole HUD turns alert red.
 - If data stops arriving for 10 seconds, it shows "sin señal" (no signal).
 - It works offline: everything is inside the page.
 - The `D` key (or the header button) switches between comfortable and compact mode. The choice is remembered.
@@ -97,6 +103,12 @@ It adapts to the window size:
 | 900 × 600 | 420 × 860 |
 |---|---|
 | ![900x600](../images/consumo-900x600.png) | ![420x860](../images/consumo-420x860.png) |
+
+| Plan complete | Critical context |
+|---|---|
+| ![Plan complete](../images/consumo-plan-completo.jpg) | ![Critical context](../images/consumo-critico.jpg) |
+
+*Screenshots with sample data.*
 
 ## How it works
 

@@ -36,7 +36,7 @@
 |---|---|---|
 | **[portero](portero/)** | Mira cada petición y decide quién la hace. Lo ligero, el modelo de la sesión. Lo pesado, un subagente Opus. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
 | **[resumen-sesion](resumen-sesion/)** | Si vuelves tras 2 horas sin escribir, Haiku escribe un resumen de traspaso para seguir en una sesión nueva. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
-| **[consumo](consumo/)** | Ventana HUD en directo: contexto usado, coste y tokens por agente y por modelo. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
+| **[consumo](consumo/)** | Ventana HUD en directo, en blanco-cian: barra del plan, contexto usado, coste y tokens por agente y por modelo. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
 | **[jarvis-banda](jarvis-banda/)** | Una línea encima del prompt con el estado en vivo: esperando, procesando, ejecutando o delegando. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
 | **[mods-estado](mods-estado/)** | Comando `/mods`: lista los plugins activos y marca los del pack. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
 
@@ -173,7 +173,7 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE). Cada mod lleva también su propio 
 |---|---|---|
 | **[portero](portero/)** | Looks at each request and decides who handles it. Light work: the session model. Heavy work: an Opus subagent. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
 | **[resumen-sesion](resumen-sesion/)** | When you come back after 2 hours without typing, Haiku writes a handover summary so you can continue in a new session. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
-| **[consumo](consumo/)** | Live HUD window: context used, cost, and tokens per agent and per model. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
+| **[consumo](consumo/)** | Live white-cyan HUD window: plan bar, context used, cost, and tokens per agent and per model. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
 | **[jarvis-banda](jarvis-banda/)** | One line above the prompt with the live state: waiting, processing, running a tool, or delegating. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
 | **[mods-estado](mods-estado/)** | `/mods` command: lists active plugins and marks the ones from this pack. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
 
