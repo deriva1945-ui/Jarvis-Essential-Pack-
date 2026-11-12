@@ -1,0 +1,1 @@
+{ "name": "consumo", "version": "0.1.0", "description": "Panel en directo: contexto usado, coste acumulado y tokens por agente y modelo.", "author": { "name": "deriva1945-ui" }, "types": "./types/index.d.ts" }
