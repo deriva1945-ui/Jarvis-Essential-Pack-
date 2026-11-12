@@ -5,6 +5,25 @@ Format based on Keep a Changelog. Versions follow SemVer.
 
 Cada versión del pack agrupa las versiones de los mods que cambian. · Each pack version groups the mod versions that change.
 
+## [Sin publicar · Unreleased]
+
+### portero 0.2.0
+
+- **ES:** Clasificación por capas: override, longitud, bloques de código y trazas, rutas de archivo, palabras clave pesadas, historial reciente (seguimientos cortos tras una petición pesada) y palabras clave ligeras. El modelo ligero solo decide lo que ninguna regla decide. Umbrales configurables.
+- **ES:** Nuevo override **`!dudosa`**: ruta pesada con el doble de contexto. Los atajos `!pesada`, `!ligera` y `!dudosa` se quitan del texto antes de llegar al modelo.
+- **ES:** Registro local de decisiones en `decisiones.jsonl` (opción **`dataDir`**, por defecto `~/CLAUDE/portero`): marca de tiempo, ruta, capa, motivo y texto recortado con secretos evidentes tapados. Nada sale del equipo.
+- **ES:** Nuevos comandos **`/portero`** (reparto de rutas, reglas que más disparan, últimos casos) y **`/portero reglas`** (reglas activas).
+- **ES:** Opciones `userConfig`: `heavyModel` (`opus` o `fable`), `classifierModel`, `heavyLength`, `lightLength`, una por regla (`ruleLength`, `ruleCode`, `rulePaths`, `ruleKeywords`, `ruleHistory`), `contextMessages`, `contextChars`, `logEnabled`, `logMaxEntries` y `logTextChars`.
+- **ES:** Contexto para el subagente limitado por mensajes y caracteres, sin mensajes vacíos, confirmaciones ni el propio mensaje actual.
+- **ES:** Si el clasificador falla, la ruta es pesada y el registro guarda un aviso.
+- **EN:** Layered classification: override, length, code blocks and traces, file paths, heavy keywords, recent history (short follow-ups after a heavy request) and light keywords. The light model only decides what no rule decides. Configurable thresholds.
+- **EN:** New **`!dudosa`** override: heavy route with twice the context. The `!pesada`, `!ligera` and `!dudosa` shortcuts are removed from the text before it reaches the model.
+- **EN:** Local decision log in `decisiones.jsonl` (**`dataDir`** option, `~/CLAUDE/portero` by default): timestamp, route, layer, reason and cut text with obvious secrets masked. Nothing leaves the machine.
+- **EN:** New **`/portero`** (route split, rules that fire most, latest cases) and **`/portero reglas`** (active rules) commands.
+- **EN:** `userConfig` options: `heavyModel` (`opus` or `fable`), `classifierModel`, `heavyLength`, `lightLength`, one per rule (`ruleLength`, `ruleCode`, `rulePaths`, `ruleKeywords`, `ruleHistory`), `contextMessages`, `contextChars`, `logEnabled`, `logMaxEntries` and `logTextChars`.
+- **EN:** Subagent context capped by messages and characters, skipping empty messages, acknowledgements and the current message itself.
+- **EN:** If the classifier fails, the route is heavy and the log keeps a warning.
+
 ## [0.3.0] - 2026-11-12
 
 Pack `jarvis-essential-pack` 0.3.0: consumo 0.4.0 y mods-estado 0.3.0. portero y resumen-sesion siguen en 0.1.0 y jarvis-banda en 0.2.0. · consumo 0.4.0 and mods-estado 0.3.0. portero and resumen-sesion stay at 0.1.0 and jarvis-banda at 0.2.0.
