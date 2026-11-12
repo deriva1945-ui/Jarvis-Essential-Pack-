@@ -1,7 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { Hook, Register, Timer } from 'claude-code'
 
-import type { AgentRow, CtxSnap, Ledger, ModelRow, PlanState, TurnRec } from '../types'
+import type { AgentRow, CompRow, Comparativa, CtxSnap, Familia, Ledger, ModelRow, PlanState, TurnRec } from '../types'
+import { calcular, COMP0, familia, sumar } from './comparativa'
 import { observe } from './ledger'
 import type { PlanData } from './plan'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
@@ -25,8 +26,8 @@ const ctx = atom({ plugin: 'consumo', key: 'ctx' } as const, null as CtxSnap | n
 const LEDGER0: Ledger = { last: null, base: 0, ids: [], turn: null }
 const ledger = atom({ plugin: 'consumo', key: 'ledger' } as const, LEDGER0, SHAPE2)
 const plan = atom({ plugin: 'consumo', key: 'plan' } as const, PLAN0, { shape: 'consumo-plan-1' })
-
-type Familia = 'haiku' | 'opus' | 'fable' | 'sonnet' | 'otro'
+// Coste y tokens por modelo, para la comparativa Haiku frente a Opus.
+const comp = atom({ plugin: 'consumo', key: 'comp' } as const, COMP0, { shape: 'consumo-comp-1' })
 
 type ModeloData = {
   modelo: string
@@ -66,17 +67,10 @@ type Data = {
   historial: TurnoData[]
   // Progreso del plan (TaskCreate / TaskUpdate); null sin tareas.
   plan: PlanData | null
+  // Haiku frente a Opus: coste real y estimado si el trabajo de Haiku hubiera ido a Opus.
+  comparativa: Comparativa
   actualizado: number
   latido: number
-}
-
-const familia = (model: string): Familia => {
-  const m = model.toLowerCase()
-  if (m.includes('haiku')) return 'haiku'
-  if (m.includes('opus')) return 'opus'
-  if (m.includes('fable')) return 'fable'
-  if (m.includes('sonnet')) return 'sonnet'
-  return 'otro'
 }
 
 const alerta = (c: CtxSnap | null): Data['alerta'] =>
@@ -120,11 +114,12 @@ type Snap = {
   c: CtxSnap | null
   t: Ledger
   p: PlanState
+  k: Record<string, CompRow>
   model: string
   updated: number
 }
 
-const toData = ({ r, m, h, lb, c, t, p, model, updated }: Snap, now: number): Data => ({
+const toData = ({ r, m, h, lb, c, t, p, k, model, updated }: Snap, now: number): Data => ({
   modelo: model,
   contexto: c ?? { tokens: 0, window: 1, percent: 0 },
   alerta: alerta(c),
@@ -147,11 +142,12 @@ const toData = ({ r, m, h, lb, c, t, p, model, updated }: Snap, now: number): Da
     coste: x.cost,
   })),
   plan: resumen(p),
+  comparativa: calcular(k),
   actualizado: updated,
   latido: now,
 })
 
-const EMPTY: Snap = { r: {}, m: {}, h: [], lb: {}, c: null, t: LEDGER0, p: PLAN0, model: '', updated: 0 }
+const EMPTY: Snap = { r: {}, m: {}, h: [], lb: {}, c: null, t: LEDGER0, p: PLAN0, k: COMP0, model: '', updated: 0 }
 
 // Escribe los datos que lee la página. Un fallo aquí no debe romper la sesión.
 const payload = (data: Data) => `window.CONSUMO = ${JSON.stringify(data)};`
@@ -171,6 +167,7 @@ async function snap($: Ctx): Promise<Snap> {
     c: await read($, ctx),
     t: await read($, ledger),
     p: await read($, plan),
+    k: await read($, comp),
     model: await $.session.model(),
     updated: updatedAt,
   }
@@ -206,7 +203,7 @@ export const register: Register = on => {
       // Sin página no hay ventana que abrir.
     }
     try {
-      await $.fs.write(`${DIR}\\datos.js`, payload(toData({ ...EMPTY, t: await read($, ledger), p: await read($, plan), model: await $.session.model() }, await $.clock.now())))
+      await $.fs.write(`${DIR}\\datos.js`, payload(toData({ ...EMPTY, t: await read($, ledger), p: await read($, plan), k: await read($, comp), model: await $.session.model() }, await $.clock.now())))
     } catch {
       // El latido lo vuelve a intentar cada 3 s.
     }
@@ -275,6 +272,10 @@ export const register: Register = on => {
           },
         }
       })
+      // Comparativa: tokens por tipo y coste del turno, una vez por turno (ya filtrado arriba).
+      await update($, comp, k =>
+        sumar(k, id, { input: u.input_tokens, output: u.output_tokens, cacheRead: u.cache_read_input_tokens, cacheWrite: u.cache_creation_input_tokens }, turn.cost),
+      )
       const at = await $.clock.now()
       await update($, hist, prev =>
         prev.some(x => x.id === e.turnId)

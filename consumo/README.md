@@ -11,6 +11,7 @@ Mod para Claude Code que abre una ventana HUD con lo que gasta la sesión.
 - Al iniciar la sesión abre una ventana aparte con Edge o Chrome en modo aplicación (`--app`).
 - Muestra el contexto usado y su porcentaje, el coste acumulado y los tokens por agente y por modelo.
 - Muestra el reparto del trabajo entre modelos, una gráfica de tokens por turno y los últimos 20 turnos.
+- Compara Haiku frente a Opus: lo que costó la sesión y lo que habría costado si el trabajo enviado a Haiku hubiera ido a Opus, con el coste por token de tus propios turnos. Sin datos de los dos modelos no estima nada.
 - Avisa cuando el contexto pasa del 70 % y del 85 %.
 - Si los datos dejan de llegar durante 10 segundos, marca "sin señal".
 - Funciona sin conexión: todo va dentro de la página.
@@ -59,6 +60,7 @@ A Claude Code mod that opens a HUD window showing what the session spends.
 - When the session starts, it opens a separate window with Edge or Chrome in app mode (`--app`).
 - It shows context used and its percentage, total cost, and tokens per agent and per model.
 - It shows how work is split between models, a chart of tokens per turn, and the last 20 turns.
+- It compares Haiku with Opus: what the session cost and what it would have cost if the work sent to Haiku had gone to Opus, using the cost per token of your own turns. Without data from both models it does not estimate.
 - It warns when context goes over 70 % and 85 %.
 - If data stops arriving for 10 seconds, it shows "sin señal" (no signal).
 - It works offline: everything is inside the page.
