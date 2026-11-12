@@ -25,6 +25,10 @@ export type Ledger = {
   turn: { id: string; dup: boolean; cost: number | null } | null
 }
 
+// Plan de Claude (TaskCreate / TaskUpdate): las tareas en el orden en que se crearon.
+export type PlanEstado = 'pending' | 'in_progress' | 'completed'
+export type PlanState = { orden: string[]; tareas: Record<string, { titulo: string; estado: PlanEstado }> }
+
 declare module 'claude-code' {
   interface PluginState {
     'consumo': {
@@ -34,6 +38,7 @@ declare module 'claude-code' {
       labels: Shaped<Record<string, string>>
       ctx: Shaped<CtxSnap | null>
       ledger: Shaped<Ledger>
+      plan: Shaped<PlanState>
     }
   }
 }

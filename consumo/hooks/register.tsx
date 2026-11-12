@@ -1,8 +1,10 @@
 import { atom, read, update } from 'claude-code'
 import type { Hook, Register, Timer } from 'claude-code'
 
-import type { AgentRow, CtxSnap, Ledger, ModelRow, TurnRec } from '../types'
+import type { AgentRow, CtxSnap, Ledger, ModelRow, PlanState, TurnRec } from '../types'
 import { observe } from './ledger'
+import type { PlanData } from './plan'
+import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
 import { PAGE } from './page'
 
 const SHAPE = { shape: 'consumo-1' }
@@ -22,6 +24,7 @@ const labels = atom({ plugin: 'consumo', key: 'labels' } as const, {} as Record<
 const ctx = atom({ plugin: 'consumo', key: 'ctx' } as const, null as CtxSnap | null, SHAPE)
 const LEDGER0: Ledger = { last: null, base: 0, ids: [], turn: null }
 const ledger = atom({ plugin: 'consumo', key: 'ledger' } as const, LEDGER0, SHAPE2)
+const plan = atom({ plugin: 'consumo', key: 'plan' } as const, PLAN0, { shape: 'consumo-plan-1' })
 
 type Familia = 'haiku' | 'opus' | 'fable' | 'sonnet' | 'otro'
 
@@ -61,6 +64,8 @@ type Data = {
   modelos: ModeloData[]
   agentes: { nombre: string; modelo: string; input: number; output: number; cacheRead: number; turns: number }[]
   historial: TurnoData[]
+  // Progreso del plan (TaskCreate / TaskUpdate); null sin tareas.
+  plan: PlanData | null
   actualizado: number
   latido: number
 }
@@ -114,11 +119,12 @@ type Snap = {
   lb: Record<string, string>
   c: CtxSnap | null
   t: Ledger
+  p: PlanState
   model: string
   updated: number
 }
 
-const toData = ({ r, m, h, lb, c, t, model, updated }: Snap, now: number): Data => ({
+const toData = ({ r, m, h, lb, c, t, p, model, updated }: Snap, now: number): Data => ({
   modelo: model,
   contexto: c ?? { tokens: 0, window: 1, percent: 0 },
   alerta: alerta(c),
@@ -140,11 +146,12 @@ const toData = ({ r, m, h, lb, c, t, model, updated }: Snap, now: number): Data 
     cacheEscritura: x.cacheWrite,
     coste: x.cost,
   })),
+  plan: resumen(p),
   actualizado: updated,
   latido: now,
 })
 
-const EMPTY: Snap = { r: {}, m: {}, h: [], lb: {}, c: null, t: LEDGER0, model: '', updated: 0 }
+const EMPTY: Snap = { r: {}, m: {}, h: [], lb: {}, c: null, t: LEDGER0, p: PLAN0, model: '', updated: 0 }
 
 // Escribe los datos que lee la página. Un fallo aquí no debe romper la sesión.
 const payload = (data: Data) => `window.CONSUMO = ${JSON.stringify(data)};`
@@ -163,6 +170,7 @@ async function snap($: Ctx): Promise<Snap> {
     lb: await read($, labels),
     c: await read($, ctx),
     t: await read($, ledger),
+    p: await read($, plan),
     model: await $.session.model(),
     updated: updatedAt,
   }
@@ -198,7 +206,7 @@ export const register: Register = on => {
       // Sin página no hay ventana que abrir.
     }
     try {
-      await $.fs.write(`${DIR}\\datos.js`, payload(toData({ ...EMPTY, t: await read($, ledger), model: await $.session.model() }, await $.clock.now())))
+      await $.fs.write(`${DIR}\\datos.js`, payload(toData({ ...EMPTY, t: await read($, ledger), p: await read($, plan), model: await $.session.model() }, await $.clock.now())))
     } catch {
       // El latido lo vuelve a intentar cada 3 s.
     }
@@ -295,6 +303,20 @@ export const register: Register = on => {
 
   on('tool.call', async ($, e, next) => {
     const ran = await next(e)
+    // El plan solo cambia con una llamada que la herramienta aceptó (sin deny ni error).
+    if (ran.deny === undefined && !ran.isError) {
+      try {
+        if (e.tool === 'TaskCreate') {
+          const t = idCreada(ran.result)
+          if (t) await update($, plan, v => crear(v, t.id, t.subject ?? e.subject))
+        } else if (e.tool === 'TaskUpdate' && e.taskId) {
+          const id = String(e.taskId)
+          await update($, plan, v => actualizar(v, id, { status: e.status, subject: e.subject }))
+        }
+      } catch {
+        // Un fallo del plan no debe tocar la llamada ni el resto del HUD.
+      }
+    }
     const s = await $.session.usage()
     await update($, ctx, () => ({ tokens: s.context.tokens ?? 0, window: s.context.window, percent: s.context.percent ?? 0 }))
     updatedAt = await $.clock.now()
