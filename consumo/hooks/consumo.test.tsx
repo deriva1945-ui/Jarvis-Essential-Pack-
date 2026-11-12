@@ -2,6 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
 import { calcular, COMP0, sumar } from './comparativa'
+import { DOM, firma, lista, ponAttr, ponEstilo, ponSegs, ponTexto } from './dom'
 import { observe } from './ledger'
 import { PAGE } from './page'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
@@ -329,6 +330,169 @@ test('(n) señal: the heartbeat starts again on the next tool call if the module
   expect(n0).toBeGreaterThan(0)
   await clock.advance(9_000)
   expect(writes.filter(w => w.path.endsWith('datos.js')).length).toBeGreaterThanOrEqual(n0 + 3)
+})
+
+// ---------- Parpadeo: la página no reconstruye paneles ----------
+
+// DOM falso mínimo: cuenta cada escritura (texto, atributo, estilo, alta y baja de hijos).
+let escrituras = 0
+class Falso {
+  children: Falso[] = []
+  attrs: Record<string, string> = {}
+  estilo: Record<string, string> = {}
+  private txt = ''
+  style = {
+    getPropertyValue: (p: string) => this.estilo[p] ?? '',
+    setProperty: (p: string, v: string) => {
+      escrituras++
+      this.estilo[p] = v
+    },
+  }
+  get textContent(): string {
+    return this.txt
+  }
+  set textContent(v: string | null) {
+    escrituras++
+    this.txt = v ?? ''
+  }
+  getAttribute(k: string): string | null {
+    return this.attrs[k] ?? null
+  }
+  setAttribute(k: string, v: string): void {
+    escrituras++
+    this.attrs[k] = v
+  }
+  insertBefore(n: Falso, ref: Falso | null): void {
+    escrituras++
+    const i = this.children.indexOf(n)
+    if (i >= 0) this.children.splice(i, 1)
+    const j = ref ? this.children.indexOf(ref) : -1
+    if (j >= 0) this.children.splice(j, 0, n)
+    else this.children.push(n)
+  }
+  removeChild(n: Falso): void {
+    escrituras++
+    this.children.splice(this.children.indexOf(n), 1)
+  }
+}
+const segFalso = (count: number) => {
+  const s = new Falso()
+  for (let i = 0; i < count; i++) s.children.push(new Falso())
+  return s
+}
+type Turno = { hora: number; agente: string; tokens: number }
+const pintaTurnos = (box: Falso, hs: Turno[]) =>
+  lista(
+    box,
+    hs,
+    t => t.hora + '|' + t.agente,
+    () => {
+      const tr = new Falso()
+      tr.children.push(new Falso(), new Falso())
+      return tr
+    },
+    (tr, t) => {
+      const k = (tr as Falso).children
+      ponTexto(k[0] as Falso, t.agente)
+      ponTexto(k[1] as Falso, t.tokens)
+    },
+  )
+
+test('(o) parpadeo: a repeated read writes nothing and a new turn only adds its own row', () => {
+  const box = new Falso()
+  // Contenido inicial del HTML ("Sin turnos todavía", sin clave): se quita la primera vez.
+  box.children.push(new Falso())
+  let hs: Turno[] = [
+    { hora: 1, agente: 'Principal', tokens: 100 },
+    { hora: 2, agente: 'a1', tokens: 200 },
+  ]
+  let r = pintaTurnos(box, hs)
+  expect(r).toEqual({ creados: 2, quitados: 1, movidos: 0 })
+  const filas = [...box.children]
+
+  // La misma lectura otra vez (lo que pasaba cada segundo): cero escrituras, mismos nodos.
+  escrituras = 0
+  r = pintaTurnos(box, hs.map(t => ({ ...t })))
+  expect(r).toEqual({ creados: 0, quitados: 0, movidos: 0 })
+  expect(escrituras).toBe(0)
+  expect(box.children).toEqual(filas)
+  expect(box.children[0]).toBe(filas[0])
+
+  // Cambia un valor: solo se escribe ese nodo de texto.
+  escrituras = 0
+  hs = [hs[0] as Turno, { hora: 2, agente: 'a1', tokens: 250 }]
+  pintaTurnos(box, hs)
+  expect(escrituras).toBe(1)
+  expect(box.children[1]?.children[1]?.textContent).toBe('250')
+
+  // Turno nuevo arriba (la tabla va del más nuevo al más viejo): una fila nueva, las otras siguen siendo las mismas.
+  escrituras = 0
+  r = pintaTurnos(box, [{ hora: 3, agente: 'a2', tokens: 50 }, ...hs])
+  expect(r).toEqual({ creados: 1, quitados: 0, movidos: 0 })
+  expect(box.children[1]).toBe(filas[0])
+  expect(box.children[2]).toBe(filas[1])
+  expect(escrituras).toBe(3) // dos textos de la fila nueva y su alta
+
+  // Claves repetidas (dos agentes con la misma etiqueta) no se pisan.
+  const dup = new Falso()
+  pintaTurnos(dup, [{ hora: 1, agente: 'x', tokens: 1 }, { hora: 1, agente: 'x', tokens: 2 }])
+  expect(dup.children).toHaveLength(2)
+})
+
+test('(p) parpadeo: text, attributes, styles and segment bars are written only when they change', () => {
+  const el = new Falso()
+  escrituras = 0
+  expect(ponTexto(el, '12 %')).toBe(true)
+  expect(ponTexto(el, '12 %')).toBe(false)
+  expect(ponAttr(el, 'class', 'al on')).toBe(true)
+  expect(ponAttr(el, 'class', 'al on')).toBe(false)
+  expect(ponEstilo(el, 'width', '42.0%')).toBe(true)
+  // El navegador normaliza el valor ("42%"): se compara con el último puesto, no se vuelve a escribir.
+  el.estilo['width'] = '42%'
+  expect(ponEstilo(el, 'width', '42.0%')).toBe(false)
+  expect(escrituras).toBe(3)
+
+  const seg = segFalso(24)
+  expect(ponSegs(seg, 50)).toBeGreaterThan(0)
+  expect(seg.children.filter(i => i.attrs['class'] === 'on')).toHaveLength(12)
+  expect(ponSegs(seg, 50)).toBe(0)
+  // 51 % sigue siendo 12 de 24 segmentos: nada que tocar.
+  expect(ponSegs(seg, 51)).toBe(0)
+  // Fuera de rango se recorta y nunca hay segmentos negativos; un valor > 0 enciende al menos uno.
+  ponSegs(seg, -20)
+  expect(seg.children.filter(i => i.attrs['class'] === 'on')).toHaveLength(0)
+  ponSegs(seg, 0.1)
+  expect(seg.children.filter(i => i.attrs['class'] === 'on')).toHaveLength(1)
+  ponSegs(seg, 400)
+  expect(seg.children.filter(i => i.attrs['class'] === 'on')).toHaveLength(24)
+
+  // La firma ignora el latido: una lectura que solo trae latido nuevo no repinta nada.
+  expect(firma({ ...datos(T0), latido: T0 + 3000 })).toBe(firma({ ...datos(T0), latido: T0 + 6000 }))
+  expect(firma({ ...datos(T0), coste: 0.2 })).not.toBe(firma(datos(T0)))
+})
+
+test('(q) parpadeo: the page uses the diff helpers and no panel is rebuilt with innerHTML', () => {
+  expect(PAGE).toContain(DOM)
+  expect(PAGE).toContain('if(f===FIRMA)return;')
+  for (const viejo of [
+    "$id('cmp').innerHTML",
+    "$id('hrows').innerHTML",
+    "$id('rows').innerHTML",
+    "$id('link').innerHTML",
+    "$id('plist').innerHTML",
+    "$id('plcur').innerHTML",
+    "$id('cah').innerHTML",
+    "$id('ctk').innerHTML",
+    'txt.innerHTML',
+    'st.innerHTML',
+    'el.innerHTML=fmt',
+  ]) {
+    expect(PAGE).not.toContain(viejo)
+  }
+  // Los únicos innerHTML: crear una pieza nueva (mk), las marcas del dial al cargar y la gráfica,
+  // que solo se redibuja si entra un turno o cambia el tamaño.
+  expect(PAGE.match(/innerHTML=/g)).toHaveLength(4)
+  expect(PAGE).toContain('if(key===CHART)return;')
 })
 
 // ---------- Plan de Claude (TaskCreate / TaskUpdate) ----------

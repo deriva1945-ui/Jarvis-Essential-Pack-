@@ -1,5 +1,6 @@
 // Página del panel. Se escribe como index.html en la carpeta de datos (opción dataDir) al iniciar la sesión.
-// Lee datos.js cada segundo (recargado con un script nuevo) y redibuja.
+// Lee datos.js cada segundo (recargado con un script nuevo). Pinta una vez y después solo cambia los textos,
+// atributos y estilos que cambian (dom.ts); si los datos no cambian (solo el latido), no toca nada.
 // Sin acentos graves, sin dólar-llave y sin barras invertidas dentro: es un template literal.
 // Todo en línea, sin CDN: tiene que funcionar offline desde file://.
 //
@@ -13,6 +14,7 @@
 // Estética blanco-cian: fondo azul-negro, bordes y cifras en blanco con cian; rojo solo en alertas.
 // Globo holográfico en canvas con un anillo blanco-cian inclinado (CSS 3D) que gira al revés, paneles de cristal y escaneo sutil.
 // Fondo: degradado radial, nebulosa difuminada y rejilla de perspectiva que avanza despacio (quieta en compacto y con movimiento reducido).
+import { DOM } from './dom'
 import { LOGICA } from './senal'
 
 export const PAGE = `<!doctype html>
@@ -218,6 +220,7 @@ body.compact .cnote,body.compact .ctk,body.compact #p-comp .stack{display:none}
 .stack{display:flex;height:8px;gap:4px;margin:0 0 14px;flex:none}
 .stack div{height:100%;background:var(--c);background:linear-gradient(90deg,color-mix(in srgb,var(--c) 55%,#eaffff),var(--c));box-shadow:0 0 8px var(--c);opacity:.9;min-width:3px;border-radius:2px}
 .stack.empty{background:var(--track)}
+.stack div{transition:flex-grow .6s}
 
 /* Reparto por modelo: nombre, barra, %, turnos */
 .cmp{display:grid;grid-template-columns:minmax(130px,15em) minmax(60px,1fr) 4.5em 5.5em;gap:10px 16px;align-items:center}
@@ -231,6 +234,7 @@ body.compact .cmp .nm span{display:none}
 .cmp .tn{font-size:var(--fv);color:var(--txt);text-align:right;white-space:nowrap}
 .cmp .hd.tn{font-size:var(--fk);color:var(--sub)}
 .cmp .zero{opacity:.55}
+.cmp .filas,.cmp .fila{display:contents}
 .r-al{text-align:right}
 
 /* Gráfica */
@@ -359,7 +363,7 @@ body.hud-off .wrap,body.hud-off .neb,body.hud-off .floor,body.hud-off .scan{visi
     <div class="al" id="al-sig">Sin señal</div>
   </div>
   <div class="hstat">
-    <div><div class="k">Señal</div><div class="v" id="link"><span class="dot wait"></span>Esperando</div></div>
+    <div><div class="k">Señal</div><div class="v" id="link"><span class="dot wait" id="ldot"></span><span id="ltxt">Esperando</span></div></div>
     <div class="opt"><div class="k">Turnos</div><div class="v num" id="hturns">0</div></div>
     <div><div class="k">Reloj</div><div class="v num" id="clock">--:--:--</div></div>
     <button id="dens" type="button" title="Cambiar densidad (tecla D)"><kbd>D</kbd><span id="dens-l">Compacto</span></button>
@@ -368,9 +372,9 @@ body.hud-off .wrap,body.hud-off .neb,body.hud-off .floor,body.hud-off .scan{visi
 
 <section class="pnl" id="p-plan"><div class="in">
   <div class="plh">
-    <span class="plt vacio num" id="pltxt">PLAN · sin tareas activas</span>
+    <span class="plt vacio num" id="pltxt"><span id="plv">PLAN · sin tareas activas</span><span id="pln" hidden>PLAN · <b id="plnm"></b> · <b id="plpc"></b></span></span>
     <span class="plok">COMPLETADO</span>
-    <span class="plcur" id="plcur"></span>
+    <span class="plcur" id="plcur" hidden><em>En curso</em> · <span id="plcurt"></span></span>
   </div>
   <div class="plbar" role="progressbar" aria-label="Progreso del plan" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="plbar"><div class="plfill" id="plfill"></div></div>
   <details class="pll off" id="pll"><summary id="plsum">Tareas</summary><ol id="plist"></ol></details>
@@ -395,7 +399,7 @@ body.hud-off .wrap,body.hud-off .neb,body.hud-off .floor,body.hud-off .scan{visi
           <circle class="g2" cx="100" cy="100" r="88" fill="none" stroke="#7fe7ff" stroke-opacity=".6" stroke-width="1.6" stroke-dasharray="2 5"/>
           <circle cx="100" cy="4" r="3" fill="#f4feff"/>
         </svg></div></div>
-        <div class="rc"><div class="p num" id="pct">0<small>%</small></div><div class="k">usado</div></div>
+        <div class="rc"><div class="p num" id="pct"><span id="pctv">0</span><small>%</small></div><div class="k">usado</div></div>
       </div>
       <div class="kv">
         <span class="k">Tokens</span><span class="v num" id="ctxtok">0</span>
@@ -408,7 +412,7 @@ body.hud-off .wrap,body.hud-off .neb,body.hud-off .floor,body.hud-off .scan{visi
 
   <section class="pnl" id="p-cost"><div class="in">
     <div class="ph"><span class="t">Coste</span></div>
-    <div class="cost num" id="coste">0.0000<small>USD</small></div>
+    <div class="cost num" id="coste"><span id="costev">0.0000</span><small>USD</small></div>
     <div class="sub" id="clast">Sin turnos todavía</div>
     <div class="k">Modelo de la sesión</div>
     <div class="mdl" id="modelo">—</div>
@@ -420,7 +424,7 @@ body.hud-off .wrap,body.hud-off .neb,body.hud-off .floor,body.hud-off .scan{visi
       <span class="k">Real</span><span class="v num" id="cvreal">0.0000 USD</span><div class="cbar real"><i id="cbreal"></i></div>
       <span class="k opus">Todo en Opus</span><span class="v num" id="cvopus">—</span><div class="cbar opus"><i id="cbopus"></i></div>
     </div>
-    <div class="cah num" id="cah">sin datos de Opus todavía</div>
+    <div class="cah num" id="cah"><span id="cahm">sin datos de Opus todavía</span><span id="caho" hidden><span id="cahl">Ahorro</span> <b id="caha"></b> · <b id="cahp"></b><span id="cahs"></span></span></div>
     <div class="stack empty" id="cstack"></div>
     <div class="ctk num" id="ctk"></div>
     <div class="cnote">Estimación según tus turnos reales; el caché y la mezcla de entrada y salida afectan.</div>
@@ -429,7 +433,7 @@ body.hud-off .wrap,body.hud-off .neb,body.hud-off .floor,body.hud-off .scan{visi
   <section class="pnl" id="p-mod"><div class="in">
     <div class="ph"><span class="t">Reparto por modelo</span><span class="r num" id="mtot">0 tokens</span></div>
     <div class="stack empty" id="stack"></div>
-    <div class="cmp" id="cmp"></div>
+    <div class="cmp" id="cmp"><span class="hd">Modelo</span><span class="hd">Trabajo</span><span class="hd r-al">%</span><span class="hd tn r-al">Turnos</span><div class="filas" id="cmpr"></div></div>
   </div></section>
 
   <section class="pnl" id="p-chart"><div class="in">
@@ -464,11 +468,14 @@ body.hud-off .wrap,body.hud-off .neb,body.hud-off .floor,body.hud-off .scan{visi
 <script>
 var FAM={opus:'Opus',haiku:'Haiku',fable:'Fable',sonnet:'Sonnet',otro:'Otro'};
 var WARN=70,CRIT=85,NT=60,DKEY='consumo.densidad',PKEY='consumo.plan.abierto';
-var lastData=null,seenTurns={},firstRender=true;
+var lastData=null,firstRender=true;
 // Señal y lectura de datos.js: funciones de senal.ts, probadas en consumo.test.tsx.
 /*LOGICA*/
 ` + LOGICA + `
 /*FIN*/
+/*DOM*/
+` + DOM + `
+/*FIN DOM*/
 var ST=nuevoEstado(Date.now());
 var VACIO={modelo:'',contexto:{tokens:0,window:0,percent:0},alerta:'normal',coste:0,modelos:[],agentes:[],historial:[],plan:null,comparativa:null,actualizado:0,latido:0};
 function $id(i){return document.getElementById(i)}
@@ -478,7 +485,13 @@ function kn(x){x=Number(x||0);if(x>=1e6)return (x/1e6).toFixed(x>=1e7?1:2)+'M';i
 function fam(m){m=String(m||'').toLowerCase();for(var k in FAM){if(k!=='otro'&&m.indexOf(k)>=0)return k}return 'otro'}
 function col(f){return 'var(--f-'+(FAM[f]?f:'otro')+')'}
 var HEX={opus:'#e8fbff',haiku:'#7fe7ff',fable:'#c4b5fd',sonnet:'#dbeafe',otro:'#dbeafe'};
-function segs(p,c,cls,count){count=count||24;var on=Math.round(Math.max(0,Math.min(100,p))*count/100);if(p>0&&on===0)on=1;var h='';for(var i=0;i<count;i++)h+='<i'+(i<on?' class="on" style="--k:'+(on>1?(i/(on-1)).toFixed(2):1)+'"':'')+'></i>';return '<div class="seg'+(cls?' '+cls:'')+'" style="--c:'+c+'">'+h+'</div>'}
+// Piezas que se crean una vez (al aparecer una fila nueva); después solo se actualizan con ponTexto, ponAttr, ponEstilo y ponSegs.
+function mk(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e}
+function segsEl(c,cls,count){var d=mk('div','seg'+(cls?' '+cls:''),new Array(count+1).join('<i></i>'));ponEstilo(d,'--c',c);return d}
+function ponClase(e,c,on){on=!!on;if(e.classList.contains(c)===on)return false;e.classList.toggle(c,on);return true}
+function ver(e,on){on=!!on;if(e.hidden!==on)return false;e.hidden=!on;return true}
+var VACIA=[{vacia:true}];
+function filaVacia(){return mk('tr','','<td colspan="5" class="empty-row">Sin turnos todavía</td>')}
 function pc(x){x=Number(x||0);return (x>=10||x===0?Math.round(x):x.toFixed(1))}
 function hhmm(t){return t?new Date(t).toLocaleTimeString('es-ES'):'—'}
 (function(){
@@ -528,32 +541,48 @@ function comparativa(d,ms){
   return out;
 }
 
+function filaModelo(r){
+  var f=mk('div','fila','<div class="nm"><b><em>principal</em></b><span></span></div><div></div><div class="pc num"></div><div class="tn num"></div>');
+  var b=f.children[0].firstChild;b.insertBefore(document.createTextNode(''),b.firstChild);
+  f.children[1].appendChild(segsEl(col(r.x.familia),'',24));
+  return f;
+}
+function ponFilaModelo(f,r){
+  var x=r.x,c=col(x.familia),k=f.children,nm=k[0],b=nm.firstChild,sg=k[1].firstChild;
+  ponAttr(nm,'title',x.modelo+' · entrada '+n(x.entrada)+' · salida '+n(x.salida)+' · caché '+n(x.cache));
+  ponEstilo(nm,'--c',c);ponEstilo(k[2],'--c',c);ponEstilo(sg,'--c',c);
+  ponTexto(b.firstChild,FAM[x.familia]||x.familia);
+  ver(b.lastChild,!!r.rol);
+  ponTexto(nm.lastChild,x.modelo);
+  ponSegs(sg,x.reparto);
+  ponTexto(k[2],pc(x.reparto)+'%');
+  ponTexto(k[3],n(x.turnos));
+  for(var i=0;i<4;i++)ponClase(k[i],'zero',!!x.zero);
+}
 function renderModels(d){
   var ms=modelosDe(d);
   var work=ms.reduce(function(a,x){return a+x.entrada+x.salida},0);
   var turns=ms.reduce(function(a,x){return a+x.turnos},0);
-  $id('hturns').textContent=n(turns);
-  $id('mtot').textContent=kn(work)+' tokens · '+n(turns)+' turnos';
+  ponTexto($id('hturns'),n(turns));
+  ponTexto($id('mtot'),kn(work)+' tokens · '+n(turns)+' turnos');
   var st=$id('stack');
-  st.className='stack'+(work?'':' empty');
-  st.innerHTML=work?ms.map(function(x){return '<div title="'+esc(x.modelo)+' '+pc(x.reparto)+'%" style="--c:'+col(x.familia)+';flex-grow:'+((x.entrada+x.salida)||0)+'"></div>'}).join(''):'';
-  var h='<span class="hd">Modelo</span><span class="hd">Trabajo</span><span class="hd r-al">%</span><span class="hd tn r-al">Turnos</span>';
-  comparativa(d,ms).forEach(function(r){
-    var x=r.x,c=col(x.familia),z=x.zero?' zero':'';
-    var tip=x.modelo+' · entrada '+n(x.entrada)+' · salida '+n(x.salida)+' · caché '+n(x.cache);
-    h+='<div class="nm'+z+'" style="--c:'+c+'" title="'+esc(tip)+'"><b>'+esc(FAM[x.familia]||x.familia)+(r.rol?'<em>principal</em>':'')+'</b><span>'+esc(x.modelo)+'</span></div>'+
-      '<div class="'+z+'">'+segs(x.reparto,c,'',24)+'</div>'+
-      '<div class="pc num'+z+'" style="--c:'+c+'">'+pc(x.reparto)+'%</div>'+
-      '<div class="tn num'+z+'">'+n(x.turnos)+'</div>';
+  ponClase(st,'empty',!work);
+  lista(st,work?ms:[],function(x){return x.modelo},function(){return mk('div')},function(e,x){
+    ponAttr(e,'title',x.modelo+' '+pc(x.reparto)+'%');ponEstilo(e,'--c',col(x.familia));ponEstilo(e,'flex-grow',String((x.entrada+x.salida)||0));
   });
-  $id('cmp').innerHTML=h;
+  lista($id('cmpr'),comparativa(d,ms),function(r){return r.x.familia+'|'+r.x.modelo},filaModelo,ponFilaModelo);
 }
 
+var CHART='';
 // Gráfica SVG: barras apiladas entrada/salida por turno, color del modelo; línea blanca con el coste.
 function renderChart(d){
   var hs=d.historial||[],box=$id('chart');
   if(!box.offsetParent||!box.clientWidth)return;
   var W=Math.max(200,box.clientWidth),H=Math.max(140,box.clientHeight);
+  // La gráfica solo se redibuja si entra un turno o cambia el tamaño; el latido no la toca.
+  var key=W+'x'+H+'|'+JSON.stringify(hs);
+  if(key===CHART)return;
+  CHART=key;
   var hasC=hs.some(function(t){return t.coste!=null});
   var L=60,R=hasC?62:12,T=10,B=26;
   var iw=W-L-R,ih=H-T-B;
@@ -590,7 +619,7 @@ function renderChart(d){
   pts.forEach(function(p){var q=p.split(',');s+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="2.6" fill="#070b10" stroke="#f4feff" stroke-width="1.4"/>'});
   s+='</svg>';
   box.innerHTML=s;
-  $id('cmax').textContent=hs.length?('pico '+kn(mx)+' tokens'):'';
+  ponTexto($id('cmax'),hs.length?('pico '+kn(mx)+' tokens'):'');
   var fams={};hs.forEach(function(t){fams[t.familia||fam(t.modelo)]=1});
   var lg=Object.keys(fams).map(function(f){return '<span><i style="--c:'+col(f)+'"></i>'+FAM[f]+'</span>'}).join('');
   lg+='<span>claro = entrada, vivo = salida</span>';
@@ -598,36 +627,44 @@ function renderChart(d){
   $id('clegend').innerHTML=lg;
 }
 
+function filaTurno(){return mk('tr','','<td class="al-l dimc num h-hora"></td><td class="al-l"></td><td class="al-l"><span class="ftag"></span></td><td class="num"></td><td class="num amc"></td>')}
 function renderHist(d){
   var hs=(d.historial||[]).slice().reverse();
-  $id('hcount').textContent=hs.length+(hs.length===1?' turno':' turnos');
-  var fresh={};
-  $id('hrows').innerHTML=hs.length?hs.map(function(t){
-    var f=t.familia||fam(t.modelo),c=col(f),id=t.hora+'|'+t.agente;
-    var isNew=!firstRender&&!seenTurns[id];fresh[id]=1;
-    return '<tr'+(isNew?' class="new"':'')+'><td class="al-l dimc num h-hora">'+esc(hhmm(t.hora))+'</td>'+
-      '<td class="al-l" title="'+esc(t.agente)+'">'+esc(t.agente)+'</td>'+
-      '<td class="al-l" style="--c:'+c+'" title="'+esc(t.modelo)+'"><span class="ftag">'+esc(FAM[f]||f)+'</span></td>'+
-      '<td class="num">'+kn(t.entrada+t.salida)+'</td>'+
-      '<td class="num amc">'+(t.coste!=null?Number(t.coste).toFixed(4):'—')+'</td></tr>';
-  }).join(''):'<tr><td colspan="5" class="empty-row">Sin turnos todavía</td></tr>';
-  seenTurns=fresh;if(hs.length)firstRender=false;
+  ponTexto($id('hcount'),hs.length+(hs.length===1?' turno':' turnos'));
+  var marcar=!firstRender;
+  lista($id('hrows'),hs.length?hs:VACIA,function(t){return t.vacia?'vacia':t.hora+'|'+t.agente+'|'+t.modelo},function(t){return t.vacia?filaVacia():filaTurno()},function(tr,t,i,nuevo){
+    if(t.vacia)return;
+    var f=t.familia||fam(t.modelo),c=col(f),k=tr.children;
+    if(nuevo&&marcar)tr.className='new';
+    ponTexto(k[0],hhmm(t.hora));
+    ponAttr(k[1],'title',t.agente);ponTexto(k[1],t.agente);
+    ponAttr(k[2],'title',t.modelo);ponEstilo(k[2],'--c',c);ponTexto(k[2].firstChild,FAM[f]||f);
+    ponTexto(k[3],kn(t.entrada+t.salida));
+    ponTexto(k[4],t.coste!=null?Number(t.coste).toFixed(4):'—');
+  });
+  if(hs.length)firstRender=false;
   var last=d.historial&&d.historial[d.historial.length-1];
-  $id('clast').textContent=last&&last.coste!=null?('Último turno ≈ '+Number(last.coste).toFixed(4)+' USD'):(last?'Último turno sin coste':'Sin turnos todavía');
+  ponTexto($id('clast'),last&&last.coste!=null?('Último turno ≈ '+Number(last.coste).toFixed(4)+' USD'):(last?'Último turno sin coste':'Sin turnos todavía'));
 }
 
+function filaAgente(){
+  var tr=mk('tr','','<td class="al-l"></td><td class="al-l"><span class="ftag"></span></td><td class="num"></td><td class="num a-turnos"></td><td><div class="share"><span class="sv num"></span></div></td>');
+  var sh=tr.children[4].firstChild;sh.insertBefore(segsEl('var(--ce)','sm',16),sh.firstChild);
+  return tr;
+}
 function renderAgents(d){
   var agentes=d.agentes||[];
   var total=agentes.reduce(function(a,x){return a+x.input+x.output},0)||1;
-  $id('acount').textContent=agentes.length+(agentes.length===1?' agente':' agentes');
-  $id('rows').innerHTML=agentes.length?agentes.map(function(x){
-    var s=(x.input+x.output)*100/total,f=fam(x.modelo),cc=col(f);
-    var tip=x.nombre+' · entrada '+n(x.input)+' · salida '+n(x.output)+' · caché '+n(x.cacheRead);
-    return '<tr><td class="al-l" title="'+esc(x.nombre)+'">'+esc(x.nombre)+'</td>'+
-      '<td class="al-l" title="'+esc(x.modelo)+'" style="--c:'+cc+'"><span class="ftag">'+esc(FAM[f]||f)+'</span></td>'+
-      '<td class="num" title="'+esc(tip)+'">'+kn(x.input+x.output)+'</td><td class="num a-turnos">'+n(x.turns)+'</td>'+
-      '<td><div class="share">'+segs(s,cc,'sm',16)+'<span class="sv num">'+pc(s)+'%</span></div></td></tr>';
-  }).join(''):'<tr><td colspan="5" class="empty-row">Sin turnos todavía</td></tr>';
+  ponTexto($id('acount'),agentes.length+(agentes.length===1?' agente':' agentes'));
+  lista($id('rows'),agentes.length?agentes:VACIA,function(x){return x.vacia?'vacia':x.nombre},function(x){return x.vacia?filaVacia():filaAgente()},function(tr,x){
+    if(x.vacia)return;
+    var s=(x.input+x.output)*100/total,f=fam(x.modelo),cc=col(f),k=tr.children,sh=k[4].firstChild,sg=sh.firstChild;
+    ponAttr(k[0],'title',x.nombre);ponTexto(k[0],x.nombre);
+    ponAttr(k[1],'title',x.modelo);ponEstilo(k[1],'--c',cc);ponTexto(k[1].firstChild,FAM[f]||f);
+    ponAttr(k[2],'title',x.nombre+' · entrada '+n(x.input)+' · salida '+n(x.output)+' · caché '+n(x.cacheRead));ponTexto(k[2],kn(x.input+x.output));
+    ponTexto(k[3],n(x.turns));
+    ponEstilo(sg,'--c',cc);ponSegs(sg,s);ponTexto(sh.lastChild,pc(s)+'%');
+  });
 }
 
 // Comparativa Haiku frente a Opus. Las cifras vienen hechas en datos.js; sin estimación se dice por qué y no se inventa nada.
@@ -635,30 +672,43 @@ function renderComp(d){
   var c=d.comparativa||null;
   var real=c?Number(c.costeReal||0):0,ok=!!(c&&c.disponible&&c.costeOpusEstimado!=null);
   var est=ok?Number(c.costeOpusEstimado):0,mx=Math.max(real,est);
-  $id('p-comp').classList.toggle('nodata',!ok);
-  $id('cbreal').style.width=(ok?(mx>0?real*100/mx:0):(real>0?100:0)).toFixed(1)+'%';
-  $id('cbopus').style.width=(ok&&mx>0?est*100/mx:0).toFixed(1)+'%';
-  $id('cvreal').textContent=real.toFixed(4)+' USD';
-  $id('cvopus').textContent=ok?est.toFixed(4)+' USD':'—';
+  ponClase($id('p-comp'),'nodata',!ok);
+  ponEstilo($id('cbreal'),'width',(ok?(mx>0?real*100/mx:0):(real>0?100:0)).toFixed(1)+'%');
+  ponEstilo($id('cbopus'),'width',(ok&&mx>0?est*100/mx:0).toFixed(1)+'%');
+  ponTexto($id('cvreal'),real.toFixed(4)+' USD');
+  ponTexto($id('cvopus'),ok?est.toFixed(4)+' USD':'—');
   var ah=ok?Number(c.ahorro||0):0,ap=ok?Number(c.ahorroPct||0):0;
-  $id('cpct').textContent=ok?(ah>=0?'ahorro '+pc(ap)+' %':'sin ahorro'):'sin estimación';
-  $id('cah').innerHTML=ok?(ah>=0?'Ahorro <b>'+ah.toFixed(4)+' USD</b> · <b>'+pc(ap)+' %</b> menos que todo en Opus':'Diferencia <b>'+ah.toFixed(4)+' USD</b> · <b>'+pc(ap)+' %</b>: en tus turnos Haiku no salió más barato'):esc(c&&c.motivo?c.motivo:'sin datos de Opus todavía');
+  ponTexto($id('cpct'),ok?(ah>=0?'ahorro '+pc(ap)+' %':'sin ahorro'):'sin estimación');
+  ver($id('cahm'),!ok);ver($id('caho'),ok);
+  ponTexto($id('cahm'),c&&c.motivo?c.motivo:'sin datos de Opus todavía');
+  if(ok){
+    ponTexto($id('cahl'),ah>=0?'Ahorro':'Diferencia');
+    ponTexto($id('caha'),ah.toFixed(4)+' USD');
+    ponTexto($id('cahp'),pc(ap)+' %');
+    ponTexto($id('cahs'),ah>=0?' menos que todo en Opus':': en tus turnos Haiku no salió más barato');
+  }
   var ts=c&&c.tokensPorModelo?c.tokensPorModelo:[];
   var tot=ts.reduce(function(a,x){return a+(Number(x.tokens)||0)},0);
   var st=$id('cstack');
-  st.className='stack'+(tot?'':' empty');
-  st.innerHTML=tot?ts.map(function(x){return '<div title="'+esc((FAM[x.familia]||x.familia)+' '+n(x.tokens)+' tokens')+'" style="--c:'+col(x.familia)+';flex-grow:'+(Number(x.tokens)||0)+'"></div>'}).join(''):'';
-  $id('ctk').innerHTML=ts.length?ts.map(function(x){return '<span><i style="--c:'+col(x.familia)+'"></i>'+esc(FAM[x.familia]||x.familia)+' <b>'+kn(x.tokens)+'</b> tokens · '+Number(x.coste||0).toFixed(4)+' USD</span>'}).join(''):'<span>Sin turnos todavía</span>';
+  ponClase(st,'empty',!tot);
+  lista(st,tot?ts:[],function(x){return x.familia},function(){return mk('div')},function(e,x){
+    ponAttr(e,'title',(FAM[x.familia]||x.familia)+' '+n(x.tokens)+' tokens');ponEstilo(e,'--c',col(x.familia));ponEstilo(e,'flex-grow',String(Number(x.tokens)||0));
+  });
+  lista($id('ctk'),ts.length?ts:VACIA,function(x){return x.vacia?'vacia':x.familia},function(x){return x.vacia?mk('span','','Sin turnos todavía'):mk('span','','<i></i><span></span> <b></b><span></span>')},function(e,x){
+    if(x.vacia)return;
+    var k=e.children;
+    ponEstilo(k[0],'--c',col(x.familia));ponTexto(k[1],FAM[x.familia]||x.familia);ponTexto(k[2],kn(x.tokens));ponTexto(k[3],' tokens · '+Number(x.coste||0).toFixed(4)+' USD');
+  });
 }
 
 // Transiciones: los números grandes se deslizan al valor nuevo y un cambio de nivel lanza una onda.
 var nivel=null,tw={};
 function tween(id,to,fmt){
   var el=$id(id),t=tw[id]||(tw[id]={v:to,raf:0});
-  if(t.raf)cancelAnimationFrame(t.raf);
+  if(t.raf){cancelAnimationFrame(t.raf);t.raf=0}
   var from=t.v,t0=performance.now(),dur=650;
-  if(from===to||document.hidden){t.v=to;el.innerHTML=fmt(to);return}
-  (function step(now){var k=Math.min(1,(now-t0)/dur);k=1-Math.pow(1-k,3);t.v=from+(to-from)*k;el.innerHTML=fmt(t.v);if(k<1)t.raf=requestAnimationFrame(step);else{t.v=to;t.raf=0}})(t0);
+  if(from===to||document.hidden){t.v=to;ponTexto(el,fmt(to));return}
+  (function step(now){var k=Math.min(1,(now-t0)/dur);k=1-Math.pow(1-k,3);t.v=from+(to-from)*k;ponTexto(el,fmt(t.v));if(k<1)t.raf=requestAnimationFrame(step);else{t.v=to;t.raf=0}})(t0);
 }
 function onda(lvl){
   var o=document.createElement('div');o.className='shift';
@@ -673,23 +723,23 @@ function renderCtx(d){
   var p=Math.max(0,Math.min(100,Number(c.percent)||0));
   var lvl=d.alerta?(d.alerta==='critica'?'x':d.alerta==='alta'?'w':''):(p>=CRIT?'x':p>=WARN?'w':'');
   if(lvl!==nivel){if(nivel!==null){onda(lvl);lit(document.querySelectorAll('.pnl'))}nivel=lvl;GLOBO.lvl=lvl}
-  document.body.classList.toggle('lv-w',lvl==='w');
-  document.body.classList.toggle('lv-x',lvl==='x');
+  ponClase(document.body,'lv-w',lvl==='w');
+  ponClase(document.body,'lv-x',lvl==='x');
   var on=Math.round(p*NT/100),ts=document.querySelectorAll('.tick');
-  for(var i=0;i<ts.length;i++)ts[i].setAttribute('class','tick'+(i<on?' on'+(lvl?' '+lvl:''):''));
+  for(var i=0;i<ts.length;i++)ponAttr(ts[i],'class','tick'+(i<on?' on'+(lvl?' '+lvl:''):''));
   var arc=$id('arc'),hex=lvl==='x'?'#ff4d4d':lvl==='w'?'#ffffff':'#7fe7ff';
-  arc.style.strokeDashoffset=(590.6*(1-p/100)).toFixed(1);
-  arc.setAttribute('stroke',hex);arc.style.color=hex;
-  tween('pct',p,function(v){return pc(v)+'<small>%</small>'});
+  ponEstilo(arc,'stroke-dashoffset',(590.6*(1-p/100)).toFixed(1));
+  ponAttr(arc,'stroke',hex);ponEstilo(arc,'color',hex);
+  tween('pctv',p,function(v){return String(pc(v))});
   var st=$id('ctxstate');
-  st.textContent=lvl==='x'?'Crítico':lvl==='w'?'Alto':'Nominal';
-  st.style.color=lvl==='x'?'var(--rd)':lvl==='w'?'var(--wn)':'';
+  ponTexto(st,lvl==='x'?'Crítico':lvl==='w'?'Alto':'Nominal');
+  ponEstilo(st,'color',lvl==='x'?'var(--rd)':lvl==='w'?'var(--wn)':'');
   var al=$id('al-ctx');
-  al.className='al'+(lvl?' on '+lvl:'');
-  al.textContent=lvl==='x'?'Contexto crítico '+pc(p)+'%':'Contexto alto '+pc(p)+'%';
-  $id('ctxtok').textContent=n(c.tokens);
-  $id('ctxwin').textContent=n(c.window);
-  $id('ctxfree').textContent=n(Math.max(0,(c.window||0)-(c.tokens||0)));
+  ponAttr(al,'class','al'+(lvl?' on '+lvl:''));
+  ponTexto(al,lvl==='x'?'Contexto crítico '+pc(p)+'%':'Contexto alto '+pc(p)+'%');
+  ponTexto($id('ctxtok'),n(c.tokens));
+  ponTexto($id('ctxwin'),n(c.window));
+  ponTexto($id('ctxfree'),n(Math.max(0,(c.window||0)-(c.tokens||0))));
 }
 
 // Plan de Claude: N de M · P %, la barra se llena con transición y al 100 % pasa a blanco con brillo cian.
@@ -702,48 +752,59 @@ function renderPlan(d){
   if(ok&&hechas===tot)pct=100;
   var done=ok&&pct>=100;
   if(box._pct!=null&&box._pct!==pct)lit([box]);box._pct=pct;
-  box.classList.toggle('done',done);
-  txt.className='plt num'+(ok?'':' vacio');
-  txt.innerHTML=ok?'PLAN · <b>'+n(hechas)+' de '+n(tot)+'</b> · <b>'+pct+' %</b>':'PLAN · sin tareas activas';
-  $id('plfill').style.width=pct+'%';
-  bar.setAttribute('aria-valuenow',String(pct));
+  ponClase(box,'done',done);
+  ponClase(txt,'vacio',!ok);
+  ver($id('plv'),!ok);ver($id('pln'),ok);
+  if(ok){ponTexto($id('plnm'),n(hechas)+' de '+n(tot));ponTexto($id('plpc'),pct+' %')}
+  ponEstilo($id('plfill'),'width',pct+'%');
+  ponAttr(bar,'aria-valuenow',String(pct));
   var ts=ok&&p.tareas?p.tareas:[];
   var cur=ts.filter(function(t){return t.estado==='en curso'})[0];
-  $id('plcur').innerHTML=cur?'<em>En curso</em> · '+esc(cur.titulo):'';
-  $id('plcur').title=cur?cur.titulo:'';
-  lst.classList.toggle('off',!ts.length);
-  $id('plsum').textContent='Tareas ('+ts.length+')';
-  $id('plist').innerHTML=ts.map(function(t){
-    var c=t.estado==='completada'?'c':t.estado==='en curso'?'e':'p';
-    return '<li class="'+c+'" title="'+esc(t.titulo)+'"><i>'+esc(ESTADO[t.estado]||t.estado)+'</i><span>'+esc(t.titulo)+'</span></li>';
-  }).join('');
+  var pcur=$id('plcur');
+  ver(pcur,!!cur);ponAttr(pcur,'title',cur?cur.titulo:'');
+  if(cur)ponTexto($id('plcurt'),cur.titulo);
+  ponClase(lst,'off',!ts.length);
+  ponTexto($id('plsum'),'Tareas ('+ts.length+')');
+  lista($id('plist'),ts,function(t,i){return String(i)},function(){return mk('li','','<i></i><span></span>')},function(li,t){
+    ponAttr(li,'class',t.estado==='completada'?'c':t.estado==='en curso'?'e':'p');
+    ponAttr(li,'title',t.titulo);
+    ponTexto(li.firstChild,ESTADO[t.estado]||t.estado);
+    ponTexto(li.lastChild,t.titulo);
+  });
 }
 (function(){var v=null;try{v=localStorage.getItem(PKEY)}catch(e){}if(v==='1')$id('pll').open=true})();
 $id('pll').addEventListener('toggle',function(){try{localStorage.setItem(PKEY,$id('pll').open?'1':'0')}catch(e){}});
 
+// Si los datos no cambian (solo el latido), no se toca nada. La firma se guarda al acabar: si algo falla
+// a medias, la lectura siguiente lo vuelve a intentar.
+var FIRMA='';
 function render(d){
   if(!d)return;
   lastData=d;
+  var f=firma(d);
+  if(f===FIRMA)return;
   renderCtx(d);
   renderPlan(d);
-  tween('coste',Number(d.coste||0),function(v){return v.toFixed(4)+'<small>USD</small>'});
-  $id('modelo').textContent=d.modelo||'—';
+  tween('costev',Number(d.coste||0),function(v){return v.toFixed(4)});
+  ponTexto($id('modelo'),d.modelo||'—');
   renderComp(d);
   renderModels(d);
   renderChart(d);
   renderHist(d);
   renderAgents(d);
-  $id('ts').textContent='Último dato: '+hhmm(d.actualizado);
+  ponTexto($id('ts'),'Último dato: '+hhmm(d.actualizado));
+  FIRMA=f;
 }
 
 function pintaSenal(){
   var r=senal(ST,Date.now());
-  $id('link').innerHTML='<span class="dot'+(r.estado==='ok'?'':r.estado==='espera'?' wait':' off')+'"></span>'+r.texto;
+  ponAttr($id('ldot'),'class','dot'+(r.estado==='ok'?'':r.estado==='espera'?' wait':' off'));
+  ponTexto($id('ltxt'),r.texto);
   var a=$id('al-sig');
-  a.className='al'+(r.alerta?' on':'');
-  a.textContent=r.aviso;
-  $id('beat').textContent='Latido: '+(r.segundos==null?'—':'hace '+r.segundos+' s');
-  document.body.classList.toggle('sig-off',r.alerta);
+  ponAttr(a,'class','al'+(r.alerta?' on':''));
+  ponTexto(a,r.aviso);
+  ponTexto($id('beat'),'Latido: '+(r.segundos==null?'—':'hace '+r.segundos+' s'));
+  ponClase(document.body,'sig-off',r.alerta);
 }
 // Un error de sintaxis en datos.js (escritura a medias) no debe ensuciar la consola ni parar nada.
 window.onerror=function(msg,src){if(src&&(String(src).indexOf('datos.js')>=0||String(src).indexOf('estado.js')>=0))return true};
