@@ -81,10 +81,10 @@ export const register: Register = on => {
         `[portero] Tarea PESADA. Delégala completa con la herramienta Agent (model "${HEAVY_MODEL}"). Pasa al subagente el contexto reciente siguiente y devuelve su resultado sin rehacer el trabajo.\n\nContexto reciente:\n${recent}`,
       ],
     })
-  })
+  }).catch(($, e, next) => next(e))
 
   on('agent.spawn', ($, e, next) => {
     if (isHeavy && !e.fork && !e.model) return next({ ...e, model: HEAVY_MODEL })
     return next(e)
-  })
+  }).catch(($, e, next) => next(e))
 }

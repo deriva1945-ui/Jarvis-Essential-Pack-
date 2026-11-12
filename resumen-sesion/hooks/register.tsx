@@ -55,5 +55,5 @@ export const register: Register = on => {
         `[resumen-sesion] Resumen de traspaso de la sesión anterior (leído tras ${hours} h de inactividad):\n${resumen}`,
       ],
     })
-  })
+  }).catch(($, e, next) => next(e))
 }

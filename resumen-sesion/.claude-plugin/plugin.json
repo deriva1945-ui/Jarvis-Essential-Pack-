@@ -1,1 +1,9 @@
-{ "name": "resumen-sesion", "version": "0.1.0", "description": "Tras un rato sin escribir, resume la sesión con Haiku y te sugiere retomarla en una sesión nueva con ese resumen.", "types": "./types/index.d.ts" }
+{
+  "name": "resumen-sesion",
+  "version": "0.1.0",
+  "description": "Tras un rato sin escribir, resume la sesión con Haiku y te sugiere retomarla en una sesión nueva con ese resumen.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "deriva1945-ui"
+  }
+}
