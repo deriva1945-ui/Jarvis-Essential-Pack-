@@ -30,6 +30,40 @@ test('the page has the key sections, the size breakpoints and the density toggle
   expect(PAGE).not.toContain('#6b7a90')
 })
 
+test('the layout adapts by container queries and documented breakpoints, with no text under 14 px', () => {
+  const css = PAGE.slice(PAGE.indexOf('<style>'), PAGE.indexOf('</style>'))
+  // Cada panel es un contenedor y se ajusta por dentro según su propio ancho.
+  expect(css).toMatch(/\.pnl\{[^}]*container-type:inline-size/)
+  for (const q of ['@container (max-width:599px)', '@container (max-width:459px)', '@container (max-width:419px)']) {
+    expect(css).toContain(q)
+  }
+  // Una rejilla con áreas nombradas; .grid no dibuja caja para que el plan pueda ir entre los paneles.
+  expect(css).toContain('.grid{display:contents}')
+  expect(css).toContain('grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "hist" "chart" "foot"')
+  // Breakpoints de ventana: los que se usan están documentados en el comentario del CSS.
+  const doc = css.slice(css.indexOf('/* ===== Breakpoints ====='), css.indexOf('*/', css.indexOf('/* ===== Breakpoints =====')))
+  expect(doc.length).toBeGreaterThan(100)
+  for (const [media, nota] of [
+    ['@media (min-width:560px)', '560 px'],
+    ['@media (min-width:900px)', '900 px'],
+    ['@media (min-width:1200px)', '1200 px'],
+    ['@media (min-width:1600px) and (min-height:1000px)', '1600 px y 1000 px de alto'],
+  ]) {
+    expect(css).toContain(media)
+    expect(doc).toContain(nota)
+  }
+  for (const nota of ['< 600 px', '< 460 px', '< 420 px', '14 px']) expect(doc).toContain(nota)
+  // clamp() con vw, vh y cqi.
+  expect(css).toMatch(/clamp\([^;]*vw/)
+  expect(css).toMatch(/clamp\([^;]*vh/)
+  expect(css).toMatch(/clamp\([^;]*cqi/)
+  // Ningún font-size (ni font abreviado) por debajo de 14 px.
+  const sizes = [...css.matchAll(/font(?:-size)?:\s*(?:[a-z0-9-]+\s+)?(?:clamp\()?(\d+(?:\.\d+)?)px/g)].map(m => Number(m[1]))
+  expect(sizes.length).toBeGreaterThan(3)
+  expect(sizes.filter(px => px < 14)).toEqual([])
+  expect(css).not.toMatch(/font-size:\s*(?:[0-9]|1[0-3])(?:\.\d+)?px/)
+})
+
 test('session.start writes the page and the data and opens the window, without a side pane', PRUEBA, async ($, on) => {
   mock.clock(on, { now: 1_000 })
   const writes: { path: string; text: string }[] = []

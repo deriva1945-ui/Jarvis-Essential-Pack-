@@ -3,11 +3,13 @@
 // Sin acentos graves, sin dólar-llave y sin barras invertidas dentro: es un template literal.
 // Todo en línea, sin CDN: tiene que funcionar offline desde file://.
 //
-// Tamaños de ventana:
-//   >= 1600 px  rejilla completa (contexto, coste, comparativa, reparto, gráfica, últimos turnos, agentes).
-//   900-1599    dos columnas, sin la gráfica de tokens por turno; la comparativa bajo el coste.
-//   < 900       una columna: contexto, coste, comparativa, reparto por modelo, agentes, últimos turnos.
-//   Mínimo 420 px de ancho sin desplazamiento horizontal.
+// Tamaños de ventana (detalle en el comentario de breakpoints del CSS):
+//   < 560 px          una columna, por prioridad: contexto, coste, comparativa, reparto, agentes, plan, últimos turnos, gráfica.
+//   560-899           dos columnas arriba (contexto | coste y comparativa) y el resto a todo el ancho.
+//   900-1199          dos columnas; reparto y agentes lado a lado; plan, últimos turnos y gráfica a todo el ancho.
+//   >= 1200           tres columnas: contexto | coste y comparativa | reparto y agentes.
+//   >= 1600 y alto >= 1000  todo cabe en la ventana: plan arriba y la gráfica con los últimos turnos llenan el alto que queda.
+//   Desde 320 px de ancho sin desplazamiento horizontal; los paneles se ajustan por dentro con container queries.
 // Arriba, a todo el ancho: barra de progreso del plan de Claude (TaskCreate / TaskUpdate), con la lista plegable.
 // Tecla D o botón de la cabecera: modo cómodo / compacto (se guarda en localStorage).
 // Estética blanco-cian: fondo azul-negro, bordes y cifras en blanco con cian; rojo solo en alertas.
@@ -32,9 +34,9 @@ export const PAGE = `<!doctype html>
   --f-opus:#e8fbff;--f-haiku:#7fe7ff;--f-fable:#c4b5fd;--f-sonnet:#dbeafe;--f-otro:#dbeafe;
   --sans:Bahnschrift,'Segoe UI','Inter','Liberation Sans','DejaVu Sans',sans-serif;
   /* Texto: etiquetas >= 14 px, valores >= 16 px; crecen con la ventana. */
-  --fk:clamp(14px,calc(.32vw + .38vh + 5px),18px);
-  --fv:clamp(16px,calc(.42vw + .5vh + 5px),22px);
-  --fbig:clamp(34px,calc(1.6vw + 2.2vh),64px);
+  --fk:clamp(14px,calc(.32vw + .38vh + 5px),22px);
+  --fv:clamp(16px,calc(.42vw + .5vh + 5px),27px);
+  --fbig:clamp(34px,calc(1.6vw + 2.2vh),80px);
   --gap:clamp(10px,1vw,18px);
   --pad:clamp(12px,1vw,20px);
 }
@@ -60,12 +62,13 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:8;opac
   box-shadow:inset 0 0 130px rgba(255,77,77,.42)}
 body.lv-x:before{opacity:1;animation:alarm 1.6s ease-in-out infinite}
 body.lv-w:before{opacity:.5;box-shadow:inset 0 0 90px rgba(234,255,255,.2)}
-.wrap{position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column;gap:var(--gap);padding:var(--pad) clamp(16px,1.4vw,26px);max-width:2200px;margin:0 auto}
+.wrap{position:relative;z-index:2;min-height:100vh;display:grid;gap:var(--gap);padding:var(--pad) clamp(16px,1.4vw,26px);max-width:max(2200px,86vw);margin:0 auto;
+  grid-template-columns:minmax(0,1fr);align-content:start}
 .k{color:var(--sub);font-size:var(--fk);letter-spacing:.08em;text-transform:uppercase}
 .num{font-variant-numeric:tabular-nums}
 
 /* Cabecera */
-header{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;border-bottom:1px solid var(--line);padding-bottom:10px;position:relative}
+header{grid-area:head;min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;border-bottom:1px solid var(--line);padding-bottom:10px;position:relative}
 header:after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,var(--wh),var(--ce) 18%,transparent 40%)}
 .logo{flex:none;width:28px;height:28px;border:2px solid var(--wh);border-radius:50%;position:relative;box-shadow:0 0 10px rgba(127,231,255,.5)}
 .logo:after{content:"";position:absolute;inset:4px;border-radius:50%;border:1px dashed var(--ce);animation:spin 8s linear infinite}
@@ -89,7 +92,7 @@ h1 .brand{color:var(--sub)}
 #dens kbd{font:inherit;color:var(--ce);border:1px solid var(--ce);border-radius:4px;padding:0 5px;margin-right:8px}
 
 /* Paneles de cristal: fondo translúcido con desenfoque y borde en degradado blanco-cian; se ilumina en cian suave al pasar el ratón o al cambiar de estado. */
-.pnl{position:relative;min-width:0;min-height:0;border-radius:12px;border:1px solid transparent;
+.pnl{position:relative;min-width:0;min-height:0;container-type:inline-size;border-radius:12px;border:1px solid transparent;
   background:linear-gradient(160deg,var(--glass),var(--glass2)) padding-box,var(--bord) border-box;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
   box-shadow:0 18px 36px rgba(0,0,0,.4);transition:box-shadow .8s}
 .pnl:hover,.pnl.lit{background:linear-gradient(160deg,var(--glass),var(--glass2)) padding-box,var(--bord-on) border-box;box-shadow:0 0 22px rgba(127,231,255,.18),0 18px 36px rgba(0,0,0,.4);transition:box-shadow .25s}
@@ -108,14 +111,14 @@ body.lv-x .pnl:before,body.lv-x .pnl:after{border-color:var(--rd)}
 .ph .r{margin-left:auto;font-size:var(--fk);color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 
 /* Plan: barra de progreso a todo el ancho, encima de la rejilla */
-#p-plan{flex:none}
+#p-plan{grid-area:plan}
 #p-plan>.in{gap:10px}
 .plh{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;min-width:0}
 .plt{font-size:clamp(18px,calc(.6vw + .7vh + 6px),30px);color:var(--txt);letter-spacing:.08em;white-space:nowrap}
 .plt b{font-weight:normal;color:var(--txt);text-shadow:0 0 10px rgba(127,231,255,.5)}
 .plt.vacio{color:var(--sub);font-size:var(--fv)}
 .plok{display:none;font-size:var(--fk);letter-spacing:.12em;color:var(--bg);background:var(--ok);padding:2px 10px;border-radius:4px;box-shadow:0 0 12px rgba(127,231,255,.6)}
-.plcur{margin-left:auto;font-size:var(--fk);color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:100%}
+.plcur{margin-left:auto;font-size:var(--fk);color:var(--sub);min-width:0;max-width:100%;overflow-wrap:anywhere}
 .plcur em{font-style:normal;color:var(--ce)}
 .plbar{position:relative;height:clamp(16px,2vh,24px);background:var(--track);border:1px solid var(--edge);border-radius:999px;overflow:hidden}
 .plfill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:inherit;background-color:var(--ce);box-shadow:0 0 14px rgba(127,231,255,.6);
@@ -130,9 +133,9 @@ body.lv-x .pnl:before,body.lv-x .pnl:after{border-color:var(--rd)}
 .pll summary:before{content:"+ ";color:var(--wh)}
 .pll[open] summary:before{content:"- "}
 .pll summary:focus-visible{outline:1px solid var(--ce);outline-offset:3px}
-.pll ol{margin:8px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:4px 18px;max-height:min(16vh,9em);overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(127,231,255,.4) transparent}
+.pll ol{margin:8px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,max(340px,24em)),1fr));gap:4px 18px;max-height:min(18vh,9em);overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(127,231,255,.4) transparent}
 .pll li{display:flex;gap:10px;align-items:baseline;min-width:0;font-size:var(--fk);color:var(--txt)}
-.pll li span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pll li span{min-width:0;overflow-wrap:anywhere}
 .pll li i{font-style:normal;flex:none;width:7.5em;color:var(--sub);text-transform:uppercase;letter-spacing:.04em}
 .pll li.c i{color:var(--ce)}.pll li.c span{color:var(--sub);text-decoration:line-through}
 .pll li.e i{color:var(--wn);text-shadow:0 0 8px rgba(127,231,255,.6)}
@@ -140,17 +143,17 @@ body.lv-x .pnl:before,body.lv-x .pnl:after{border-color:var(--rd)}
 body.compact .pll,body.compact .plcur{display:none}
 body.compact #p-plan>.in{gap:6px}
 
-/* Rejilla: una sola, con áreas que cambian según el ancho */
-.grid{flex:1;display:grid;gap:var(--gap);min-height:0;min-width:0;
-  grid-template-columns:minmax(0,1fr);
-  grid-template-areas:"ctx" "cost" "comp" "mod" "agt" "hist"}
-#p-ctx{grid-area:ctx}#p-cost{grid-area:cost}#p-comp{grid-area:comp}#p-mod{grid-area:mod}#p-chart{grid-area:chart;display:none}#p-hist{grid-area:hist}#p-agt{grid-area:agt}
+/* Rejilla: una sola, la de .wrap. .grid no dibuja caja (display:contents), así el plan puede ir entre los paneles
+   según la prioridad. Áreas por tamaño en el bloque de breakpoints, al final del CSS. */
+.grid{display:contents}
+.wrap{grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "hist" "chart" "foot"}
+body.compact .wrap{grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "chart"}
+#p-ctx{grid-area:ctx}#p-cost{grid-area:cost}#p-comp{grid-area:comp}#p-mod{grid-area:mod}#p-chart{grid-area:chart}#p-hist{grid-area:hist}#p-agt{grid-area:agt}
 body.compact #p-hist{display:none}
-body.compact .grid{grid-template-areas:"ctx" "cost" "comp" "mod" "agt"}
 
 /* Contexto: globo holográfico (canvas) con un anillo blanco-cian inclinado (CSS 3D) que gira al revés, sobre un halo cian */
 .ctxb{display:flex;flex-direction:column;align-items:center;gap:var(--gap);flex:1;min-height:0;justify-content:center}
-.reactor{position:relative;width:100%;max-width:min(300px,29vh);aspect-ratio:1;flex:none}
+.reactor{position:relative;width:100%;max-width:clamp(150px,min(78cqi,34vh),300px);aspect-ratio:1;flex:none}
 /* Halo cian detrás del globo */
 .reactor:before{content:"";position:absolute;inset:-18%;border-radius:50%;pointer-events:none;
   background:radial-gradient(circle,rgba(127,231,255,.16),rgba(127,231,255,.06) 42%,transparent 68%)}
@@ -181,7 +184,7 @@ body.lv-x .rc .p small{color:var(--rd)}
 body.compact .kv .opt{display:none}
 
 /* Coste */
-.cost{font-size:var(--fbig);color:var(--txt);text-shadow:0 0 14px rgba(127,231,255,.45);line-height:1.05;margin:0 0 4px;white-space:nowrap}
+.cost{font-size:clamp(28px,16cqi,var(--fbig));color:var(--txt);text-shadow:0 0 14px rgba(127,231,255,.45);line-height:1.05;margin:0 0 4px;white-space:nowrap}
 .cost small{font-size:var(--fk);color:var(--sub);letter-spacing:.1em;margin-left:8px}
 .sub{color:var(--sub);font-size:var(--fk);margin-bottom:8px}
 .mdl{color:var(--ce);font-size:var(--fv);overflow-wrap:anywhere}
@@ -220,7 +223,7 @@ body.compact .cnote,body.compact .ctk,body.compact #p-comp .stack{display:none}
 .stack.empty{background:var(--track)}
 
 /* Reparto por modelo: nombre, barra, %, turnos */
-.cmp{display:grid;grid-template-columns:minmax(130px,15em) minmax(60px,1fr) 4.5em 5.5em;gap:10px 16px;align-items:center}
+.cmp{display:grid;grid-template-columns:minmax(130px,15em) minmax(5.5em,1fr) 4.5em 5.5em;gap:10px 16px;align-items:center}
 .cmp .hd{font-size:var(--fk);color:var(--sub);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
 .cmp .nm{display:flex;flex-direction:column;min-width:0;border-left:2px solid var(--c);padding-left:10px}
 .cmp .nm b{font-weight:normal;color:var(--c);letter-spacing:.12em;font-size:var(--fv);white-space:nowrap}
@@ -234,7 +237,7 @@ body.compact .cmp .nm span{display:none}
 .r-al{text-align:right}
 
 /* Gráfica */
-.chart{position:relative;flex:1;min-height:70px}
+.chart{position:relative;flex:1;min-height:clamp(170px,28vh,340px)}
 .chart svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .chart text{font:14px var(--sans);fill:var(--sub)}
 .legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:var(--fk);color:var(--sub);margin-top:8px;flex:none}
@@ -250,6 +253,8 @@ td{font-size:var(--fv)}
 th{color:var(--sub);font-weight:normal;font-size:var(--fk);letter-spacing:.06em;text-transform:uppercase;position:sticky;top:0;background:var(--thbg);z-index:1}
 th:first-child,td:first-child{padding-left:2px}
 .al-l{text-align:left}
+/* Nombres de agente: se parten en varias líneas en vez de cortarse. */
+td.al-l{white-space:normal;overflow-wrap:anywhere}
 th .sh{display:none}
 .w-hora{width:6.2em}.w-mdl{width:6.5em}.w-tok{width:6em}.w-usd{width:5.8em}.w-trn{width:6.4em}.w-share{width:11em}
 tbody tr:hover td{background:rgba(127,231,255,.05)}
@@ -262,7 +267,7 @@ tr.new td{animation:flash 1.4s ease-out}
 .share .sv{flex:none;min-width:3.5em;text-align:right}
 .empty-row{color:var(--sub);text-align:left!important;font-size:var(--fk)!important;padding:14px 8px!important}
 
-footer{display:flex;gap:18px;justify-content:space-between;font-size:var(--fk);color:var(--sub);border-top:1px solid var(--line);border-image:linear-gradient(90deg,rgba(234,255,255,.4),rgba(127,231,255,.2) 50%,rgba(127,231,255,.05)) 1;padding-top:8px;flex-wrap:wrap}
+footer{grid-area:foot;display:flex;gap:18px;justify-content:space-between;font-size:var(--fk);color:var(--sub);border-top:1px solid var(--line);border-image:linear-gradient(90deg,rgba(234,255,255,.4),rgba(127,231,255,.2) 50%,rgba(127,231,255,.05)) 1;padding-top:8px;flex-wrap:wrap}
 footer .line{flex:1;align-self:center;height:1px;background:linear-gradient(90deg,var(--line),transparent);min-width:20px}
 body.compact footer{display:none}
 
@@ -280,66 +285,111 @@ body.compact footer{display:none}
 /* Compacto: menos capas de efecto, la lectura primero */
 body.compact .scan,body.compact .gring svg .g2{display:none}
 
-/* < 900 px: una columna. Estrecho: menos columnas en las tablas. */
+/* ===== Breakpoints =====
+   Ventana (media queries, ancho x alto):
+     base   < 560 px   una columna por prioridad: contexto, coste, comparativa, reparto, agentes, plan, últimos turnos, gráfica.
+     560 px             dos columnas arriba: contexto | coste + comparativa; reparto, agentes, plan, turnos y gráfica a todo el ancho.
+     900 px             dos columnas: contexto | coste + comparativa; reparto | agentes; plan, turnos y gráfica a todo el ancho.
+     1200 px            tres columnas: contexto | coste + comparativa | reparto + agentes; plan, turnos y gráfica a todo el ancho.
+     1600 px y 1000 px de alto   pantalla completa sin desplazar: plan arriba, las tres columnas y abajo gráfica | turnos con el alto que queda.
+     Por debajo de 1000 px de alto la página se desplaza en vertical; nunca en horizontal.
+   Panel (container queries, ancho del propio panel; cada .pnl es container-type:inline-size):
+     < 600 px   tablas sin hora ni turnos; reparto de agentes solo con el %.
+     < 460 px   reparto por modelo sin la columna de turnos; comparativa con la barra bajo su etiqueta.
+     < 420 px   tablas sin la columna de modelo; reparto por modelo en dos líneas (nombre y %, barra debajo).
+   Texto: nunca por debajo de 14 px (--fk); los nombres largos se parten en varias líneas en vez de cortarse. */
+
+/* Cabecera estrecha */
 @media (max-width:899px){
   .hstat{margin-left:0;width:100%;justify-content:space-between}
   .hstat>div{text-align:left}
-  .reactor{max-width:min(260px,60vw)}
 }
-@media (max-width:640px){
+@media (max-width:559px){
   .plcur{margin-left:0;flex-basis:100%}
-  .pll li i{width:6.5em}
   h1{letter-spacing:.14em}
   h1 .brand{display:none}
   .hstat .opt{display:none}
-  .cmp{grid-template-columns:minmax(0,1.3fr) minmax(40px,1fr) 4em}
-  .cmp .tn,.cmp .hd.tn{display:none}
-  .h-hora,.a-turnos{display:none}
-  .w-mdl{width:5.4em}.w-tok{width:5.2em}.w-usd{width:5.4em}.w-share{width:4.2em}
+  .wrap{padding-left:16px;padding-right:16px}
 }
 
-/* 900-1599 px: dos columnas, sin la gráfica */
+/* 560 px: contexto a la izquierda, coste y comparativa a la derecha */
+@media (min-width:560px){
+  .wrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:"head head" "ctx cost" "ctx comp" "mod mod" "agt agt" "plan plan" "hist hist" "chart chart" "foot foot"}
+  body.compact .wrap{grid-template-areas:"head head" "ctx cost" "ctx comp" "mod mod" "agt agt" "plan plan" "chart chart"}
+}
+/* 900 px: reparto y agentes lado a lado; la gráfica a todo el ancho para que sus etiquetas no se junten */
 @media (min-width:900px){
-  .grid{grid-template-columns:minmax(300px,.8fr) minmax(0,1.5fr);
-    grid-template-areas:"ctx mod" "ctx agt" "cost hist" "comp hist"}
-  body.compact .grid{grid-template-areas:"ctx mod" "ctx agt" "cost agt" "comp agt"}
+  .wrap{grid-template-columns:minmax(0,.85fr) minmax(0,1fr);
+    grid-template-areas:"head head" "ctx cost" "ctx comp" "mod agt" "plan plan" "hist hist" "chart chart" "foot foot"}
+  body.compact .wrap{grid-template-areas:"head head" "ctx cost" "ctx comp" "mod agt" "plan plan" "chart chart"}
 }
-
-/* >= 1600 px: rejilla completa */
-@media (min-width:1600px){
-  .grid{grid-template-columns:minmax(360px,460px) minmax(0,1.1fr) minmax(0,1fr);
-    grid-template-areas:"ctx mod mod" "ctx chart hist" "cost comp agt"}
-  body.compact .grid{grid-template-areas:"ctx mod mod" "ctx chart chart" "cost comp agt"}
-  #p-chart{display:block}
-  .reactor{max-width:min(380px,24vh)}
+/* 1200 px: tres columnas */
+@media (min-width:1200px){
+  .wrap{grid-template-columns:minmax(0,.9fr) minmax(0,1fr) minmax(0,1.15fr);
+    grid-template-areas:"head head head" "ctx cost mod" "ctx comp agt" "plan plan plan" "hist hist hist" "chart chart chart" "foot foot foot"}
+  body.compact .wrap{grid-template-areas:"head head head" "ctx cost mod" "ctx comp agt" "plan plan plan" "chart chart chart"}
 }
+/* Mientras la página se desplaza, la tabla de turnos no pasa de un alto razonable. */
+.tblw{max-height:clamp(220px,50vh,440px)}
 
-/* Si la ventana es alta y ancha, todo cabe sin desplazar la página. En dos columnas (900-1599) la columna
-   izquierda lleva contexto, coste y comparativa, así que hace falta más alto: por debajo de 1000 px la página se desplaza. */
-@media (min-width:900px) and (max-width:1599px) and (min-height:1000px),(min-width:1600px) and (min-height:700px){
-  .wrap{height:100vh}
-  .grid{overflow:hidden}
+/* 1600 px y 1000 px de alto: todo en la ventana, sin desplazar. La última fila (gráfica | turnos) se queda con el alto libre. */
+@media (min-width:1600px) and (min-height:1000px){
+  .wrap{height:100vh;grid-template-columns:minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.1fr);
+    grid-template-rows:auto min-content min-content min-content minmax(236px,1fr) auto;
+    grid-template-areas:"head head head" "plan plan plan" "ctx cost mod" "ctx comp agt" "chart chart hist" "foot foot foot"}
+  body.compact .wrap{grid-template-rows:auto min-content min-content min-content minmax(236px,1fr);
+    grid-template-areas:"head head head" "plan plan plan" "ctx cost mod" "ctx comp agt" "chart chart chart"}
   .tblw{max-height:none}
+  .chart{min-height:120px}
+  .reactor{max-width:clamp(200px,min(70cqi,23vh),440px)}
 }
-@media (min-width:900px) and (max-width:1599px) and (min-height:1000px){
-  /* Las filas de abajo (coste y comparativa) nunca se recortan: el alto que quita la barra del plan sale de la fila del medio. */
-  .grid{grid-template-rows:auto minmax(0,1fr) min-content minmax(min-content,.85fr)}
-  body.compact .grid{grid-template-rows:auto minmax(0,1fr) auto auto}
+/* Pantalla completa con poco alto (1000-1199 px, p. ej. 1920x1080): márgenes más justos para que quepa todo. */
+@media (min-width:1600px) and (min-height:1000px) and (max-height:1199px){
+  :root{--gap:10px;--pad:12px}
+  body.compact{--gap:10px;--pad:12px}
+  .plt{font-size:clamp(18px,calc(.5vw + .5vh + 6px),26px)}
+  .plbar{height:16px}
+  header{padding-bottom:6px}
+  .ph{margin-bottom:8px;padding-bottom:5px}
+  #p-plan>.in{gap:8px}
+  .stack{margin-bottom:10px}
+  .pll ol{margin-top:4px}
+  .kv{gap:4px 16px}
+  th,td{padding-top:4px;padding-bottom:4px}
+  .cmp{row-gap:6px}
+  .legend{margin-top:4px}
+  .reactor{max-width:clamp(200px,min(70cqi,20vh),440px)}
 }
-@media (min-width:1600px) and (min-height:700px){
-  .grid,body.compact .grid{grid-template-rows:auto minmax(0,1fr) minmax(min-content,1fr)}
-}
-/* Columnas estrechas (900-1199 px): reparto de agentes sin barra y comparativa en dos líneas. */
-@media (min-width:900px) and (max-width:1199px){
-  /* Comparativa en la columna izquierda estrecha: la barra debajo de su etiqueta y su cifra. */
-  .cpb{grid-template-columns:minmax(0,1fr) auto;gap:4px 14px}
-  .cpb .v{grid-column:2}
-  .cpb .cbar{grid-column:1/-1;margin-bottom:6px}
-  .w-share{width:4.5em}
+
+/* Dentro de cada panel, según su propio ancho */
+@container (max-width:599px){
+  .h-hora,.a-turnos,#hist td:first-child{display:none}
   .share .seg,th .lg{display:none}
   th .sh{display:inline}
+  th,td{padding-left:5px;padding-right:5px}
+  .w-mdl{width:6.4em}.w-tok{width:6.2em}.w-usd{width:6.2em}.w-share{width:4em}
+  .share .sv{min-width:0}
+  .pll li i{width:6.8em}
 }
-@media (max-width:640px){.share .seg,th .lg{display:none}th .sh{display:inline}}
+@container (max-width:459px){
+  .cmp{grid-template-columns:minmax(0,1fr) minmax(48px,1fr) 4em;gap:8px 12px}
+  .cmp .tn,.cmp .hd.tn{display:none}
+  .cpb{grid-template-columns:minmax(0,1fr) auto;gap:4px 14px}
+  .cpb .k{grid-column:1;white-space:normal}
+  .cpb .v{grid-column:2}
+  .cpb .cbar{grid-column:1/-1;margin-bottom:6px}
+}
+@container (max-width:419px){
+  #atab th:nth-child(2),#atab td:nth-child(2),#hist th:nth-child(3),#hist td:nth-child(3){display:none}
+  .cmp{grid-template-columns:minmax(0,1fr) auto;grid-auto-flow:row dense;gap:6px 12px}
+  .cmp .hd:nth-child(2){display:none}
+  .cmp .nm{grid-column:1}
+  .cmp .pc{grid-column:2}
+  .cmp>div:has(>.seg){grid-column:1/-1;margin-bottom:6px}
+  .cmp .nm b{white-space:normal}
+  .kv{gap:6px 10px}
+}
 /* HUD cerrado con /jarvis: si window.close() no cierra la ventana, queda este aviso encima de todo. */
 .hudoff{display:none;position:fixed;inset:0;z-index:50;align-items:center;justify-content:center;padding:16px;text-align:center;background:#050a12;color:#eaffff;font:600 clamp(16px,2.4vw,22px)/1.4 system-ui,sans-serif;letter-spacing:.04em}
 body.hud-off .hudoff{display:flex}
