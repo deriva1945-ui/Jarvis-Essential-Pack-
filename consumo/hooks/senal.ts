@@ -52,6 +52,20 @@ export function senal(st: SenalState, now: number): Senal {
   return { estado: ok ? 'ok' : espera ? 'espera' : 'off', alerta: !ok && !espera, texto, aviso, segundos: secs }
 }
 
+// Tema del HUD: datos.js trae config.tema (opción tema de userConfig, ya validada por config.ts).
+// Si es un tema conocido se pone en data-tema de <html> y se devuelve; si falta o no vale, no se
+// toca nada y se devuelve null (sin atributo la página usa hibrido). La lista repite TEMAS de config.ts
+// porque la función se incrusta en la página y no puede importar nada.
+export function aplicaTema(root: { dataset: Record<string, string | undefined> }, d: unknown): string | null {
+  const TEMAS = ['mark-ii', 'mark-l', 'stark', 'hibrido', 'claro', 'natural']
+  const o = d as { config?: { tema?: unknown } } | null
+  const c = o && typeof o === 'object' ? o.config : undefined
+  const t = c && typeof c === 'object' ? c.tema : undefined
+  if (typeof t !== 'string' || TEMAS.indexOf(t) < 0) return null
+  if (root.dataset.tema !== t) root.dataset.tema = t
+  return t
+}
+
 // El bloque que se pega en la página: cada función como expresión con su nombre de página.
 export const LOGICA = [
   'var nuevoEstado=(' + String(nuevoEstado) + ');',
@@ -59,4 +73,5 @@ export const LOGICA = [
   'var alCargar=(' + String(alCargar) + ');',
   'var alFallar=(' + String(alFallar) + ');',
   'var senal=(' + String(senal) + ');',
+  'var aplicaTema=(' + String(aplicaTema) + ');',
 ].join('\n')

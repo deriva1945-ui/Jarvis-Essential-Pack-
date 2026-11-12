@@ -15,13 +15,14 @@
     "tema": {
       "type": "string",
       "title": "Tema / Theme",
-      "description": "Tema de color del HUD: mark-ii, mark-l, stark, hibrido o claro. Por defecto: hibrido. / HUD colour theme: mark-ii, mark-l, stark, hibrido (hybrid) or claro (light). Default: hibrido.",
+      "description": "Tema de color del HUD: mark-ii, mark-l, stark, hibrido, claro o natural (grafito cálido, sin neón, con el globo 3D). Por defecto: hibrido. / HUD colour theme: mark-ii, mark-l, stark, hibrido (hybrid), claro (light) or natural (warm graphite, no neon, keeps the 3D globe). Default: hibrido.",
       "options": [
         "mark-ii",
         "mark-l",
         "stark",
         "hibrido",
-        "claro"
+        "claro",
+        "natural"
       ],
       "default": "hibrido"
     },

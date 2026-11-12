@@ -10,7 +10,9 @@
 //   Mínimo 420 px de ancho sin desplazamiento horizontal.
 // Arriba, a todo el ancho: barra de progreso del plan de Claude (TaskCreate / TaskUpdate), con la lista plegable.
 // Tecla D o botón de la cabecera: modo cómodo / compacto (se guarda en localStorage).
-// Temas (atributo data-tema en <html>): hibrido (por defecto, blanco-cian con anillo ámbar), mark-ii, mark-l, stark y claro.
+// Temas (atributo data-tema en <html>): hibrido (por defecto, blanco-cian con anillo ámbar), mark-ii, mark-l, stark, claro y natural.
+// El tema llega en datos.js (config.tema, opción tema de userConfig) y se aplica al cargar y en cada lectura válida.
+// Natural: grafito cálido sin neón, paneles opacos con filo de 1 px y su propia distribución; conserva el globo y el anillo 3D.
 // Cada tema es un bloque de variables CSS (--bg, --panel, --txt, --sub, --acc, --acc2, --warn, --crit, --ok, --modelo-*); rojo solo en alertas.
 // Globo holográfico en canvas con un anillo inclinado (CSS 3D) que gira al revés, paneles de cristal y escaneo sutil.
 // Fondo: degradado radial, nebulosa difuminada y rejilla de perspectiva que avanza despacio (quieta en compacto y con movimiento reducido).
@@ -86,6 +88,25 @@ html[data-tema="claro"]{
   --bg0:#f7faff;--bg1:#eef3f9;--bg2:#e1e9f3;--neb2-rgb:120,170,255;--shadow:rgba(20,40,80,.12);
   --glow:.3;--cristal:blur(12px);--globo-filtro:hue-rotate(14deg) saturate(1.6) brightness(.42);--globo-filtro-x:brightness(.8) saturate(1.4);
   color-scheme:light;
+}
+html[data-tema="natural"]{
+  /* Natural: grafito cálido, texto marfil y un solo acento salvia. Sin brillos ni cristal; el globo, el anillo
+     inclinado y el núcleo siguen en 3D. --borde y --borde-2 son los filos de 1 px de los paneles, --globo-rgb*
+     tiñen las líneas del globo (normal, aviso, crítico) y --cifra es la letra de las cifras grandes. Distribución propia al final. */
+  --bg:#151412;--bg-rgb:21,20,18;--panel:#1d1b18;--txt:#eee8dc;--sub:#b8af9f;
+  --acc:#93c2a2;--acc-rgb:147,194,162;--acc2:#ddd5c7;--acc2-rgb:221,213,199;
+  --warn:#e3b562;--warn-rgb:227,181,98;--crit:#e5735f;--crit-rgb:229,115,95;--crit-txt:#f7d6cf;--ok:#a6cfb2;
+  --modelo-opus:#e4dccd;--modelo-haiku:#93c2a2;--modelo-fable:#bcaad9;--modelo-otro:#a8a194;
+  --ring1:#ddd5c7;--ring2:#93c2a2;--ring-rgb:147,194,162;
+  --glass:#1d1b18;--glass2:#1d1b18;--thbg:#1d1b18;--track:#2c2925;--mix:#ddd5c7;
+  --bg0:#171614;--bg1:#151412;--bg2:#131210;--neb2-rgb:147,194,162;--shadow:rgba(0,0,0,.24);
+  --glow:0;--cristal:none;--globo-filtro:none;--globo-filtro-x:none;
+  --globo-rgb:186,212,192;--globo-rgb-w:227,181,98;--globo-rgb-x:229,115,95;
+  --borde:#2d2a26;--borde-2:#3d3933;
+  --sans:'Segoe UI Variable Text','Segoe UI','Inter','Helvetica Neue','Liberation Sans','DejaVu Sans',system-ui,sans-serif;
+  --cifra:'Segoe UI Variable Display','Segoe UI','Inter','Helvetica Neue','Liberation Sans',sans-serif;
+  --gap:clamp(14px,1.15vw,22px);--pad:clamp(16px,1.25vw,24px);
+  color-scheme:dark;
 }
 /* Derivados: se calculan con las variables del tema activo. Los nombres cortos (--ce, --wh, --wn, --rd, --f-*) los usa el script. */
 :root{
@@ -449,6 +470,148 @@ html[data-tema="claro"] body.lv-x:before{animation-name:alarm-claro}
 /* Mark L: reflejo de cristal en el borde superior de cada panel. */
 html[data-tema="mark-l"] .pnl>.in{background:linear-gradient(180deg,rgba(255,255,255,.045),transparent 38%)}
 
+/* Natural. Fondo liso, paneles opacos con filo de 1 px, etiquetas en minúscula, sin rejilla, escaneo, nebulosa
+   ni esquinas. El 3D se queda: globo en canvas, anillo inclinado que gira (más despacio), marcas y núcleo. */
+html[data-tema="natural"] body{background-image:radial-gradient(ellipse 70% 50% at 20% -10%,rgba(var(--acc2-rgb),.03),transparent 70%);background-attachment:fixed;font-weight:400}
+html[data-tema="natural"] .neb,html[data-tema="natural"] .floor,html[data-tema="natural"] .scan,html[data-tema="natural"] .shift{display:none}
+html[data-tema="natural"] .k{text-transform:none;letter-spacing:.005em}
+html[data-tema="natural"] .num{font-feature-settings:"tnum" 1}
+/* Cabecera simple: punto de color, nombre y estado a la derecha. */
+html[data-tema="natural"] header{border-bottom:1px solid var(--borde);padding-bottom:14px;gap:10px 22px}
+html[data-tema="natural"] header:after{display:none}
+html[data-tema="natural"] .logo{width:12px;height:12px;border:none;border-radius:50%;background:var(--acc);box-shadow:none}
+html[data-tema="natural"] .logo:after{display:none}
+html[data-tema="natural"] h1{font-size:clamp(18px,calc(.5vw + .5vh + 6px),26px);font-weight:600;letter-spacing:-.005em;text-transform:none;text-shadow:none}
+html[data-tema="natural"] h1 .brand{display:none}
+html[data-tema="natural"] .al{text-transform:none;letter-spacing:0;border-radius:6px;padding:3px 12px;animation:none;box-shadow:none!important}
+html[data-tema="natural"] #al-ctx.w{background:rgba(var(--warn-rgb),.1)}
+html[data-tema="natural"] #al-ctx.x,html[data-tema="natural"] #al-sig{background:rgba(var(--crit-rgb),.12)}
+html[data-tema="natural"] .hstat .k{font-size:14px}
+html[data-tema="natural"] .dot,html[data-tema="natural"] .dot.wait,html[data-tema="natural"] .dot.off{box-shadow:none;animation:none}
+html[data-tema="natural"] #dens{text-transform:none;letter-spacing:0;background:transparent;border-color:var(--borde-2);border-radius:6px}
+html[data-tema="natural"] #dens:hover,html[data-tema="natural"] #dens:focus-visible{background:rgba(var(--acc2-rgb),.06);border-color:var(--sub);box-shadow:none}
+html[data-tema="natural"] #dens kbd{color:var(--sub);border-color:var(--borde-2)}
+/* Paneles: opacos, filo de 1 px y una luz muy leve arriba. */
+html[data-tema="natural"] .pnl,html[data-tema="natural"] .pnl:hover,html[data-tema="natural"] .pnl.lit,html[data-tema="natural"] body.lv-w #p-ctx,html[data-tema="natural"] body.lv-x #p-ctx{
+  background:linear-gradient(180deg,rgba(var(--acc2-rgb),.022),rgba(var(--acc2-rgb),0) 140px),var(--panel);border:1px solid var(--borde);border-radius:10px;
+  -webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 10px 24px -14px var(--shadow);transition:border-color .4s}
+html[data-tema="natural"] .pnl:hover,html[data-tema="natural"] .pnl.lit{border-color:var(--borde-2)}
+html[data-tema="natural"] body.lv-w #p-ctx{border-color:rgba(var(--warn-rgb),.5)}
+html[data-tema="natural"] body.lv-x #p-ctx{border-color:rgba(var(--crit-rgb),.75)}
+html[data-tema="natural"] .pnl:before,html[data-tema="natural"] .pnl:after,html[data-tema="natural"] .pnl>.in:before{display:none}
+html[data-tema="natural"] .ph{border:none;border-image:none;padding-bottom:0;margin-bottom:14px}
+html[data-tema="natural"] .ph .t{font-size:var(--fv);font-weight:600;letter-spacing:0;text-transform:none;text-shadow:none}
+html[data-tema="natural"] .ph .t:before{display:none}
+/* Plan: una línea de texto y una barra fina, sin rayas. */
+html[data-tema="natural"] #p-plan>.in{gap:10px;padding-top:calc(var(--pad)*.8);padding-bottom:calc(var(--pad)*.8)}
+html[data-tema="natural"] .plt{font-size:var(--fv);letter-spacing:0;text-transform:lowercase}
+html[data-tema="natural"] .plt::first-letter{text-transform:uppercase}
+html[data-tema="natural"] .plt b,html[data-tema="natural"] #p-plan.done .plt b{font-weight:600;text-shadow:none}
+html[data-tema="natural"] .plok{letter-spacing:0;box-shadow:none;border-radius:4px;font-weight:600}
+html[data-tema="natural"] .plcur em{color:var(--acc)}
+html[data-tema="natural"] .plbar{height:8px;border:none;background:var(--track)}
+html[data-tema="natural"] .plfill,html[data-tema="natural"] #p-plan.done .plfill{background-image:none;background-color:var(--acc);box-shadow:none}
+html[data-tema="natural"] #p-plan.done .plbar{border:none}
+html[data-tema="natural"] .pll summary{text-transform:none;letter-spacing:0;color:var(--sub)}
+html[data-tema="natural"] .pll summary:before{color:var(--sub)}
+html[data-tema="natural"] .pll li i{text-transform:none;letter-spacing:0}
+html[data-tema="natural"] .pll li.e i{color:var(--acc);text-shadow:none}
+/* Contexto: el globo 3D sin halo de neón, el anillo inclinado gira despacio y el núcleo lleva una cifra limpia. */
+html[data-tema="natural"] .reactor:before{inset:-6%;background:radial-gradient(circle,rgba(var(--acc2-rgb),.045),rgba(var(--acc2-rgb),0) 66%)}
+html[data-tema="natural"] body.lv-x .reactor:before{background:radial-gradient(circle,rgba(var(--crit-rgb),.07),rgba(var(--crit-rgb),0) 66%)}
+html[data-tema="natural"] .gring svg{filter:none;animation-duration:30s}
+html[data-tema="natural"] body.lv-x .gring svg{animation-duration:14s}
+html[data-tema="natural"] .gring svg>circle:first-child{stroke-width:1.6}
+html[data-tema="natural"] #arc{filter:none}
+html[data-tema="natural"] .tick{stroke:rgba(var(--acc2-rgb),.1)}
+html[data-tema="natural"] .face>circle:first-child{stroke:rgba(var(--acc2-rgb),.14)}
+html[data-tema="natural"] .rc .p{font-family:var(--cifra);font-weight:300;letter-spacing:-.02em;text-shadow:0 0 6px var(--panel),0 0 16px var(--panel)}
+html[data-tema="natural"] .rc .p small{color:var(--sub);font-weight:400;letter-spacing:0}
+html[data-tema="natural"] body.lv-w .rc .p small{color:var(--warn)}
+html[data-tema="natural"] body.lv-x .rc .p{color:var(--crit-txt);text-shadow:0 0 6px var(--panel),0 0 16px var(--panel)}
+html[data-tema="natural"] .rc .k{color:var(--sub);text-shadow:0 0 6px var(--panel)}
+html[data-tema="natural"] .kv{gap:0 16px;border-top:1px solid var(--borde)}
+html[data-tema="natural"] .kv>span{padding:9px 0;border-bottom:1px solid var(--borde)}
+/* Coste y comparativa */
+html[data-tema="natural"] .cost{font-family:var(--cifra);font-weight:300;letter-spacing:-.02em;text-shadow:none;margin-bottom:8px}
+html[data-tema="natural"] .cost small{letter-spacing:0;font-family:var(--sans)}
+html[data-tema="natural"] .mdl{color:var(--txt)}
+html[data-tema="natural"] .cbar{height:8px;border:none}
+html[data-tema="natural"] .cbar.real i{background:var(--acc);box-shadow:none}
+html[data-tema="natural"] .cbar.opus i{background:var(--acc2);opacity:.55;box-shadow:none}
+html[data-tema="natural"] .cah b{color:var(--acc);font-weight:600;text-shadow:none}
+html[data-tema="natural"] .ctk i,html[data-tema="natural"] .legend i{box-shadow:none}
+html[data-tema="natural"] .stack{height:6px;gap:3px}
+html[data-tema="natural"] .stack div{background:var(--c);box-shadow:none;opacity:1;border-radius:3px}
+/* Barras de reparto: continuas y redondeadas, sin segmentos inclinados. */
+html[data-tema="natural"] .seg{gap:0;height:8px;border-radius:4px;overflow:hidden;background:var(--track)}
+html[data-tema="natural"] .seg.sm{height:6px}
+html[data-tema="natural"] .seg i{transform:none;background:transparent}
+html[data-tema="natural"] .seg i.on{background:var(--c,var(--ce));box-shadow:none}
+html[data-tema="natural"] .cmp .hd,html[data-tema="natural"] .cmp .hd.tn{text-transform:none;letter-spacing:0}
+html[data-tema="natural"] .cmp .nm{border-left-width:3px}
+html[data-tema="natural"] .cmp .nm b{letter-spacing:0;font-weight:600}
+html[data-tema="natural"] .cmp .nm b em{letter-spacing:0;font-weight:400;color:var(--acc);background:#2a312b;border-radius:4px;padding:0 6px}
+/* Tablas y gráfica */
+html[data-tema="natural"] th{text-transform:none;letter-spacing:0;border-bottom:1px solid var(--borde)}
+html[data-tema="natural"] td{border-bottom-color:var(--borde)}
+html[data-tema="natural"] tbody tr:hover td{background:rgba(var(--acc2-rgb),.03)}
+html[data-tema="natural"] td .ftag{letter-spacing:0}
+html[data-tema="natural"] td.amc{color:var(--txt)}
+html[data-tema="natural"] .chart line{stroke:rgba(var(--acc2-rgb),.08)}
+html[data-tema="natural"] .chart line:not([stroke-dasharray]){stroke:rgba(var(--acc2-rgb),.25)}
+html[data-tema="natural"] .chart rect[style]{filter:none!important}
+html[data-tema="natural"] .chart polyline{stroke:var(--warn);filter:none!important}
+html[data-tema="natural"] .chart circle{stroke:var(--warn)}
+html[data-tema="natural"] footer{border-top:1px solid var(--borde);border-image:none}
+html[data-tema="natural"] footer .line{background:none}
+/* Alertas: un velo rojo quieto en los bordes, sin parpadeo. */
+html[data-tema="natural"] body:before{box-shadow:inset 0 0 90px rgba(var(--crit-rgb),.2)}
+html[data-tema="natural"] body.lv-x:before{animation:none;opacity:1}
+html[data-tema="natural"] body.lv-w:before{opacity:0}
+/* Distribución natural. Menos de 900 px: una columna; el núcleo a un lado de sus cifras si cabe. */
+@media (min-width:560px) and (max-width:899px){
+  html[data-tema="natural"] .ctxb{flex-direction:row;align-items:center}
+  html[data-tema="natural"] .reactor{max-width:min(240px,42vw)}
+  html[data-tema="natural"] .kv{flex:1}
+}
+/* 900-1599 px: el contexto a la izquierda; coste, comparativa y reparto a la derecha; las tablas debajo. */
+@media (min-width:900px) and (max-width:1599px){
+  html[data-tema="natural"] .grid{grid-template-columns:minmax(300px,.85fr) minmax(0,1.5fr);
+    grid-template-areas:"ctx cost" "ctx comp" "ctx mod" "agt hist"}
+  html[data-tema="natural"] body.compact .grid{grid-template-areas:"ctx cost" "ctx comp" "ctx mod" "agt agt"}
+  /* El panel de contexto es alto: el núcleo arriba, a la vista sin desplazar. */
+  html[data-tema="natural"] .ctxb{justify-content:flex-start;padding-top:8px}
+}
+@media (min-width:900px) and (max-width:1199px){
+  html[data-tema="natural"] .grid{grid-template-areas:"ctx cost" "ctx comp" "ctx mod" "agt agt" "hist hist"}
+}
+@media (min-width:900px) and (max-width:1599px) and (min-height:1000px){
+  html[data-tema="natural"] .grid,html[data-tema="natural"] body.compact .grid{grid-template-rows:auto auto minmax(min-content,1fr) minmax(0,1fr)}
+}
+@media (min-width:900px) and (max-width:1199px) and (min-height:1000px){
+  html[data-tema="natural"] .grid{grid-template-rows:auto auto minmax(min-content,1fr) minmax(0,1fr) minmax(0,1fr)}
+}
+/* 1600 px o más: el contexto ocupa la columna izquierda entera; a la derecha, una rejilla de tres columnas:
+   arriba coste, reparto y agentes; debajo la comparativa a la izquierda y la gráfica y los últimos turnos a su lado. */
+@media (min-width:1600px){
+  html[data-tema="natural"] .grid{grid-template-columns:minmax(380px,440px) repeat(3,minmax(0,1fr));
+    grid-template-areas:"ctx cost mod agt" "ctx comp chart chart" "ctx comp hist hist"}
+  html[data-tema="natural"] body.compact .grid{grid-template-areas:"ctx cost mod agt" "ctx comp chart chart" "ctx comp chart chart"}
+  html[data-tema="natural"] .reactor{max-width:min(360px,34vh)}
+  /* Agentes en una columna: sin turnos y el reparto solo en %. */
+  html[data-tema="natural"] #p-agt .a-turnos,html[data-tema="natural"] #p-agt .share .seg,html[data-tema="natural"] #p-agt th .lg{display:none}
+  html[data-tema="natural"] #p-agt th .sh{display:inline}
+  html[data-tema="natural"] #p-agt .w-share{width:4.5em}
+  html[data-tema="natural"] #p-agt .tblw{max-height:9.6em}
+  /* Reparto por modelo en una columna: los turnos ya van en su cabecera. */
+  html[data-tema="natural"] .cmp{grid-template-columns:minmax(0,1.3fr) minmax(40px,1fr) 4em}
+  html[data-tema="natural"] .cmp .tn,html[data-tema="natural"] .cmp .hd.tn{display:none}
+}
+@media (min-width:1600px) and (min-height:700px){
+  html[data-tema="natural"] .grid,html[data-tema="natural"] body.compact .grid{grid-template-rows:auto minmax(0,1.1fr) minmax(0,1fr)}
+}
+
 /* Sin backdrop-filter (o con transparencia reducida): paneles opacos para que el fondo no estorbe la lectura. */
 @supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
   .pnl{--glass:var(--panel);--glass2:var(--panel)}
@@ -582,13 +745,25 @@ body.compact .neb,body.compact .floor{display:none}
 </div>
 <script>
 var FAM={opus:'Opus',haiku:'Haiku',fable:'Fable',sonnet:'Sonnet',otro:'Otro'};
-var WARN=70,CRIT=85,NT=60,DKEY='consumo.densidad',PKEY='consumo.plan.abierto';
+var WARN=70,CRIT=85,NT=60,DKEY='consumo.densidad',PKEY='consumo.plan.abierto',TKEY='consumo.tema';
 var lastData=null,seenTurns={},firstRender=true;
 // Señal y lectura de datos.js: funciones de senal.ts, probadas en consumo.test.tsx.
 /*LOGICA*/
 ` + LOGICA + `
 /*FIN*/
 var ST=nuevoEstado(Date.now());
+// Tema: config.tema de datos.js (opción tema de userConfig) va a data-tema de <html> en cada lectura válida.
+// Al cargar se pone el último tema visto (si el navegador deja guardarlo) para no pasar por hibrido un segundo.
+// Sin opción, sin atributo: hibrido. Un cambio de tema vuelve a teñir el globo y redibuja la gráfica.
+var temaVisto=null;
+function ponTema(d,guardar){
+  var t=aplicaTema(document.documentElement,d);
+  if(!t||t===temaVisto)return;
+  temaVisto=t;
+  if(guardar){try{localStorage.setItem(TKEY,t)}catch(e){}}
+  if(GLOBO.tinta)GLOBO.tinta();
+  if(lastData)try{renderChart(lastData)}catch(e){}
+}
 var VACIO={modelo:'',contexto:{tokens:0,window:0,percent:0},alerta:'normal',coste:0,modelos:[],agentes:[],historial:[],plan:null,comparativa:null,actualizado:0,latido:0};
 function $id(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -786,7 +961,7 @@ function onda(lvl){
 }
 // Borde blanco-cian que se enciende un momento cuando un panel cambia de estado.
 function lit(els){for(var i=0;i<els.length;i++)(function(el){el.classList.add('lit');clearTimeout(el._lit);el._lit=setTimeout(function(){el.classList.remove('lit')},1200)})(els[i])}
-var GLOBO={lvl:'',size:null};
+var GLOBO={lvl:'',size:null,tinta:null};
 function renderCtx(d){
   var c=d.contexto||{tokens:0,window:1,percent:0};
   var p=Math.max(0,Math.min(100,Number(c.percent)||0));
@@ -878,7 +1053,7 @@ function load(){
   s.onload=function(){
     s.remove();cargando=0;
     var d=window.CONSUMO;
-    if(alCargar(ST,d,Date.now())){try{render(d)}catch(err){}}
+    if(alCargar(ST,d,Date.now())){try{ponTema(d,true)}catch(err){}try{render(d)}catch(err){}}
     pintaSenal();
   };
   s.onerror=function(){s.remove();cargando=0;alFallar(ST);pintaSenal()};
@@ -919,7 +1094,13 @@ var rz;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeou
   GLOBO.size=size;
   var tilt=0.42,ct=Math.cos(tilt),st=Math.sin(tilt);
   function pr(lat,lon,R){var x=Math.cos(lat)*Math.sin(lon+a),y=Math.sin(lat),z=Math.cos(lat)*Math.cos(lon+a);var y2=y*ct-z*st,z2=y*st+z*ct;return [S/2+x*R,S/2-y2*R,z2]}
-  function rgb(){return GLOBO.lvl==='x'?'255,77,77':GLOBO.lvl==='w'?'234,255,255':'127,231,255'}
+  // Color de las líneas: --globo-rgb, --globo-rgb-w y --globo-rgb-x del tema si las define (natural); si no, el cian de siempre.
+  var tinta={n:'',w:'',x:''};
+  function leeTinta(){var cs=null;try{cs=getComputedStyle(document.documentElement)}catch(e){}
+    tinta.n=cs?cs.getPropertyValue('--globo-rgb').trim():'';tinta.w=cs?cs.getPropertyValue('--globo-rgb-w').trim():'';tinta.x=cs?cs.getPropertyValue('--globo-rgb-x').trim():''}
+  GLOBO.tinta=function(){leeTinta();draw()};
+  leeTinta();
+  function rgb(){return GLOBO.lvl==='x'?(tinta.x||'255,77,77'):GLOBO.lvl==='w'?(tinta.w||'234,255,255'):(tinta.n||'127,231,255')}
   function line(pts){for(var i=1;i<pts.length;i++){var p=pts[i-1],q=pts[i],z=(p[2]+q[2])/2;cx.globalAlpha=z>0?.14+.42*z:.05;cx.beginPath();cx.moveTo(p[0],p[1]);cx.lineTo(q[0],q[1]);cx.stroke()}}
   function draw(){
     if(!S)return;
@@ -947,6 +1128,7 @@ var rz;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeou
   requestAnimationFrame(frame);
 })();
 tick();
+(function(){var t=null;try{t=localStorage.getItem(TKEY)}catch(e){}if(t)try{ponTema({config:{tema:t}},false)}catch(e){}})();
 // Sin datos.js todavía la página no se queda en blanco: se pinta vacía y espera.
 try{render(VACIO)}catch(err){}
 pintaSenal();load();loadEstado();

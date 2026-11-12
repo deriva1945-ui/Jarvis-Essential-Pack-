@@ -125,7 +125,7 @@ Además de `dataDir`, el HUD tiene estas opciones. Todas van a `datos.js` en el 
 
 | Opción | Valores | Por defecto | Qué cambia |
 | --- | --- | --- | --- |
-| `tema` | `mark-ii`, `mark-l`, `stark`, `hibrido`, `claro` | `hibrido` | Tema de color del HUD. |
+| `tema` | `mark-ii`, `mark-l`, `stark`, `hibrido`, `claro`, `natural` | `hibrido` | Tema del HUD. `natural`: grafito cálido con un solo acento, sin neón ni rejilla, con el globo y los anillos 3D. La página lo aplica en la siguiente lectura de datos.js, sin recargar. |
 | `acento` | color hex: `#rgb` o `#rrggbb` | `#7fe7ff` | Color de acento. |
 | `densidad` | `comodo`, `compacto` | `comodo` | Espaciado de los paneles. |
 | `idioma` | `es`, `en` | `es` | Idioma de los textos del HUD. |
@@ -311,7 +311,7 @@ Besides `dataDir`, the HUD has these options. All of them go into `datos.js` und
 
 | Option | Values | Default | What it changes |
 | --- | --- | --- | --- |
-| `tema` | `mark-ii`, `mark-l`, `stark`, `hibrido` (hybrid), `claro` (light) | `hibrido` | HUD colour theme. |
+| `tema` | `mark-ii`, `mark-l`, `stark`, `hibrido` (hybrid), `claro` (light), `natural` | `hibrido` | HUD theme. `natural`: warm graphite with a single accent, no neon or grid, keeps the 3D globe and rings. The page applies it on the next read of datos.js, without reloading. |
 | `acento` | hex colour: `#rgb` or `#rrggbb` | `#7fe7ff` | Accent colour. |
 | `densidad` | `comodo` (comfortable), `compacto` (compact) | `comodo` | Panel spacing. |
 | `idioma` | `es`, `en` | `es` | Language of the HUD labels. |

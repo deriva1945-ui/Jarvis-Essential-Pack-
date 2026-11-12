@@ -4,7 +4,7 @@ import type { HudConfig, HudDensidad, HudIdioma, HudPanel, HudTema } from '../ty
 
 // Opciones de personalización del HUD (userConfig de plugin.json). Los valores por defecto
 // tienen que coincidir con los "default" del manifiesto.
-export const TEMAS: readonly HudTema[] = ['mark-ii', 'mark-l', 'stark', 'hibrido', 'claro']
+export const TEMAS: readonly HudTema[] = ['mark-ii', 'mark-l', 'stark', 'hibrido', 'claro', 'natural']
 export const DENSIDADES: readonly HudDensidad[] = ['comodo', 'compacto']
 export const IDIOMAS: readonly HudIdioma[] = ['es', 'en']
 export const PANELES: readonly HudPanel[] = ['contexto', 'coste', 'reparto', 'agentes', 'historial', 'grafica', 'comparativa', 'plan']

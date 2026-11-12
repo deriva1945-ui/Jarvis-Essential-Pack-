@@ -7,7 +7,7 @@ import { observe } from './ledger'
 import { PAGE } from './page'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
 import { DATA_DIR_DEFAULT, expandir, fileUrl, unir } from './rutas'
-import { alCargar, alFallar, LOGICA, nuevoEstado, senal, valido } from './senal'
+import { alCargar, alFallar, aplicaTema, LOGICA, nuevoEstado, senal, valido } from './senal'
 
 // Carpeta de prueba para la opción dataDir: los tests no dependen de ninguna ruta real.
 const PRUEBA = { options: { dataDir: '/prueba/consumo' } }
@@ -32,7 +32,7 @@ test('the page has the key sections, the size breakpoints and the density toggle
 })
 
 // Temas: bloque de variables por tema en html[data-tema="..."]; sin atributo, hibrido.
-const TEMAS = ['hibrido', 'mark-ii', 'mark-l', 'stark', 'claro']
+const TEMAS = ['hibrido', 'mark-ii', 'mark-l', 'stark', 'claro', 'natural']
 const VARS_TEMA = ['--bg', '--panel', '--txt', '--sub', '--acc', '--acc2', '--warn', '--crit', '--ok', '--modelo-opus', '--modelo-haiku', '--modelo-fable', '--modelo-otro']
 function bloqueTema(t: string): string {
   const sel = `html[data-tema="${t}"]{`
@@ -40,7 +40,7 @@ function bloqueTema(t: string): string {
   return i < 0 ? '' : PAGE.slice(i + sel.length, PAGE.indexOf('\n}', i))
 }
 
-test('the page defines the five themes, each with every color variable', () => {
+test('the page defines the six themes, each with every color variable', () => {
   for (const t of TEMAS) {
     const b = bloqueTema(t)
     expect(b.length > 0).toBe(true)
@@ -753,4 +753,117 @@ test('config: leerConfig rejects bad values one by one and keeps the good ones',
   expect(leerConfig({ paneles: 'plan, coste' }).config.paneles).toEqual(['coste', 'plan'])
   expect(leerConfig({}).config.paneles).toEqual([...PANELES])
   expect(leerConfig({}).avisos).toHaveLength(0)
+})
+
+// ---------- Tema natural y opción tema ----------
+
+// Contraste WCAG entre dos colores #rrggbb.
+const lum = (hex: string): number => {
+  const v = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(x => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * v[0]! + 0.7152 * v[1]! + 0.0722 * v[2]!
+}
+const contraste = (a: string, b: string): number => {
+  const x = lum(a)
+  const y = lum(b)
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+}
+const varDe = (bloque: string, v: string): string => new RegExp(`${v}:(#[0-9a-f]{6})[;\\n]`).exec(bloque)?.[1] ?? ''
+
+test('natural: the block has every color variable plus its own borders, globe tint and fonts', () => {
+  const b = bloqueTema('natural')
+  expect(b.length > 0).toBe(true)
+  for (const v of VARS_TEMA) expect(varDe(b, v).length).toBe(7)
+  for (const v of ['--borde', '--borde-2']) expect(varDe(b, v).length).toBe(7)
+  for (const v of ['--globo-rgb', '--globo-rgb-w', '--globo-rgb-x']) expect(new RegExp(`${v}:\\d+,\\d+,\\d+;`).test(b)).toBe(true)
+  for (const v of ['--sans:', '--cifra:', '--gap:', '--pad:', '--glow:0;', '--cristal:none;']) expect(b).toContain(v)
+})
+
+test('natural: main text, labels and accent reach 4.5:1 on the background and on the panels', () => {
+  const b = bloqueTema('natural')
+  const fondos = [varDe(b, '--bg'), varDe(b, '--panel')]
+  for (const f of fondos) {
+    for (const v of ['--txt', '--sub', '--acc', '--warn', '--crit', '--crit-txt', '--modelo-opus', '--modelo-haiku', '--modelo-fable', '--modelo-otro']) {
+      const r = contraste(varDe(b, v), f)
+      if (r < 4.5) throw new Error(`${v} sobre ${f}: ${r.toFixed(2)}`)
+    }
+  }
+  // El texto principal va muy por encima del mínimo.
+  expect(contraste(varDe(b, '--txt'), varDe(b, '--panel')) >= 12).toBe(true)
+})
+
+test('natural: keeps the 3D globe, ring and core, and drops neon, grid, scan and forced capitals', () => {
+  const N = 'html[data-tema="natural"]'
+  // El 3D es común a todos los temas y natural no lo apaga.
+  for (const k of ['<canvas id="globe"', 'class="gring"', 'transform-style:preserve-3d', 'rotateX(72deg)', 'id="pct"']) expect(PAGE).toContain(k)
+  const reglas = PAGE.split('\n').filter(l => l.includes(N))
+  for (const l of reglas) {
+    for (const sel of ['.gring', '#globe', '.reactor', '.halo', '.rc']) {
+      if (l.includes(`${N} ${sel}{`)) expect(l).not.toContain('display:none')
+    }
+  }
+  expect(PAGE).toContain(`${N} .gring svg{filter:none;animation-duration:30s}`)
+  expect(PAGE).toContain(`${N} .neb,${N} .floor,${N} .scan,${N} .shift{display:none}`)
+  expect(PAGE).toContain(`${N} .k{text-transform:none`)
+  expect(PAGE).toContain(`${N} .ph .t{font-size:var(--fv);font-weight:600;letter-spacing:0;text-transform:none;text-shadow:none}`)
+  expect(PAGE).toContain(`${N} h1 .brand{display:none}`)
+  // Ninguna regla de natural añade brillo de neón.
+  for (const l of reglas) expect(/text-shadow:0 0 \d+px rgba\(var\(--acc/.test(l)).toBe(false)
+  // Distribución propia en pantallas anchas: el contexto a un lado y los datos en una rejilla de tres columnas.
+  expect(PAGE).toContain(`grid-template-areas:"ctx cost mod agt" "ctx comp chart chart" "ctx comp hist hist"`)
+})
+
+test('tema: aplicaTema puts config.tema in data-tema and ignores a missing or unknown theme', () => {
+  const root = { dataset: {} as Record<string, string | undefined> }
+  expect(aplicaTema(root, { config: { tema: 'natural' } })).toBe('natural')
+  expect(root.dataset.tema).toBe('natural')
+  expect(aplicaTema(root, { config: { tema: 'iron' } })).toBeNull()
+  expect(aplicaTema(root, { config: {} })).toBeNull()
+  expect(aplicaTema(root, { contexto: {}, coste: 1 })).toBeNull()
+  expect(aplicaTema(root, null)).toBeNull()
+  expect(root.dataset.tema).toBe('natural')
+  expect(aplicaTema(root, { config: { tema: 'hibrido' } })).toBe('hibrido')
+  expect(root.dataset.tema).toBe('hibrido')
+  // Sin tema nunca se pone el atributo: la página queda en hibrido (:root).
+  const vacio = { dataset: {} as Record<string, string | undefined> }
+  aplicaTema(vacio, {})
+  expect('tema' in vacio.dataset).toBe(false)
+  // La página la lleva dentro, la llama al cargar (último tema guardado) y en cada lectura válida de datos.js.
+  expect(LOGICA).toContain('var aplicaTema=(')
+  expect(PAGE).toContain('var t=aplicaTema(document.documentElement,d);')
+  expect(PAGE).toContain('if(alCargar(ST,d,Date.now())){try{ponTema(d,true)}catch(err){}try{render(d)}catch(err){}}')
+  expect(PAGE).toContain("t=localStorage.getItem(TKEY)}catch(e){}if(t)try{ponTema({config:{tema:t}},false)}")
+})
+
+test(
+  'tema: the tema option travels through datos.js to data-tema (natural)',
+  { options: { dataDir: '/prueba/consumo', tema: 'natural' } },
+  async ($, on) => {
+    mock.clock(on, { now: 1_000 })
+    const writes: { path: string; text: string }[] = []
+    on('fs.write', (_, e) => {
+      writes.push(e)
+      return { value: undefined }
+    })
+    on('process.run', () => ok)
+    on('session.start', (_, e) => ({ cwd: e.cwd }))
+    on('session.model', () => ({ value: 'claude-haiku-5-5' }))
+    on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 0, window: 200000, percent: 0 }, rateLimits: [] } }))
+    await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+    const d = writes.filter(w => w.path === '/prueba/consumo/datos.js').at(-1)?.text ?? ''
+    const data = JSON.parse(d.slice('window.CONSUMO = '.length, -1)) as unknown
+    const st = nuevoEstado(1_000)
+    // Lo mismo que hace la página: lectura válida y luego el tema.
+    expect(alCargar(st, data, 1_000)).toBe(true)
+    const root = { dataset: {} as Record<string, string | undefined> }
+    expect(aplicaTema(root, data)).toBe('natural')
+    expect(root.dataset.tema).toBe('natural')
+    expect(leerConfig({ tema: 'natural' }).avisos).toHaveLength(0)
+  },
+)
+
+test('tema: with no option datos.js carries hibrido, the default theme', PRUEBA, async ($, on) => {
+  const { config } = await arrancar($, on)
+  const root = { dataset: {} as Record<string, string | undefined> }
+  expect(aplicaTema(root, { contexto: {}, coste: 0, config })).toBe('hibrido')
+  expect(root.dataset.tema).toBe('hibrido')
 })
