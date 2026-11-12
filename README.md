@@ -15,7 +15,7 @@ Primero aplica reglas (longitud, bloques de código, palabras clave, nombres de 
 ## Instalación
 ```
 /plugin marketplace add deriva1945-ui/portero-claude
-/plugin install portero@portero-claude
+/plugin install portero@jarvis-essential-pack
 ```
 
 Para cambiar el modelo pesado, edita `HEAVY_MODEL` en `hooks/register.tsx` (`opus` o `fable`).
@@ -29,5 +29,5 @@ Para cambiar el modelo pesado, edita `HEAVY_MODEL` en `hooks/register.tsx` (`opu
 Segundo plugin de este repo. Tras 2 horas sin escribir, genera un resumen de traspaso con Haiku y sugiere retomar en una sesión nueva. Instalación:
 
 ```
-/plugin install resumen-sesion@portero-claude
+/plugin install resumen-sesion@jarvis-essential-pack
 ```
