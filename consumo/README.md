@@ -119,6 +119,56 @@ También puedes cambiarla dentro de Claude Code con `/plugin configure consumo@j
 
 El cambio se aplica al reiniciar Claude Code.
 
+## Personalización
+
+Además de `dataDir`, el HUD tiene estas opciones. Todas van a `datos.js` en el campo `config` (ya validadas), y la página las lee de ahí.
+
+| Opción | Valores | Por defecto | Qué cambia |
+| --- | --- | --- | --- |
+| `tema` | `mark-ii`, `mark-l`, `stark`, `hibrido`, `claro` | `hibrido` | Tema de color del HUD. |
+| `acento` | color hex: `#rgb` o `#rrggbb` | `#7fe7ff` | Color de acento. |
+| `densidad` | `comodo`, `compacto` | `comodo` | Espaciado de los paneles. |
+| `idioma` | `es`, `en` | `es` | Idioma de los textos del HUD. |
+| `actualizacion` | número de segundos, de 1 a 5 | `1` | Cada cuánto la página vuelve a leer `datos.js`. |
+| `paneles` | lista con `contexto`, `coste`, `reparto`, `agentes`, `historial`, `grafica`, `comparativa`, `plan` | todos | Paneles visibles (se muestran siempre en el orden del HUD). |
+
+Valores que no valen:
+
+- Si `acento` no es un color hex o `actualizacion` está fuera de 1–5, se usa el valor por defecto y queda un aviso en el log (`consumo: ...`) al empezar la sesión.
+- En `paneles`, los nombres desconocidos se ignoran con un aviso; si no queda ninguno válido se muestran todos.
+- `tema`, `densidad` e `idioma` solo aceptan los valores de la tabla; Claude Code trata cualquier otro como no puesto y aplica el defecto.
+
+Para cambiarlas en un mod instalado:
+
+```
+claude plugin configure consumo@jarvis-essential-pack
+```
+
+O en una sola línea, por la entrada estándar:
+
+```
+echo '{"tema": "stark", "acento": "#ff8a00", "densidad": "compacto", "idioma": "en", "actualizacion": 2, "paneles": ["contexto", "coste", "plan"]}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
+
+También aparecen en `/config` dentro de Claude Code. Si cargas el mod con `--plugin-dir`, ponlas en `~/.claude/settings.json`:
+
+```json
+{
+  "pluginConfigs": {
+    "consumo": {
+      "options": {
+        "tema": "stark",
+        "acento": "#ff8a00",
+        "densidad": "compacto",
+        "idioma": "en",
+        "actualizacion": 2,
+        "paneles": ["contexto", "coste", "plan"]
+      }
+    }
+  }
+}
+```
+
 ## Qué no hace / límites
 
 - Abrir la ventana solo funciona en Windows: usa `cmd /c start` con Edge o Chrome. En otros sistemas los datos se escriben igual en la carpeta de datos y puedes abrir `index.html` a mano.
@@ -254,6 +304,56 @@ You can also change it inside Claude Code with `/plugin configure consumo@jarvis
 ```
 
 The change applies when you restart Claude Code.
+
+## Customisation
+
+Besides `dataDir`, the HUD has these options. All of them go into `datos.js` under the `config` field (already validated), and the page reads them from there.
+
+| Option | Values | Default | What it changes |
+| --- | --- | --- | --- |
+| `tema` | `mark-ii`, `mark-l`, `stark`, `hibrido` (hybrid), `claro` (light) | `hibrido` | HUD colour theme. |
+| `acento` | hex colour: `#rgb` or `#rrggbb` | `#7fe7ff` | Accent colour. |
+| `densidad` | `comodo` (comfortable), `compacto` (compact) | `comodo` | Panel spacing. |
+| `idioma` | `es`, `en` | `es` | Language of the HUD labels. |
+| `actualizacion` | number of seconds, 1 to 5 | `1` | How often the page re-reads `datos.js`. |
+| `paneles` | list of `contexto`, `coste`, `reparto`, `agentes`, `historial`, `grafica`, `comparativa`, `plan` | all | Visible panels (always shown in the HUD's own order). |
+
+Invalid values:
+
+- If `acento` is not a hex colour or `actualizacion` is outside 1–5, the default is used and a warning (`consumo: ...`) is logged when the session starts.
+- In `paneles`, unknown names are ignored with a warning; if none is valid, every panel is shown.
+- `tema`, `densidad` and `idioma` only take the values in the table; Claude Code treats any other value as unset and applies the default.
+
+To change them in an installed mod:
+
+```
+claude plugin configure consumo@jarvis-essential-pack
+```
+
+Or in one line, through standard input:
+
+```
+echo '{"tema": "stark", "acento": "#ff8a00", "densidad": "compacto", "idioma": "en", "actualizacion": 2, "paneles": ["contexto", "coste", "plan"]}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
+
+They also show up in `/config` inside Claude Code. If you load the mod with `--plugin-dir`, put them in `~/.claude/settings.json`:
+
+```json
+{
+  "pluginConfigs": {
+    "consumo": {
+      "options": {
+        "tema": "stark",
+        "acento": "#ff8a00",
+        "densidad": "compacto",
+        "idioma": "en",
+        "actualizacion": 2,
+        "paneles": ["contexto", "coste", "plan"]
+      }
+    }
+  }
+}
+```
 
 ## What it does not do / limits
 

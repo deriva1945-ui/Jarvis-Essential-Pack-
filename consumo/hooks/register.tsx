@@ -1,8 +1,9 @@
 import { atom, read, update } from 'claude-code'
 import type { Hook, Register, Timer } from 'claude-code'
 
-import type { AgentRow, CompRow, Comparativa, CtxSnap, Familia, Ledger, ModelRow, PlanState, TurnRec } from '../types'
+import type { AgentRow, CompRow, Comparativa, CtxSnap, Familia, HudConfig, Ledger, ModelRow, PlanState, TurnRec } from '../types'
 import { calcular, COMP0, familia, sumar } from './comparativa'
+import { CONFIG_DEFAULT, leerConfig } from './config'
 import { observe } from './ledger'
 import type { PlanData } from './plan'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
@@ -72,6 +73,8 @@ type Data = {
   comparativa: Comparativa
   actualizado: number
   latido: number
+  // Personalización del usuario (userConfig), ya validada. Solo lectura para la página.
+  config: HudConfig
 }
 
 const alerta = (c: CtxSnap | null): Data['alerta'] =>
@@ -146,6 +149,7 @@ const toData = ({ r, m, h, lb, c, t, p, k, model, updated }: Snap, now: number):
   comparativa: calcular(k),
   actualizado: updated,
   latido: now,
+  config: hudConfig,
 })
 
 const EMPTY: Snap = { r: {}, m: {}, h: [], lb: {}, c: null, t: LEDGER0, p: PLAN0, k: COMP0, model: '', updated: 0 }
@@ -158,6 +162,10 @@ type Ctx = Parameters<Hook<'tool.call'>>[0]
 // Valor de la opción dataDir (userConfig). register() lo fija al cargar el módulo; un cambio
 // en la configuración recarga el módulo con el valor nuevo.
 let dataDirOption = DATA_DIR_DEFAULT
+// Tema, acento, densidad, idioma, actualización y paneles (userConfig), validados en register().
+let hudConfig: HudConfig = CONFIG_DEFAULT
+// Valores que no valían y cayeron al defecto; se escriben en el log al empezar la sesión.
+let configAvisos: string[] = []
 
 // Carpeta donde se escriben index.html, datos.js, estado.json y estado.js. "~" es la carpeta del
 // usuario: USERPROFILE en Windows, HOME en macOS y Linux. Sin ninguna de las dos, la carpeta
@@ -255,8 +263,19 @@ async function abrirHud($: Ctx): Promise<Apertura> {
 export const register: Register = (on, options) => {
   const opt = options['dataDir']
   dataDirOption = typeof opt === 'string' && opt.trim() !== '' ? opt : DATA_DIR_DEFAULT
+  const leida = leerConfig(options)
+  hudConfig = leida.config
+  configAvisos = leida.avisos
 
   on('session.start', async ($, e, next) => {
+    for (const aviso of configAvisos) {
+      try {
+        $.ui.log(`consumo: ${aviso}`)
+      } catch {
+        // Sin log el valor por defecto se aplica igual.
+      }
+    }
+
     try {
       await $.command.register({ name: 'jarvis', description: 'Abre o cierra el HUD de consumo' })
     } catch {
