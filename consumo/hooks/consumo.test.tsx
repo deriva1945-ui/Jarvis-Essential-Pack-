@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
+import { calcular, COMP0, sumar } from './comparativa'
 import { observe } from './ledger'
 import { PAGE } from './page'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
@@ -162,7 +163,7 @@ test('(a) a half-written datos.js is ignored, the last good data stays and the p
   expect(L.valido(datos(T0))).toBe(true)
   expect(PAGE).toContain(LOGICA)
   expect(PAGE).toContain('window.CONSUMO=undefined')
-  expect(PAGE).toContain("window.onerror=function(msg,src){if(src&&String(src).indexOf('datos.js')>=0)return true}")
+  expect(PAGE).toContain("window.onerror=function(msg,src){if(src&&(String(src).indexOf('datos.js')>=0||String(src).indexOf('estado.js')>=0))return true}")
 })
 
 test('(b) a 3 s heartbeat read every 1 s never shows a false SIN SEÑAL, and a real stop does', () => {
@@ -348,4 +349,218 @@ test('(h) plan: all tasks completed is 100 %, and a task completed twice counts 
   expect(resumen(v)).toEqual({ total: 1, completadas: 1, enCurso: 0, porcentaje: 100, tareas: [{ titulo: 'A', estado: 'completada' }] })
   expect(idCreada({ task: { id: '9', subject: 'x' } })).toEqual({ id: '9', subject: 'x' })
   expect(idCreada(undefined)).toBeNull()
+})
+
+// ---------- Comparativa Haiku frente a Opus ----------
+
+const tk = (input: number, output: number, cacheRead = 0, cacheWrite = 0) => ({ input, output, cacheRead, cacheWrite })
+const turnU = (turnId: string, agentId: string | undefined, model: string, u: ReturnType<typeof tk>) => ({
+  answer: '', durationMs: 1, isAborted: false, reason: 'answer', turnId, ...(agentId ? { agentId } : {}),
+  usage: { model, input_tokens: u.input, output_tokens: u.output, cache_read_input_tokens: u.cacheRead, cache_creation_input_tokens: u.cacheWrite },
+}) as const
+
+test('(i) comparativa: with no Opus data there is no estimate and the page says "sin datos de Opus todavía"', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  let usd = 0
+  const { last } = base(on, () => usd)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  // Recién arrancada: sin turnos.
+  let c = last().comparativa
+  expect(c.disponible).toBe(false)
+  expect(c.motivo).toBe('sin datos de Opus todavía')
+  expect(c.costeOpusEstimado).toBeNull()
+  // Solo Haiku y el modelo principal: sigue sin estimación, aunque haya coste real.
+  usd = 0.01
+  await $.turn.complete(turnU('t1', 'a1', 'claude-haiku-5-5', tk(2000, 500)))
+  usd = 0.05
+  await $.turn.complete(turnU('t2', undefined, 'claude-fable-5', tk(3000, 400)))
+  c = last().comparativa
+  expect(c.disponible).toBe(false)
+  expect(c.motivo).toBe('sin datos de Opus todavía')
+  expect(c.costeOpusEstimado).toBeNull()
+  expect(c.ahorro).toBeNull()
+  expect(c.ahorroPct).toBeNull()
+  expect(c.costeReal).toBe(0.05)
+  expect(c.tokensPorModelo).toEqual([{ familia: 'fable', tokens: 3400, coste: 0.04 }, { familia: 'haiku', tokens: 2500, coste: 0.01 }])
+  // Sin Haiku tampoco hay estimación.
+  const soloOpus = calcular(sumar(COMP0, 'claude-opus-5-5', tk(4000, 1000), 0.1))
+  expect(soloOpus.disponible).toBe(false)
+  expect(soloOpus.motivo).toBe('sin datos de Haiku todavía')
+  // La página tiene el panel, el texto de espera y la nota.
+  expect(PAGE).toContain('id="p-comp"')
+  expect(PAGE).toContain('Comparativa · Haiku frente a Opus')
+  expect(PAGE).toContain('sin datos de Opus todavía')
+  expect(PAGE).toContain('Estimación según tus turnos reales; el caché y la mezcla de entrada y salida afectan.')
+  expect(PAGE).toContain('comparativa:null')
+})
+
+test('(j) comparativa: with both models the estimate reprices the Haiku work at the Opus cost per token', async ($, on) => {
+  // Lógica pura con números redondos:
+  // Haiku 2 500 tokens por 0.01 USD (0.000004 / token); Opus 2 000 tokens por 0.05 USD (0.000025 / token): 6.25 veces.
+  // Real = 0.01 + 0.05 + 0.04 (principal) = 0.10. Todo en Opus = 0.10 - 0.01 + 0.01 × 6.25 = 0.1525.
+  let k = sumar(COMP0, 'claude-haiku-5-5', tk(1500, 500, 400, 100), 0.01)
+  k = sumar(k, 'claude-opus-5-5', tk(1500, 500), 0.05)
+  k = sumar(k, 'claude-fable-5', tk(3000, 400), 0.04)
+  const c = calcular(k)
+  expect(c.disponible).toBe(true)
+  expect(c.motivo).toBeUndefined()
+  expect(c.costeReal).toBe(0.1)
+  expect(c.costeOpusEstimado).toBe(0.1525)
+  expect(c.ahorro).toBe(0.0525)
+  expect(c.ahorroPct).toBe(34.4)
+  expect(c.tokensPorModelo.map(x => x.familia)).toEqual(['fable', 'haiku', 'opus'])
+  // Caché de lectura y escritura cuentan por separado y suman en los tokens de Haiku.
+  expect(k['claude-haiku-5-5']).toEqual({ turns: 1, input: 1500, output: 500, cacheRead: 400, cacheWrite: 100, costTurns: 1, costTokens: 2500, cost: 0.01 })
+
+  // Con los hooks: lo mismo a partir del contador de coste de la sesión.
+  mock.clock(on, { now: 1_000 })
+  let usd = 0
+  const { last } = base(on, () => usd)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  usd = 0.01
+  await $.turn.complete(turnU('t1', 'a1', 'claude-haiku-5-5', tk(1500, 500, 400, 100)))
+  usd = 0.06
+  await $.turn.complete(turnU('t2', 'a2', 'claude-opus-5-5', tk(1500, 500)))
+  usd = 0.1
+  await $.turn.complete(turnU('t3', undefined, 'claude-fable-5', tk(3000, 400)))
+  const d = last().comparativa
+  expect(d).toEqual(c)
+  // Un turno de Haiku sin coste conocido no entra en el coste por token ni cambia la estimación.
+  const sinCoste = calcular(sumar(k, 'claude-haiku-5-5', tk(9000, 0), null))
+  expect(sinCoste.costeOpusEstimado).toBe(0.1525)
+  expect(sinCoste.tokensPorModelo.find(x => x.familia === 'haiku')?.tokens).toBe(11500)
+})
+
+test('(k) comparativa: Opus with 1000 tokens or fewer is not used for the estimate, and the reason says so', () => {
+  let k = sumar(COMP0, 'claude-haiku-5-5', tk(4000, 1000), 0.02)
+  k = sumar(k, 'claude-opus-5-5', tk(600, 200), 0.03)
+  let c = calcular(k)
+  expect(c.disponible).toBe(false)
+  expect(c.costeOpusEstimado).toBeNull()
+  expect(c.ahorro).toBeNull()
+  expect(c.motivo).toContain('sin datos de Opus todavía')
+  expect(c.motivo).toContain('800 tokens')
+  expect(c.motivo).toContain('no se usa para la estimación')
+  expect(c.costeReal).toBe(0.05)
+  // Justo 1000 tampoco basta: hacen falta más de 1000.
+  c = calcular(sumar(k, 'claude-opus-5-5', tk(150, 50), 0.01))
+  expect(c.disponible).toBe(false)
+  // Con 1001 ya se usa.
+  c = calcular(sumar(sumar(k, 'claude-opus-5-5', tk(150, 50), 0.01), 'claude-opus-5-5', tk(1, 0), 0))
+  expect(c.disponible).toBe(true)
+  // Lo mismo para Haiku.
+  const h = calcular(sumar(sumar(COMP0, 'claude-opus-5-5', tk(4000, 1000), 0.1), 'claude-haiku-5-5', tk(300, 100), 0.001))
+  expect(h.disponible).toBe(false)
+  expect(h.motivo).toContain('Haiku solo lleva 400 tokens')
+})
+
+test('(l) comparativa: the real cost is the sum of the turns, and a repeated or parallel turn is not counted twice', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  let usd = 0
+  const { last } = base(on, () => usd)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  usd = 0.02
+  await $.turn.complete(turnU('t1', 'a1', 'claude-haiku-5-5', tk(1200, 300)))
+  usd = 0.12
+  await Promise.all([
+    $.turn.complete(turnU('t2', 'a2', 'claude-opus-5-5', tk(1800, 200))),
+    $.turn.complete(turnU('t2', 'a2', 'claude-opus-5-5', tk(1800, 200))),
+  ])
+  await $.turn.complete(turnU('t1', 'a1', 'claude-haiku-5-5', tk(1200, 300)))
+  usd = 0.15
+  await $.turn.complete(turnU('t3', 'a1', 'claude-haiku-5-5', tk(500, 100)))
+  const d = last()
+  const sum = d.historial.reduce((a: number, h: { coste: number | null }) => a + (h.coste ?? 0), 0)
+  expect(d.historial).toHaveLength(3)
+  expect(d.comparativa.costeReal).toBe(Math.round(sum * 1e6) / 1e6)
+  expect(d.comparativa.costeReal).toBe(0.15)
+  expect(d.comparativa.costeReal).toBe(d.coste)
+  const by = (f: string) => d.comparativa.tokensPorModelo.find((x: { familia: string }) => x.familia === f)
+  expect(by('haiku')).toEqual({ familia: 'haiku', tokens: 2100, coste: 0.05 })
+  expect(by('opus')).toEqual({ familia: 'opus', tokens: 2000, coste: 0.1 })
+  // Haiku 0.05 / 2100 tokens, Opus 0.1 / 2000 tokens: Haiku en Opus = 2100 × 0.00005 = 0.105.
+  expect(d.comparativa.disponible).toBe(true)
+  expect(d.comparativa.costeOpusEstimado).toBe(0.205)
+  expect(d.comparativa.ahorro).toBe(0.055)
+})
+
+const JARVIS = {
+  command: 'jarvis',
+  args: '',
+  origin: { kind: 'composer' },
+  presentation: { isFullscreen: false, columns: 100 },
+} as const
+
+const hudBase: TestBody = ($, on) => {
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.model', () => ({ value: 'claude-haiku-5-5' }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 0, window: 100, percent: 0 }, rateLimits: [] } }))
+}
+
+test('/jarvis toggles the HUD (close, open, close) and /consumo is gone', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  hudBase($, on)
+  const writes: { path: string; text: string }[] = []
+  const runs: (readonly string[])[] = []
+  const names: string[] = []
+  on('command.register', (_, e) => {
+    names.push(e.name)
+    return { value: { command: e.name } }
+  })
+  on('fs.write', (_, e) => {
+    writes.push(e)
+    return { value: undefined }
+  })
+  on('process.run', (_, e) => {
+    runs.push(e.argv)
+    return ok
+  })
+  const last = (end: string) => writes.filter(w => w.path.endsWith(end)).at(-1)?.text ?? ''
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  expect(names).toContain('jarvis')
+  expect(names).not.toContain('consumo')
+  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: true })
+  const opened = runs.length
+  expect(opened).toBeGreaterThan(0)
+
+  const r1 = await $.command.run(JARVIS)
+  expect(r1.text).toContain('HUD cerrado')
+  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: false })
+  expect(last('\\estado.js')).toBe('window.CONSUMO_ESTADO = {"abierto":false};')
+  // Cerrar no lanza ningún proceso: no se mata ninguna ventana.
+  expect(runs.length).toBe(opened)
+
+  const r2 = await $.command.run(JARVIS)
+  expect(r2.text).toContain('HUD abierto')
+  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: true })
+  expect(runs.length).toBeGreaterThan(opened)
+  expect(runs.at(-1)?.some(x => x.includes('--app=file:///C:/CLAUDE/consumo/index.html'))).toBe(true)
+
+  const r3 = await $.command.run(JARVIS)
+  expect(r3.text).toContain('HUD cerrado')
+  expect(JSON.parse(last('\\estado.json'))).toEqual({ abierto: false })
+})
+
+test('/jarvis answers clearly when no browser can be opened', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  hudBase($, on)
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('fs.write', () => ({ value: undefined }))
+  on('process.run', () => {
+    throw new Error('spawn cmd ENOENT')
+  })
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  // Al iniciar no se abrió, así que /jarvis intenta abrir y explica el fallo.
+  const { text } = await $.command.run(JARVIS)
+  expect(text).toContain('No se pudo abrir el HUD')
+  expect(text).toContain('index.html')
+})
+
+test('the page reads estado.js, calls window.close() and shows the closed notice', () => {
+  expect(PAGE).toContain("s.src='estado.js?'+now")
+  expect(PAGE).toContain('window.close()')
+  expect(PAGE).toContain('HUD cerrado. Escribe /jarvis para abrirlo.')
+  expect(PAGE).toContain('loadEstado()')
 })

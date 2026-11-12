@@ -1,1 +1,9 @@
-{ "name": "consumo", "version": "0.1.0", "description": "Panel en directo: contexto usado, coste acumulado y tokens por agente y modelo.", "author": { "name": "deriva1945-ui" }, "types": "./types/index.d.ts" }
+{
+  "name": "consumo",
+  "version": "0.3.0",
+  "description": "HUD en directo (blanco-cian): contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus y comando /jarvis para abrirlo o cerrarlo.",
+  "author": {
+    "name": "deriva1945-ui"
+  },
+  "types": "./types/index.d.ts"
+}

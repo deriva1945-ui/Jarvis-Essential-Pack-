@@ -4,9 +4,9 @@
 // Todo en línea, sin CDN: tiene que funcionar offline desde file://.
 //
 // Tamaños de ventana:
-//   >= 1600 px  rejilla completa (contexto, coste, reparto, gráfica, últimos turnos, agentes).
-//   900-1599    dos columnas, sin la gráfica de tokens por turno.
-//   < 900       una columna: contexto, coste, reparto por modelo, agentes, últimos turnos.
+//   >= 1600 px  rejilla completa (contexto, coste, comparativa, reparto, gráfica, últimos turnos, agentes).
+//   900-1599    dos columnas, sin la gráfica de tokens por turno; la comparativa bajo el coste.
+//   < 900       una columna: contexto, coste, comparativa, reparto por modelo, agentes, últimos turnos.
 //   Mínimo 420 px de ancho sin desplazamiento horizontal.
 // Arriba, a todo el ancho: barra de progreso del plan de Claude (TaskCreate / TaskUpdate), con la lista plegable.
 // Tecla D o botón de la cabecera: modo cómodo / compacto (se guarda en localStorage).
@@ -143,10 +143,10 @@ body.compact #p-plan>.in{gap:6px}
 /* Rejilla: una sola, con áreas que cambian según el ancho */
 .grid{flex:1;display:grid;gap:var(--gap);min-height:0;min-width:0;
   grid-template-columns:minmax(0,1fr);
-  grid-template-areas:"ctx" "cost" "mod" "agt" "hist"}
-#p-ctx{grid-area:ctx}#p-cost{grid-area:cost}#p-mod{grid-area:mod}#p-chart{grid-area:chart;display:none}#p-hist{grid-area:hist}#p-agt{grid-area:agt}
+  grid-template-areas:"ctx" "cost" "comp" "mod" "agt" "hist"}
+#p-ctx{grid-area:ctx}#p-cost{grid-area:cost}#p-comp{grid-area:comp}#p-mod{grid-area:mod}#p-chart{grid-area:chart;display:none}#p-hist{grid-area:hist}#p-agt{grid-area:agt}
 body.compact #p-hist{display:none}
-body.compact .grid{grid-template-areas:"ctx" "cost" "mod" "agt"}
+body.compact .grid{grid-template-areas:"ctx" "cost" "comp" "mod" "agt"}
 
 /* Contexto: globo holográfico (canvas) con un anillo blanco-cian inclinado (CSS 3D) que gira al revés, sobre un halo cian */
 .ctxb{display:flex;flex-direction:column;align-items:center;gap:var(--gap);flex:1;min-height:0;justify-content:center}
@@ -185,6 +185,29 @@ body.compact .kv .opt{display:none}
 .cost small{font-size:var(--fk);color:var(--sub);letter-spacing:.1em;margin-left:8px}
 .sub{color:var(--sub);font-size:var(--fk);margin-bottom:8px}
 .mdl{color:var(--ce);font-size:var(--fv);overflow-wrap:anywhere}
+
+/* Comparativa Haiku frente a Opus: dos barras (real en cian, todo en Opus en blanco), ahorro y reparto de tokens. Sin rojo. */
+#p-comp .ph .t{white-space:normal}
+.cpb{display:grid;grid-template-columns:auto minmax(40px,1fr) auto;grid-auto-flow:row dense;gap:8px 14px;align-items:center;margin-bottom:10px;min-width:0}
+.cpb .k{grid-column:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.cpb .cbar{grid-column:2}
+.cpb .v{grid-column:3}
+.cpb .v{font-size:var(--fv);color:var(--txt);text-align:right;white-space:nowrap}
+.cbar{height:12px;background:var(--track);border:1px solid var(--edge);border-radius:999px;overflow:hidden;min-width:0}
+.cbar i{display:block;height:100%;width:0;border-radius:inherit;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+.cbar.real i{background:var(--wc);box-shadow:0 0 10px rgba(127,231,255,.6)}
+.cbar.opus i{background:repeating-linear-gradient(90deg,#eaffff 0 12px,rgba(234,255,255,.55) 12px 14px);box-shadow:0 0 8px rgba(234,255,255,.4)}
+#p-comp.nodata .cpb .opus,#p-comp.nodata #cvopus{opacity:.5}
+.cah{font-size:var(--fv);color:var(--txt);margin-bottom:10px;overflow-wrap:anywhere}
+.cah b{font-weight:normal;color:var(--ce);text-shadow:0 0 10px rgba(127,231,255,.5)}
+#p-comp.nodata .cah{color:var(--sub)}
+#p-comp .stack{margin:0 0 8px}
+.ctk{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:var(--fk);color:var(--sub);margin-bottom:8px}
+.ctk span{white-space:nowrap}
+.ctk i{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);margin-right:6px;vertical-align:-1px}
+.ctk b{font-weight:normal;color:var(--txt)}
+.cnote{font-size:var(--fk);color:var(--sub);margin-top:auto}
+body.compact .cnote,body.compact .ctk,body.compact #p-comp .stack{display:none}
 
 /* Barras segmentadas */
 .seg{display:flex;gap:2px;height:10px;align-items:stretch;min-width:0}
@@ -278,39 +301,52 @@ body.compact .scan,body.compact .gring svg .g2{display:none}
 /* 900-1599 px: dos columnas, sin la gráfica */
 @media (min-width:900px){
   .grid{grid-template-columns:minmax(300px,.8fr) minmax(0,1.5fr);
-    grid-template-areas:"ctx mod" "ctx agt" "cost hist"}
-  body.compact .grid{grid-template-areas:"ctx mod" "ctx agt" "cost agt"}
+    grid-template-areas:"ctx mod" "ctx agt" "cost hist" "comp hist"}
+  body.compact .grid{grid-template-areas:"ctx mod" "ctx agt" "cost agt" "comp agt"}
 }
 
 /* >= 1600 px: rejilla completa */
 @media (min-width:1600px){
   .grid{grid-template-columns:minmax(360px,460px) minmax(0,1.1fr) minmax(0,1fr);
-    grid-template-areas:"ctx mod mod" "ctx chart hist" "cost agt agt"}
-  body.compact .grid{grid-template-areas:"ctx mod mod" "ctx chart chart" "cost agt agt"}
+    grid-template-areas:"ctx mod mod" "ctx chart hist" "cost comp agt"}
+  body.compact .grid{grid-template-areas:"ctx mod mod" "ctx chart chart" "cost comp agt"}
   #p-chart{display:block}
   .reactor{max-width:min(380px,24vh)}
 }
 
-/* Si la ventana es alta y ancha, todo cabe sin desplazar la página. */
-@media (min-width:900px) and (min-height:700px){
+/* Si la ventana es alta y ancha, todo cabe sin desplazar la página. En dos columnas (900-1599) la columna
+   izquierda lleva contexto, coste y comparativa, así que hace falta más alto: por debajo de 1000 px la página se desplaza. */
+@media (min-width:900px) and (max-width:1599px) and (min-height:1000px),(min-width:1600px) and (min-height:700px){
   .wrap{height:100vh}
-  /* La fila de abajo (coste) nunca se recorta: el alto que quita la barra del plan sale de la fila del medio. */
-  .grid{overflow:hidden;grid-template-rows:auto minmax(0,1fr) minmax(min-content,.85fr)}
-  body.compact .grid{grid-template-rows:auto minmax(0,1fr) auto}
+  .grid{overflow:hidden}
   .tblw{max-height:none}
+}
+@media (min-width:900px) and (max-width:1599px) and (min-height:1000px){
+  /* Las filas de abajo (coste y comparativa) nunca se recortan: el alto que quita la barra del plan sale de la fila del medio. */
+  .grid{grid-template-rows:auto minmax(0,1fr) min-content minmax(min-content,.85fr)}
+  body.compact .grid{grid-template-rows:auto minmax(0,1fr) auto auto}
 }
 @media (min-width:1600px) and (min-height:700px){
   .grid,body.compact .grid{grid-template-rows:auto minmax(0,1fr) minmax(min-content,1fr)}
 }
-/* Columna derecha estrecha (900-1199 px): reparto de agentes sin barra. */
+/* Columnas estrechas (900-1199 px): reparto de agentes sin barra y comparativa en dos líneas. */
 @media (min-width:900px) and (max-width:1199px){
+  /* Comparativa en la columna izquierda estrecha: la barra debajo de su etiqueta y su cifra. */
+  .cpb{grid-template-columns:minmax(0,1fr) auto;gap:4px 14px}
+  .cpb .v{grid-column:2}
+  .cpb .cbar{grid-column:1/-1;margin-bottom:6px}
   .w-share{width:4.5em}
   .share .seg,th .lg{display:none}
   th .sh{display:inline}
 }
 @media (max-width:640px){.share .seg,th .lg{display:none}th .sh{display:inline}}
+/* HUD cerrado con /jarvis: si window.close() no cierra la ventana, queda este aviso encima de todo. */
+.hudoff{display:none;position:fixed;inset:0;z-index:50;align-items:center;justify-content:center;padding:16px;text-align:center;background:#050a12;color:#eaffff;font:600 clamp(16px,2.4vw,22px)/1.4 system-ui,sans-serif;letter-spacing:.04em}
+body.hud-off .hudoff{display:flex}
+body.hud-off .wrap,body.hud-off .neb,body.hud-off .floor,body.hud-off .scan{visibility:hidden}
 </style></head>
 <body>
+<div class="hudoff" id="hudoff" role="status">HUD cerrado. Escribe /jarvis para abrirlo.</div>
 <div class="neb" aria-hidden="true"></div>
 <div class="floor" aria-hidden="true"><i></i></div>
 <div class="scan" aria-hidden="true"></div>
@@ -378,6 +414,18 @@ body.compact .scan,body.compact .gring svg .g2{display:none}
     <div class="mdl" id="modelo">—</div>
   </div></section>
 
+  <section class="pnl" id="p-comp"><div class="in">
+    <div class="ph"><span class="t">Comparativa · Haiku frente a Opus</span><span class="r num" id="cpct">sin estimación</span></div>
+    <div class="cpb">
+      <span class="k">Real</span><span class="v num" id="cvreal">0.0000 USD</span><div class="cbar real"><i id="cbreal"></i></div>
+      <span class="k opus">Todo en Opus</span><span class="v num" id="cvopus">—</span><div class="cbar opus"><i id="cbopus"></i></div>
+    </div>
+    <div class="cah num" id="cah">sin datos de Opus todavía</div>
+    <div class="stack empty" id="cstack"></div>
+    <div class="ctk num" id="ctk"></div>
+    <div class="cnote">Estimación según tus turnos reales; el caché y la mezcla de entrada y salida afectan.</div>
+  </div></section>
+
   <section class="pnl" id="p-mod"><div class="in">
     <div class="ph"><span class="t">Reparto por modelo</span><span class="r num" id="mtot">0 tokens</span></div>
     <div class="stack empty" id="stack"></div>
@@ -422,7 +470,7 @@ var lastData=null,seenTurns={},firstRender=true;
 ` + LOGICA + `
 /*FIN*/
 var ST=nuevoEstado(Date.now());
-var VACIO={modelo:'',contexto:{tokens:0,window:0,percent:0},alerta:'normal',coste:0,modelos:[],agentes:[],historial:[],plan:null,actualizado:0,latido:0};
+var VACIO={modelo:'',contexto:{tokens:0,window:0,percent:0},alerta:'normal',coste:0,modelos:[],agentes:[],historial:[],plan:null,comparativa:null,actualizado:0,latido:0};
 function $id(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function n(x){return Number(x||0).toLocaleString('es-ES')}
@@ -582,6 +630,27 @@ function renderAgents(d){
   }).join(''):'<tr><td colspan="5" class="empty-row">Sin turnos todavía</td></tr>';
 }
 
+// Comparativa Haiku frente a Opus. Las cifras vienen hechas en datos.js; sin estimación se dice por qué y no se inventa nada.
+function renderComp(d){
+  var c=d.comparativa||null;
+  var real=c?Number(c.costeReal||0):0,ok=!!(c&&c.disponible&&c.costeOpusEstimado!=null);
+  var est=ok?Number(c.costeOpusEstimado):0,mx=Math.max(real,est);
+  $id('p-comp').classList.toggle('nodata',!ok);
+  $id('cbreal').style.width=(ok?(mx>0?real*100/mx:0):(real>0?100:0)).toFixed(1)+'%';
+  $id('cbopus').style.width=(ok&&mx>0?est*100/mx:0).toFixed(1)+'%';
+  $id('cvreal').textContent=real.toFixed(4)+' USD';
+  $id('cvopus').textContent=ok?est.toFixed(4)+' USD':'—';
+  var ah=ok?Number(c.ahorro||0):0,ap=ok?Number(c.ahorroPct||0):0;
+  $id('cpct').textContent=ok?(ah>=0?'ahorro '+pc(ap)+' %':'sin ahorro'):'sin estimación';
+  $id('cah').innerHTML=ok?(ah>=0?'Ahorro <b>'+ah.toFixed(4)+' USD</b> · <b>'+pc(ap)+' %</b> menos que todo en Opus':'Diferencia <b>'+ah.toFixed(4)+' USD</b> · <b>'+pc(ap)+' %</b>: en tus turnos Haiku no salió más barato'):esc(c&&c.motivo?c.motivo:'sin datos de Opus todavía');
+  var ts=c&&c.tokensPorModelo?c.tokensPorModelo:[];
+  var tot=ts.reduce(function(a,x){return a+(Number(x.tokens)||0)},0);
+  var st=$id('cstack');
+  st.className='stack'+(tot?'':' empty');
+  st.innerHTML=tot?ts.map(function(x){return '<div title="'+esc((FAM[x.familia]||x.familia)+' '+n(x.tokens)+' tokens')+'" style="--c:'+col(x.familia)+';flex-grow:'+(Number(x.tokens)||0)+'"></div>'}).join(''):'';
+  $id('ctk').innerHTML=ts.length?ts.map(function(x){return '<span><i style="--c:'+col(x.familia)+'"></i>'+esc(FAM[x.familia]||x.familia)+' <b>'+kn(x.tokens)+'</b> tokens · '+Number(x.coste||0).toFixed(4)+' USD</span>'}).join(''):'<span>Sin turnos todavía</span>';
+}
+
 // Transiciones: los números grandes se deslizan al valor nuevo y un cambio de nivel lanza una onda.
 var nivel=null,tw={};
 function tween(id,to,fmt){
@@ -659,6 +728,7 @@ function render(d){
   renderPlan(d);
   tween('coste',Number(d.coste||0),function(v){return v.toFixed(4)+'<small>USD</small>'});
   $id('modelo').textContent=d.modelo||'—';
+  renderComp(d);
   renderModels(d);
   renderChart(d);
   renderHist(d);
@@ -676,7 +746,7 @@ function pintaSenal(){
   document.body.classList.toggle('sig-off',r.alerta);
 }
 // Un error de sintaxis en datos.js (escritura a medias) no debe ensuciar la consola ni parar nada.
-window.onerror=function(msg,src){if(src&&String(src).indexOf('datos.js')>=0)return true};
+window.onerror=function(msg,src){if(src&&(String(src).indexOf('datos.js')>=0||String(src).indexOf('estado.js')>=0))return true};
 // Una sola lectura a la vez: si una tarda, no se mezclan respuestas viejas con nuevas.
 var cargando=0;
 function load(){
@@ -693,6 +763,28 @@ function load(){
     pintaSenal();
   };
   s.onerror=function(){s.remove();cargando=0;alFallar(ST);pintaSenal()};
+  document.head.appendChild(s);
+}
+// Interruptor /jarvis: el mod escribe estado.json y su copia estado.js ({"abierto": false} al cerrar).
+// Desde file:// el navegador no deja leer un .json con fetch, así que se carga estado.js como script.
+// Con abierto:false se intenta window.close(); si la ventana sigue ahí, se queda el aviso.
+var HUD_CERRADO=false;
+function aplicaEstado(e){
+  if(!e||typeof e.abierto!=='boolean')return;
+  if(e.abierto===false){
+    if(!HUD_CERRADO){HUD_CERRADO=true;document.body.classList.add('hud-off');try{window.close()}catch(err){}}
+  }else if(HUD_CERRADO){HUD_CERRADO=false;document.body.classList.remove('hud-off')}
+}
+var cargandoEstado=0;
+function loadEstado(){
+  var now=Date.now();
+  if(cargandoEstado&&now-cargandoEstado<5000)return;
+  cargandoEstado=now;
+  window.CONSUMO_ESTADO=undefined;
+  var s=document.createElement('script');
+  s.src='estado.js?'+now;
+  s.onload=function(){s.remove();cargandoEstado=0;try{aplicaEstado(window.CONSUMO_ESTADO)}catch(err){}};
+  s.onerror=function(){s.remove();cargandoEstado=0};
   document.head.appendChild(s);
 }
 function tick(){$id('clock').textContent=new Date().toLocaleTimeString('es-ES')}
@@ -738,7 +830,7 @@ var rz;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeou
 tick();
 // Sin datos.js todavía la página no se queda en blanco: se pinta vacía y espera.
 try{render(VACIO)}catch(err){}
-pintaSenal();load();
-setInterval(function(){tick();load()},1000);
+pintaSenal();load();loadEstado();
+setInterval(function(){tick();load();loadEstado()},1000);
 </script>
 </body></html>`

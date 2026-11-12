@@ -1,16 +1,26 @@
-import type { Register } from 'claude-code'
+import type { Hook, Register } from 'claude-code'
 
 // Los mods del pack jarvis-essential-pack que /mods vigila.
 const PACK = ['portero', 'resumen-sesion', 'consumo', 'jarvis-banda'] as const
+
+// Los únicos nombres que /mods on y /mods off aceptan: el pack y este mismo mod.
+const ALLOWED: readonly string[] = [...PACK, 'mods-estado']
+
+const USAGE = 'Uso: /mods, /mods on <nombre> o /mods off <nombre>.'
+const DONE = 'Hecho. El cambio se aplica en la próxima sesión; reinicia Claude Code.'
 
 // Donde el usuario guarda su copia local de los mods (Windows).
 const LOCAL_DIR = 'C:\\CLAUDE\\mods'
 
 type Listed = { name: string; source: string; version: string; status: string; isActive: boolean }
 
+type CliOutcome = { isOk: true; stdout: string } | { isOk: false; reason: string }
+
 type ListOutcome =
   | { isOk: true; stdout: string; plugins: Listed[] }
   | { isOk: false; reason: string }
+
+type Ctx = Parameters<Hook<'command.run'>>[0]
 
 // Lee la salida de "claude plugin list":
 //   > nombre@marketplace
@@ -43,42 +53,67 @@ const parsePluginList = (stdout: string): Listed[] => {
 const errorText = (err: unknown): string =>
   err instanceof Error ? err.message : String(err)
 
+// Ejecuta "claude <args>" sin shell. En Windows "claude" puede ser claude.cmd, que se prueba
+// después. Nunca lanza: un fallo vuelve como texto en reason.
+async function runClaude($: Ctx, args: string[]): Promise<CliOutcome> {
+  const failures: string[] = []
+  for (const exe of ['claude', 'claude.cmd']) {
+    try {
+      const run = await $.process.run([exe, ...args], { timeoutMs: 60_000 })
+      if (run.exitCode === 0) return { isOk: true, stdout: run.stdout }
+      const detail = (run.stderr || run.stdout).trim().split(/\r?\n/).slice(0, 3).join(' / ')
+      return {
+        isOk: false,
+        reason: `"${exe} ${args.join(' ')}" terminó con código ${run.exitCode}${detail ? `: ${detail}` : ''}`,
+      }
+    } catch (err) {
+      failures.push(`${exe}: ${errorText(err)}`)
+    }
+  }
+  return {
+    isOk: false,
+    reason:
+      `no se pudo ejecutar "claude ${args.join(' ')}" (${failures.join('; ')}). ` +
+      'Comprueba que claude está en el PATH y que el mod tiene permiso para ejecutar procesos.',
+  }
+}
+
+// /mods on <nombre> y /mods off <nombre>: solo nombres del pack. El cambio vale desde la
+// próxima sesión; no se intenta recargar nada.
+async function toggle($: Ctx, sub: 'on' | 'off', rest: string[]): Promise<string> {
+  if (rest.length !== 1) return USAGE
+  const given = rest[0]!
+  const name = given.toLowerCase()
+  if (!ALLOWED.includes(name)) {
+    return `"${given}" no es un mod del pack. Nombres permitidos: ${ALLOWED.join(', ')}.`
+  }
+  const r = await runClaude($, ['plugin', sub === 'on' ? 'enable' : 'disable', name])
+  if (!r.isOk) return `No se pudo ${sub === 'on' ? 'activar' : 'desactivar'} ${name}: ${r.reason}`
+  return DONE
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'mods', description: 'Lista los mods activos del pack' })
+    await $.command.register({
+      name: 'mods',
+      description: 'Lista los mods del pack; on/off <nombre> los activa o desactiva',
+      argumentHint: '[on|off <nombre>]',
+    })
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  on('command.run', { command: 'mods' }, async $ => {
+  on('command.run', { command: 'mods' }, async ($, e) => {
+    const [sub, ...rest] = (e.args ?? '').trim().split(/\s+/).filter(Boolean)
+    if (sub !== undefined) {
+      const s = sub.toLowerCase()
+      return { text: s === 'on' || s === 'off' ? await toggle($, s, rest) : USAGE }
+    }
+
     // 1. Lista de plugins: la API no la da, así que se pregunta a la CLI.
-    //    Sin shell: en Windows "claude" puede ser claude.cmd, que se prueba después.
-    let outcome: ListOutcome = { isOk: false, reason: '' }
-    const failures: string[] = []
-    for (const exe of ['claude', 'claude.cmd']) {
-      try {
-        const run = await $.process.run([exe, 'plugin', 'list'], { timeoutMs: 60_000 })
-        if (run.exitCode === 0) {
-          outcome = { isOk: true, stdout: run.stdout, plugins: parsePluginList(run.stdout) }
-        } else {
-          const detail = (run.stderr || run.stdout).trim().split(/\r?\n/).slice(0, 3).join(' / ')
-          outcome = {
-            isOk: false,
-            reason: `"${exe} plugin list" terminó con código ${run.exitCode}${detail ? `: ${detail}` : ''}`,
-          }
-        }
-        break
-      } catch (err) {
-        failures.push(`${exe}: ${errorText(err)}`)
-      }
-    }
-    if (!outcome.isOk && outcome.reason === '') {
-      outcome = {
-        isOk: false,
-        reason:
-          `no se pudo ejecutar "claude plugin list" (${failures.join('; ')}). ` +
-          'Comprueba que claude está en el PATH y que el mod tiene permiso para ejecutar procesos.',
-      }
-    }
+    const cli = await runClaude($, ['plugin', 'list'])
+    const outcome: ListOutcome = cli.isOk
+      ? { isOk: true, stdout: cli.stdout, plugins: parsePluginList(cli.stdout) }
+      : cli
 
     // 2. Copia local en C:\CLAUDE\mods: qué carpetas del pack hay.
     let localNames = new Set<string>()
