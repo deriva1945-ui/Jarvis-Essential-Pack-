@@ -5,6 +5,25 @@ Format based on Keep a Changelog. Versions follow SemVer.
 
 Cada versión del pack agrupa las versiones de los mods que cambian. · Each pack version groups the mod versions that change.
 
+## [Sin publicar] · Unreleased
+
+### resumen-sesion 0.2.0
+
+- **ES:** Resumen de traspaso en **secciones fijas**: objetivo, decisiones tomadas, archivos tocados (rutas únicas), comandos ejecutados relevantes, errores vistos y pendientes. El modelo ligero escribe objetivo, decisiones y pendientes a partir de los últimos mensajes; archivos, comandos y errores salen de los datos reales de las herramientas.
+- **ES:** Dos disparadores: **automático** al volver a escribir tras un tiempo sin actividad (como antes; no actúa con la sesión parada) y **bajo demanda** con el nuevo comando **`/resumen`**.
+- **ES:** El último resumen se guarda con su fecha en **`<dataDir>/ultimo-resumen.md`** (por defecto `~/CLAUDE/resumen-sesion`). Nuevo comando **`/resumen-ver`** para verlo, también en otra sesión.
+- **ES:** Sugerencia de sesión nueva con el **texto listo para copiar** entre dos marcas.
+- **ES:** Opciones de `userConfig`: `idleHours` (por defecto 2), `maxTokens` (800), `includeFiles` (sí), `language` (`es` o `en`) y `dataDir`.
+- **ES:** Degradación limpia: si el modelo falla, se avisa con el motivo, el último resumen guardado no se toca, se da un resumen parcial con los datos de herramientas y el automático se reintenta una vez en el siguiente mensaje.
+- **ES:** Corrección: los mensajes se leen con la forma de `$.session.messages()` (`text`), no con `content`.
+- **EN:** Handover summary in **fixed sections**: goal, decisions made, files touched (unique paths), relevant commands run, errors seen and pending. The light model writes goal, decisions and pending from the last messages; files, commands and errors come from the real tool data.
+- **EN:** Two triggers: **automatic** when you type again after a period of inactivity (as before; it does not act while the session is idle) and **on demand** with the new **`/resumen`** command.
+- **EN:** The last summary is saved with its date to **`<dataDir>/ultimo-resumen.md`** (default `~/CLAUDE/resumen-sesion`). New **`/resumen-ver`** command to show it, also from another session.
+- **EN:** New-session suggestion with the **copy-ready text** between two markers.
+- **EN:** `userConfig` options: `idleHours` (default 2), `maxTokens` (800), `includeFiles` (yes), `language` (`es` or `en`) and `dataDir`.
+- **EN:** Clean degradation: if the model fails, you get a warning with the reason, the last saved summary is left alone, a partial summary with the tool data is given and the automatic trigger retries once on the next message.
+- **EN:** Fix: messages are read in the shape `$.session.messages()` returns (`text`), not `content`.
+
 ## [0.3.0] - 2026-11-12
 
 Pack `jarvis-essential-pack` 0.3.0: consumo 0.4.0 y mods-estado 0.3.0. portero y resumen-sesion siguen en 0.1.0 y jarvis-banda en 0.2.0. · consumo 0.4.0 and mods-estado 0.3.0. portero and resumen-sesion stay at 0.1.0 and jarvis-banda at 0.2.0.
