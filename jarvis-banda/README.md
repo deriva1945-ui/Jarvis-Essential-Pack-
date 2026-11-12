@@ -1,8 +1,10 @@
+<a id="es"></a>
+
 # jarvis-banda
 
-**Español** · [English](#english)
+**Español** · [English](#en)
 
-Mod para Claude Code que dibuja una línea estilo J.A.R.V.I.S. encima del prompt con el estado en vivo de la sesión.
+Dibuja una línea estilo J.A.R.V.I.S. encima del prompt con el estado en vivo de la sesión.
 
 ![jarvis-banda delegando](../images/banda-delegando.png)
 
@@ -25,32 +27,47 @@ El color depende del modelo: Haiku cian, Opus ámbar, Fable violeta, otros blanc
 |---|---|---|
 | ![esperando](../images/banda-esperando.png) | ![procesando](../images/banda-procesando.png) | ![ejecutando](../images/banda-ejecutando.png) |
 
-## Instalación
+## Cómo funciona
+
+1. Guarda un estado pequeño: fase, herramienta o subagente, modelo de la sesión y modelo del subagente.
+2. Cada evento cambia la fase:
+   - `session.start` y fin de turno → esperando.
+   - `prompt.submit` → procesando (lee el modelo de la sesión).
+   - `tool.call` → ejecutando mientras corre; al acabar, vuelve a procesando.
+   - `agent.spawn` → delegando, con el tipo y el modelo del subagente.
+3. Las herramientas que usan los subagentes no cambian la línea: manda la delegación.
+4. Al dibujar la zona de **encima del prompt** (`ui.render`, `AbovePrompt`), lee el estado y pinta una línea con símbolo, texto y color.
+5. **Se redibuja solo cuando hay un evento.** No usa temporizadores.
+
+## Cómo se instala
 
 ```
 /plugin marketplace add deriva1945-ui/portero-claude
 /plugin install jarvis-banda@jarvis-essential-pack
 ```
 
-## Qué no hace
+O cárgalo con `--plugin-dir` (ver el [README principal](../README.md#es-cargar)).
 
-- No muestra coste ni contexto: eso está en el mod `consumo`.
+## Qué no hace / límites
+
+- No muestra coste ni contexto: eso está en el mod [consumo](../consumo/).
 - No toca la línea de estado ni muestra avisos.
-- No usa temporizadores: solo cambia cuando hay un evento.
 - Si algo falla al leer el estado, la línea desaparece y el prompt sigue normal.
 - No se ha probado dentro de todas las terminales de Windows.
 
 ## Licencia
 
-MIT. Ver [LICENSE](LICENSE).
+MIT © deriva1945-ui. Ver [LICENSE](LICENSE).
 
 ---
 
-<a id="english"></a>
+<a id="en"></a>
 
 # jarvis-banda (English)
 
-A Claude Code mod that draws one J.A.R.V.I.S.-style line above the prompt with the session's live state.
+[Español](#es) · **English**
+
+Draws one J.A.R.V.I.S.-style line above the prompt with the session's live state.
 
 ![jarvis-banda delegating](../images/banda-delegando.png)
 
@@ -73,6 +90,18 @@ The color depends on the model: Haiku cyan, Opus amber, Fable violet, others blu
 |---|---|---|
 | ![waiting](../images/banda-esperando.png) | ![processing](../images/banda-procesando.png) | ![running](../images/banda-ejecutando.png) |
 
+## How it works
+
+1. It keeps a small state: phase, tool or subagent, session model and subagent model.
+2. Each event changes the phase:
+   - `session.start` and end of turn → waiting.
+   - `prompt.submit` → processing (reads the session model).
+   - `tool.call` → running while it runs; when it ends, back to processing.
+   - `agent.spawn` → delegating, with the subagent's type and model.
+3. Tools used by subagents do not change the line: delegation wins.
+4. When the area **above the prompt** is drawn (`ui.render`, `AbovePrompt`), it reads the state and paints one line with symbol, text and color.
+5. **It only redraws when an event happens.** No timers.
+
 ## Install
 
 ```
@@ -80,14 +109,15 @@ The color depends on the model: Haiku cyan, Opus amber, Fable violet, others blu
 /plugin install jarvis-banda@jarvis-essential-pack
 ```
 
-## What it does not do
+Or load it with `--plugin-dir` (see the [main README](../README.md#en-load)).
 
-- It does not show cost or context: that is the `consumo` mod.
+## What it does not do / limits
+
+- It does not show cost or context: that is the [consumo](../consumo/) mod.
 - It does not touch the status line or show notices.
-- It uses no timers: it only changes when an event happens.
 - If reading the state fails, the line disappears and the prompt works as usual.
 - It has not been tested in every Windows terminal.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT © deriva1945-ui. See [LICENSE](LICENSE).
