@@ -495,6 +495,79 @@ test('(q) parpadeo: the page uses the diff helpers and no panel is rebuilt with 
   expect(PAGE).toContain('if(key===CHART)return;')
 })
 
+test('(r) métricas: one principal, shares add up, turns match everywhere, nothing negative, labels match the numbers', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  let usd = 0.3
+  let ctxUsage: { tokens: number; window: number; percent?: number } = { tokens: 50_000, window: 200_000 }
+  const writes: { path: string; text: string }[] = []
+  on('fs.write', (_, e) => {
+    writes.push(e)
+    return { value: undefined }
+  })
+  on('process.run', () => ok)
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.model', () => ({ value: 'claude-fable-5' }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: ctxUsage, rateLimits: [], cost: { usd } } }))
+  on('turn.complete', () => ({ text: '' }))
+  const last = () => {
+    const w = writes.filter(x => x.path.endsWith('datos.js')).at(-1)
+    return JSON.parse((w?.text ?? '').replace(/^window\.CONSUMO = /, '').replace(/;$/, ''))
+  }
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  // Sin lectura del contexto todavía: ventana 0, no 1.
+  expect(last().contexto).toEqual({ tokens: 0, window: 0, percent: 0 })
+
+  // El hilo principal contesta con Opus (cambio de modelo); el de la sesión (Fable) aún no tiene turnos.
+  usd = 0.5
+  await $.turn.complete(turnOf('t1', undefined, 'claude-opus-5-5', 300))
+  let d = last()
+  expect(d.modelos.filter((m: { principal: boolean }) => m.principal).map((m: { modelo: string }) => m.modelo)).toEqual(['claude-opus-5-5'])
+  // Sin porcentaje del motor se calcula con tokens y ventana.
+  expect(d.contexto).toEqual({ tokens: 50_000, window: 200_000, percent: 25 })
+
+  usd = 0.6
+  await $.turn.complete(turnOf('t2', 'a1', 'claude-haiku-5-5', 90))
+  usd = 0.65
+  await $.turn.complete(turnOf('t3', undefined, 'claude-fable-5', 100))
+  usd = 0.65
+  await $.turn.complete(turnOf('t3', undefined, 'claude-fable-5', 100)) // repetido
+  ctxUsage = { tokens: 300_000, window: 200_000, percent: 150 }
+  usd = 0.7
+  await $.turn.complete(turnOf('t4', 'a1', 'claude-haiku-5-5', 0))
+  d = last()
+
+  // Un solo principal: ahora el modelo de la sesión, que ya tiene turnos.
+  const principales = d.modelos.filter((m: { principal: boolean }) => m.principal)
+  expect(principales.map((m: { modelo: string }) => m.modelo)).toEqual(['claude-fable-5'])
+  // Turnos: cabecera (modelos), agentes e historial dicen lo mismo, sin contar el repetido.
+  const turnosModelos = d.modelos.reduce((a: number, m: { turnos: number }) => a + m.turnos, 0)
+  expect(turnosModelos).toBe(4)
+  expect(d.agentes.reduce((a: number, x: { turns: number }) => a + x.turns, 0)).toBe(4)
+  expect(d.historial).toHaveLength(4)
+  // Reparto: porcentajes de trabajo y de turnos suman 100 (con redondeo a 0.1) y ninguno es negativo.
+  const suma = (k: string) => Math.round(d.modelos.reduce((a: number, m: Record<string, number>) => a + (m[k] ?? 0), 0))
+  expect(suma('reparto')).toBe(100)
+  expect(suma('repartoTurnos')).toBe(100)
+  // Trabajo = entrada + salida: 300 + 10, 90 + 10, 100 + 10, 0 + 10.
+  const by = (f: string) => d.modelos.find((m: { familia: string }) => m.familia === f)
+  expect(by('haiku').entrada + by('haiku').salida).toBe(110)
+  expect(by('opus').reparto).toBe(Math.round((310 * 1000) / 530) / 10)
+  // Coste por turno: lo que subió el contador, sin negativos, y la suma más lo de antes de arrancar es el total.
+  const costes = d.historial.map((h: { coste: number }) => h.coste)
+  expect(costes).toEqual([0.2, 0.1, 0.05, 0.05])
+  expect(costes.every((c: number) => c >= 0)).toBe(true)
+  expect(Math.round((0.3 + costes.reduce((a: number, c: number) => a + c, 0)) * 1e6) / 1e6).toBe(d.coste)
+  // Todos los números del bloque son >= 0, y el contexto se recorta a 100 %.
+  for (const m of d.modelos) for (const k of ['entrada', 'salida', 'cache', 'turnos', 'reparto', 'repartoTurnos']) expect(m[k]).toBeGreaterThanOrEqual(0)
+  expect(d.contexto.percent).toBe(100)
+
+  // Etiquetas de la página que cuadran con los números.
+  expect(PAGE).toContain("hs.length+' de '+n(total)+' turnos'")
+  expect(PAGE).toContain(' tokens con caché · ')
+  expect(PAGE).toContain('Real en turnos')
+})
+
 // ---------- Plan de Claude (TaskCreate / TaskUpdate) ----------
 
 // Lo que la herramienta contesta, bajo el plugin: TaskCreate da un id nuevo, TaskUpdate dice que fue bien.

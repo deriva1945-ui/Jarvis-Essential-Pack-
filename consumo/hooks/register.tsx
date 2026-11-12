@@ -77,6 +77,15 @@ type Data = {
 const alerta = (c: CtxSnap | null): Data['alerta'] =>
   !c ? 'normal' : c.percent >= CRIT ? 'critica' : c.percent >= WARN ? 'alta' : 'normal'
 
+// Contexto de la sesión: sin porcentaje del motor se calcula con tokens y ventana (antes salía 0 %
+// con la ventana medio llena). Nunca negativo ni por encima de 100.
+const ctxSnap = (c: { tokens?: number | null; window?: number | null; percent?: number | null }): CtxSnap => {
+  const tokens = Math.max(0, c.tokens ?? 0)
+  const win = Math.max(0, c.window ?? 0)
+  const raw = c.percent ?? (win > 0 ? (tokens * 100) / win : 0)
+  return { tokens, window: win, percent: Math.max(0, Math.min(100, Math.round(raw * 10) / 10)) }
+}
+
 const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part * 1000) / whole) / 10 : 0)
 
 const spent = (l: Ledger) => l.base + (l.last ?? 0)
@@ -88,6 +97,9 @@ const toModelos = (m: Record<string, ModelRow>, r: Record<string, AgentRow>, mod
   const work = ids.reduce((a, k) => a + (m[k]?.input ?? 0) + (m[k]?.output ?? 0), 0)
   const turns = ids.reduce((a, k) => a + (m[k]?.turns ?? 0), 0)
   const mainModel = r['main']?.model
+  // Un solo modelo principal: el de la sesión si ya tiene turnos; si no, el último que contestó en el
+  // hilo principal. Antes podían salir dos (tras cambiar de modelo) y la etiqueta caía en cualquiera.
+  const principal = m[model] ? model : (mainModel ?? model)
   return ids
     .map(k => {
       const x = m[k] ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, turns: 0 }
@@ -101,7 +113,7 @@ const toModelos = (m: Record<string, ModelRow>, r: Record<string, AgentRow>, mod
         turnos: x.turns,
         reparto: pct(x.input + x.output, work),
         repartoTurnos: pct(x.turns, turns),
-        principal: k === model || k === mainModel,
+        principal: k === principal,
       }
     })
     .sort((a, b) => b.entrada + b.salida - (a.entrada + a.salida))
@@ -122,7 +134,8 @@ type Snap = {
 
 const toData = ({ r, m, h, lb, c, t, p, k, model, updated }: Snap, now: number): Data => ({
   modelo: model,
-  contexto: c ?? { tokens: 0, window: 1, percent: 0 },
+  // Sin lectura del contexto todavía: todo a cero (antes la ventana salía como "1" y el libre como "1").
+  contexto: c ?? { tokens: 0, window: 0, percent: 0 },
   alerta: alerta(c),
   coste: Math.round(spent(t) * 1e6) / 1e6,
   modelos: toModelos(m, r, model),
@@ -393,7 +406,7 @@ export const register: Register = (on, options) => {
             ].slice(-HIST_MAX),
       )
     }
-    await update($, ctx, () => ({ tokens: s.context.tokens ?? 0, window: s.context.window, percent: s.context.percent ?? 0 }))
+    await update($, ctx, () => ctxSnap(s.context))
     updatedAt = await $.clock.now()
     await writeData($)
     if (!beat) latir($)
@@ -417,7 +430,7 @@ export const register: Register = (on, options) => {
       }
     }
     const s = await $.session.usage()
-    await update($, ctx, () => ({ tokens: s.context.tokens ?? 0, window: s.context.window, percent: s.context.percent ?? 0 }))
+    await update($, ctx, () => ctxSnap(s.context))
     updatedAt = await $.clock.now()
     await writeData($)
     if (!beat) latir($)

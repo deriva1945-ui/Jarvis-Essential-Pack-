@@ -421,7 +421,7 @@ body.hud-off .wrap,body.hud-off .neb,body.hud-off .floor,body.hud-off .scan{visi
   <section class="pnl" id="p-comp"><div class="in">
     <div class="ph"><span class="t">Comparativa · Haiku frente a Opus</span><span class="r num" id="cpct">sin estimación</span></div>
     <div class="cpb">
-      <span class="k">Real</span><span class="v num" id="cvreal">0.0000 USD</span><div class="cbar real"><i id="cbreal"></i></div>
+      <span class="k" title="Suma del coste de los turnos contados; el panel Coste incluye además lo gastado antes de abrir el HUD">Real en turnos</span><span class="v num" id="cvreal">0.0000 USD</span><div class="cbar real"><i id="cbreal"></i></div>
       <span class="k opus">Todo en Opus</span><span class="v num" id="cvopus">—</span><div class="cbar opus"><i id="cbopus"></i></div>
     </div>
     <div class="cah num" id="cah"><span id="cahm">sin datos de Opus todavía</span><span id="caho" hidden><span id="cahl">Ahorro</span> <b id="caha"></b> · <b id="cahp"></b><span id="cahs"></span></span></div>
@@ -630,7 +630,9 @@ function renderChart(d){
 function filaTurno(){return mk('tr','','<td class="al-l dimc num h-hora"></td><td class="al-l"></td><td class="al-l"><span class="ftag"></span></td><td class="num"></td><td class="num amc"></td>')}
 function renderHist(d){
   var hs=(d.historial||[]).slice().reverse();
-  ponTexto($id('hcount'),hs.length+(hs.length===1?' turno':' turnos'));
+  // La tabla guarda los últimos 20: si hay más turnos, el contador lo dice ("20 de 35 turnos") y cuadra con la cabecera.
+  var total=modelosDe(d).reduce(function(a,x){return a+(x.turnos||0)},0);
+  ponTexto($id('hcount'),hs.length<total?hs.length+' de '+n(total)+' turnos':hs.length+(hs.length===1?' turno':' turnos'));
   var marcar=!firstRender;
   lista($id('hrows'),hs.length?hs:VACIA,function(t){return t.vacia?'vacia':t.hora+'|'+t.agente+'|'+t.modelo},function(t){return t.vacia?filaVacia():filaTurno()},function(tr,t,i,nuevo){
     if(t.vacia)return;
@@ -697,7 +699,7 @@ function renderComp(d){
   lista($id('ctk'),ts.length?ts:VACIA,function(x){return x.vacia?'vacia':x.familia},function(x){return x.vacia?mk('span','','Sin turnos todavía'):mk('span','','<i></i><span></span> <b></b><span></span>')},function(e,x){
     if(x.vacia)return;
     var k=e.children;
-    ponEstilo(k[0],'--c',col(x.familia));ponTexto(k[1],FAM[x.familia]||x.familia);ponTexto(k[2],kn(x.tokens));ponTexto(k[3],' tokens · '+Number(x.coste||0).toFixed(4)+' USD');
+    ponEstilo(k[0],'--c',col(x.familia));ponTexto(k[1],FAM[x.familia]||x.familia);ponTexto(k[2],kn(x.tokens));ponTexto(k[3],' tokens con caché · '+Number(x.coste||0).toFixed(4)+' USD');
   });
 }
 
