@@ -31,7 +31,7 @@ test('the page has the key sections, the size breakpoints and the density toggle
 })
 
 // Temas: bloque de variables por tema en html[data-tema="..."]; sin atributo, hibrido.
-const TEMAS = ['hibrido', 'mark-ii', 'mark-l', 'stark', 'claro']
+const TEMAS = ['hibrido', 'mark-ii', 'mark-l', 'stark', 'claro', 'sobrio']
 const VARS_TEMA = ['--bg', '--panel', '--txt', '--sub', '--acc', '--acc2', '--warn', '--crit', '--ok', '--modelo-opus', '--modelo-haiku', '--modelo-fable', '--modelo-otro']
 function bloqueTema(t: string): string {
   const sel = `html[data-tema="${t}"]{`
@@ -39,7 +39,7 @@ function bloqueTema(t: string): string {
   return i < 0 ? '' : PAGE.slice(i + sel.length, PAGE.indexOf('\n}', i))
 }
 
-test('the page defines the five themes, each with every color variable', () => {
+test('the page defines every theme, each with every color variable', () => {
   for (const t of TEMAS) {
     const b = bloqueTema(t)
     expect(b.length > 0).toBe(true)
@@ -57,6 +57,29 @@ test('the default theme (no data-tema attribute) is hibrido', () => {
   expect(PAGE.indexOf(':root,html[data-tema="hibrido"]{') < PAGE.indexOf('html[data-tema="mark-ii"]{')).toBe(true)
   // El HTML no fija ningún tema: lo pone quien abre la página.
   expect(PAGE).toContain('<html lang="es">')
+})
+
+// Contraste WCAG entre dos colores #rrggbb.
+function contraste(a: string, b: string): number {
+  const lum = (h: string) => {
+    const v = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(x => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4))
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]
+  }
+  const x = lum(a), y = lum(b)
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+}
+
+test('the sobrio theme exists, is not the default and its main text has at least 4.5:1 contrast', () => {
+  const b = bloqueTema('sobrio')
+  expect(b.length > 0).toBe(true)
+  expect(PAGE).not.toContain(':root,html[data-tema="sobrio"]')
+  const v = (k: string) => new RegExp(`${k}:(#[0-9a-f]{6})`).exec(b)?.[1] ?? ''
+  for (const fondo of ['--bg', '--panel']) {
+    expect(contraste(v('--txt'), v(fondo)) >= 4.5).toBe(true)
+    expect(contraste(v('--sub'), v(fondo)) >= 4.5).toBe(true)
+  }
+  // Sin brillos ni cristal: los efectos del tema van a cero.
+  expect(b).toContain('--glow:0;--cristal:none')
 })
 
 test('themes keep red for alerts only and drop effects in compact mode', () => {

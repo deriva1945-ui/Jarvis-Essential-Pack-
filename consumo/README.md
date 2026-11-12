@@ -18,6 +18,7 @@ Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y t
 - **Comando `/jarvis`:** abre el HUD si está cerrado y lo cierra si está abierto.
 - Avisa cuando el contexto pasa del **70 %** y del **85 %**: por encima del 85 % el HUD entero pasa a rojo de alerta.
 - Si los datos dejan de llegar 10 segundos, marca "sin señal".
+- Temas de color de la página (atributo `data-tema` de `<html>`): `hibrido` (por defecto), `mark-ii`, `mark-l`, `stark`, `claro` y `sobrio` (paneles planos, sin brillos ni efectos, un solo color de acento).
 - Funciona sin conexión: todo va dentro de la página.
 - La tecla `D` (o el botón de la cabecera) cambia entre modo cómodo y compacto. La elección se recuerda.
 
@@ -154,6 +155,7 @@ Opens a live HUD window with what the session spends: context, cost and tokens. 
 - **`/jarvis` command:** opens the HUD when it is closed and closes it when it is open.
 - It warns when context goes over **70 %** and **85 %**: above 85 % the whole HUD turns alert red.
 - If data stops arriving for 10 seconds, it shows "sin señal" (no signal).
+- Page color themes (`data-tema` attribute on `<html>`): `hibrido` (default), `mark-ii`, `mark-l`, `stark`, `claro` and `sobrio` (flat panels, no glow or effects, a single accent color).
 - It works offline: everything is inside the page.
 - The `D` key (or the header button) switches between comfortable and compact mode. The choice is remembered.
 

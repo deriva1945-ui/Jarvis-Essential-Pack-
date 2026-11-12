@@ -10,7 +10,8 @@
 //   Mínimo 420 px de ancho sin desplazamiento horizontal.
 // Arriba, a todo el ancho: barra de progreso del plan de Claude (TaskCreate / TaskUpdate), con la lista plegable.
 // Tecla D o botón de la cabecera: modo cómodo / compacto (se guarda en localStorage).
-// Temas (atributo data-tema en <html>): hibrido (por defecto, blanco-cian con anillo ámbar), mark-ii, mark-l, stark y claro.
+// Temas (atributo data-tema en <html>): hibrido (por defecto, blanco-cian con anillo ámbar), mark-ii, mark-l, stark, claro y sobrio
+// (sobrio: paneles planos sin efectos, un solo acento azul y la monoespaciada solo en las tablas).
 // Cada tema es un bloque de variables CSS (--bg, --panel, --txt, --sub, --acc, --acc2, --warn, --crit, --ok, --modelo-*); rojo solo en alertas.
 // Globo holográfico en canvas con un anillo inclinado (CSS 3D) que gira al revés, paneles de cristal y escaneo sutil.
 // Fondo: degradado radial, nebulosa difuminada y rejilla de perspectiva que avanza despacio (quieta en compacto y con movimiento reducido).
@@ -86,6 +87,22 @@ html[data-tema="claro"]{
   --bg0:#f7faff;--bg1:#eef3f9;--bg2:#e1e9f3;--neb2-rgb:120,170,255;--shadow:rgba(20,40,80,.12);
   --glow:.3;--cristal:blur(12px);--globo-filtro:hue-rotate(14deg) saturate(1.6) brightness(.42);--globo-filtro-x:brightness(.8) saturate(1.4);
   color-scheme:light;
+}
+html[data-tema="sobrio"]{
+  /* Sobrio: grafito plano, un solo acento azul y color de estado solo en avisos. Sin brillos, cristal, globo ni fondo animado
+     (las reglas propias del tema están al final, en "Tema sobrio"). Los derivados se fijan aquí para que no salgan degradados. */
+  --bg:#131518;--bg-rgb:19,21,24;--panel:#1a1d21;--txt:#e4e6e9;--sub:#9ba3ad;
+  --acc:#6aa3e8;--acc-rgb:106,163,232;--acc2:#c8cdd3;--acc2-rgb:200,205,211;
+  --warn:#d9a441;--warn-rgb:217,164,65;--crit:#e5534b;--crit-rgb:229,83,75;--crit-txt:#ffb4ae;--ok:#6aa3e8;
+  --modelo-opus:#c8cdd3;--modelo-haiku:#6aa3e8;--modelo-fable:#a99bd9;--modelo-otro:#8f97a1;
+  --ring1:#6aa3e8;--ring2:#6aa3e8;--ring-rgb:106,163,232;
+  --glass:#1a1d21;--glass2:#1a1d21;--thbg:#1a1d21;--track:#272b30;--mix:#6aa3e8;
+  --bg0:#131518;--bg1:#131518;--bg2:#131518;--neb2-rgb:19,21,24;--shadow:transparent;
+  --line:#2a2e34;--faint:#212429;--edge:#30353b;--edge-on:#434950;--bord:#2a2e34;--bord-on:#434950;--wc:#6aa3e8;
+  --sans:'Segoe UI',Inter,system-ui,'Liberation Sans','DejaVu Sans',sans-serif;
+  --mono:Consolas,'Cascadia Mono','JetBrains Mono','DejaVu Sans Mono',monospace;
+  --glow:0;--cristal:none;--globo-filtro:none;--globo-filtro-x:none;
+  color-scheme:dark;
 }
 /* Derivados: se calculan con las variables del tema activo. Los nombres cortos (--ce, --wh, --wn, --rd, --f-*) los usa el script. */
 :root{
@@ -448,6 +465,68 @@ html[data-tema="claro"] body.lv-x:before{animation-name:alarm-claro}
 @keyframes alarm-claro{0%,100%{opacity:.4}50%{opacity:.8}}
 /* Mark L: reflejo de cristal en el borde superior de cada panel. */
 html[data-tema="mark-l"] .pnl>.in{background:linear-gradient(180deg,rgba(255,255,255,.045),transparent 38%)}
+
+/* Tema sobrio: superficies planas con borde de 1 px, texto en minúsculas sin espaciado extra, sin sombras ni brillos.
+   Se quitan el fondo (nebulosa, rejilla, escaneo), el logotipo, las esquinas, el globo y su anillo; el contexto queda como un anillo de progreso.
+   El color de estado (ámbar y rojo) solo aparece con contexto alto o sin señal. */
+html[data-tema="sobrio"] body{background-image:none}
+html[data-tema="sobrio"] body.lv-x{--edge:#30353b;--bord:#2a2e34}
+html[data-tema="sobrio"] .neb,html[data-tema="sobrio"] .floor,html[data-tema="sobrio"] .scan,html[data-tema="sobrio"] .logo,html[data-tema="sobrio"] h1 .brand,html[data-tema="sobrio"] .shift,html[data-tema="sobrio"] header:after,html[data-tema="sobrio"] .reactor:before,html[data-tema="sobrio"] #globe,html[data-tema="sobrio"] .halo,html[data-tema="sobrio"] #ticks,
+html[data-tema="sobrio"] .pnl:before,html[data-tema="sobrio"] .pnl:after,html[data-tema="sobrio"] .pnl>.in:before,html[data-tema="sobrio"] .ph .t:before{display:none}
+html[data-tema="sobrio"] body:before{inset:0 0 auto 0;height:3px;box-shadow:none;background:var(--crit);transition:none}
+html[data-tema="sobrio"] body.lv-w:before{opacity:1;box-shadow:none;background:var(--warn)}
+html[data-tema="sobrio"] body.lv-x:before{animation:none}
+html[data-tema="sobrio"] h1{font-weight:600;letter-spacing:0;text-transform:none;text-shadow:none}
+html[data-tema="sobrio"] .k,html[data-tema="sobrio"] .al,html[data-tema="sobrio"] #dens,html[data-tema="sobrio"] .ph .t,html[data-tema="sobrio"] .pll summary,html[data-tema="sobrio"] .pll li i,html[data-tema="sobrio"] .cmp .hd,html[data-tema="sobrio"] th{letter-spacing:0;text-transform:none}
+html[data-tema="sobrio"] .al{background:transparent;border-radius:6px;padding:3px 12px}
+html[data-tema="sobrio"] .al.on,html[data-tema="sobrio"] #al-ctx,html[data-tema="sobrio"] #al-sig{animation:none;box-shadow:none}
+html[data-tema="sobrio"] .dot,html[data-tema="sobrio"] .dot.wait,html[data-tema="sobrio"] .dot.off{box-shadow:none;animation:none}
+html[data-tema="sobrio"] #dens{background:transparent;border-radius:6px}
+html[data-tema="sobrio"] #dens:hover,html[data-tema="sobrio"] #dens:focus-visible{background:var(--faint);border-color:var(--edge-on);box-shadow:none}
+html[data-tema="sobrio"] #dens kbd{color:var(--sub);border-color:var(--edge)}
+html[data-tema="sobrio"] .pnl,html[data-tema="sobrio"] .pnl:hover,html[data-tema="sobrio"] .pnl.lit{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;transition:border-color .3s}
+html[data-tema="sobrio"] .pnl:hover{border-color:var(--edge)}
+html[data-tema="sobrio"] body.lv-w #p-ctx{background:var(--panel);border-color:var(--warn);box-shadow:none}
+html[data-tema="sobrio"] body.lv-x #p-ctx{border-color:var(--crit);box-shadow:none}
+html[data-tema="sobrio"] .ph{border:0;border-image:none;padding-bottom:0;margin-bottom:14px}
+html[data-tema="sobrio"] .ph .t{font-weight:600;color:var(--txt);text-shadow:none}
+html[data-tema="sobrio"] .plt{letter-spacing:0}
+html[data-tema="sobrio"] .plt b,html[data-tema="sobrio"] #p-plan.done .plt b{font-weight:600;text-shadow:none}
+html[data-tema="sobrio"] .plok{font-weight:600;letter-spacing:0;text-transform:lowercase;box-shadow:none}
+html[data-tema="sobrio"] .plok::first-letter{text-transform:uppercase}
+html[data-tema="sobrio"] .plbar{height:8px;border:0;border-radius:4px}
+html[data-tema="sobrio"] .plfill,html[data-tema="sobrio"] #p-plan.done .plfill{background-image:none;background-color:var(--acc);box-shadow:none}
+html[data-tema="sobrio"] .pll summary{color:var(--acc)}
+html[data-tema="sobrio"] .pll summary:before{content:none}
+html[data-tema="sobrio"] .pll li.c i{color:var(--sub)}
+html[data-tema="sobrio"] .pll li.e i{color:var(--acc);text-shadow:none}
+html[data-tema="sobrio"] .face>circle:first-child{r:94px;stroke:var(--track);stroke-width:6}
+html[data-tema="sobrio"] #arc{stroke-width:6;filter:none}
+html[data-tema="sobrio"] .mark{stroke-width:2}
+html[data-tema="sobrio"] .rc .p,html[data-tema="sobrio"] body.lv-x .rc .p{font-weight:600;text-shadow:none}
+html[data-tema="sobrio"] .rc .p small{color:var(--sub)}
+html[data-tema="sobrio"] .rc .k{color:var(--sub);text-shadow:none}
+html[data-tema="sobrio"] .cost{font-weight:600;text-shadow:none}
+html[data-tema="sobrio"] .cost small{letter-spacing:0}
+html[data-tema="sobrio"] .mdl{color:var(--txt)}
+html[data-tema="sobrio"] .cbar{height:8px;border:0;border-radius:4px}
+html[data-tema="sobrio"] .cbar.real i{background:var(--acc);box-shadow:none}
+html[data-tema="sobrio"] .cbar.opus i{background:var(--sub);box-shadow:none}
+html[data-tema="sobrio"] .cah b{font-weight:600;color:var(--txt);text-shadow:none}
+html[data-tema="sobrio"] .ctk i,html[data-tema="sobrio"] .legend i{box-shadow:none}
+html[data-tema="sobrio"] .seg{gap:0;border-radius:3px;overflow:hidden;background:var(--track)}
+html[data-tema="sobrio"] .seg i{transform:none;background:transparent}
+html[data-tema="sobrio"] .seg i.on{background:var(--c,var(--ce));box-shadow:none}
+html[data-tema="sobrio"] .stack{gap:2px}
+html[data-tema="sobrio"] .stack div{background:var(--c);box-shadow:none;opacity:1}
+html[data-tema="sobrio"] .cmp .nm b{font-weight:600;letter-spacing:0;color:var(--txt)}
+html[data-tema="sobrio"] .cmp .nm b em{font-size:13px;letter-spacing:0;color:var(--sub);background:transparent;border:1px solid var(--edge);border-radius:4px}
+html[data-tema="sobrio"] .chart rect[style],html[data-tema="sobrio"] .chart polyline{filter:none!important}
+html[data-tema="sobrio"] th,html[data-tema="sobrio"] td{border-bottom-color:var(--faint)}
+html[data-tema="sobrio"] td.num,html[data-tema="sobrio"] .share .sv{font-family:var(--mono);font-size:calc(var(--fv) - 1px)}
+html[data-tema="sobrio"] td .ftag{letter-spacing:0}
+html[data-tema="sobrio"] footer{border-image:none;border-top-color:var(--line)}
+html[data-tema="sobrio"] footer .line{background:none}
 
 /* Sin backdrop-filter (o con transparencia reducida): paneles opacos para que el fondo no estorbe la lectura. */
 @supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
