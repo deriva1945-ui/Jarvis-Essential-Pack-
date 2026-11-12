@@ -97,3 +97,99 @@ test('/mods answers clearly when claude is not on the PATH', async ($, on) => {
   expect(text).toContain('PATH')
   for (const name of PACK) expect(text).toContain(name)
 })
+
+const DONE = 'Hecho. El cambio se aplica en la próxima sesión; reinicia Claude Code.'
+
+const withArgs = (args: string) => ({ ...MODS, args })
+
+test('/mods on and /mods off run claude plugin enable/disable and say it applies next session', async ($, on) => {
+  const runs: string[][] = []
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('process.run', (_, e) => {
+    runs.push([...e.argv])
+    return { value: ok('') }
+  })
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const a = await $.command.run(withArgs('on consumo'))
+  const b = await $.command.run(withArgs('off jarvis-banda'))
+  const c = await $.command.run(withArgs('  OFF   mods-estado '))
+
+  expect(runs).toEqual([
+    ['claude', 'plugin', 'enable', 'consumo'],
+    ['claude', 'plugin', 'disable', 'jarvis-banda'],
+    ['claude', 'plugin', 'disable', 'mods-estado'],
+  ])
+  expect(a.text).toBe(DONE)
+  expect(b.text).toBe(DONE)
+  expect(c.text).toBe(DONE)
+})
+
+test('/mods on falls back to claude.cmd when claude cannot be started', async ($, on) => {
+  const runs: string[][] = []
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('process.run', (_, e) => {
+    runs.push([...e.argv])
+    if (e.argv[0] === 'claude') throw new Error('spawn claude ENOENT')
+    return { value: ok('') }
+  })
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const { text } = await $.command.run(withArgs('on portero'))
+
+  expect(runs.at(-1)).toEqual(['claude.cmd', 'plugin', 'enable', 'portero'])
+  expect(text).toBe(DONE)
+})
+
+test('/mods on|off rejects names outside the pack without running anything', async ($, on) => {
+  const runs: string[][] = []
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('process.run', (_, e) => {
+    runs.push([...e.argv])
+    return { value: ok('') }
+  })
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const a = await $.command.run(withArgs('off superpowers'))
+  const b = await $.command.run(withArgs('on ../portero'))
+  const c = await $.command.run(withArgs('on'))
+  const d = await $.command.run(withArgs('borrar consumo'))
+
+  expect(runs).toHaveLength(0)
+  expect(a.text).toContain('"superpowers" no es un mod del pack')
+  expect(a.text).toContain('portero, resumen-sesion, consumo, jarvis-banda, mods-estado')
+  expect(b.text).toContain('no es un mod del pack')
+  expect(c.text).toContain('Uso: /mods')
+  expect(d.text).toContain('Uso: /mods')
+})
+
+test('/mods off answers clearly when the process fails, without throwing', async ($, on) => {
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('process.run', () => ({
+    value: { ...ok(''), exitCode: 1, stderr: 'Plugin "consumo" not found\nmore' },
+  }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const failed = await $.command.run(withArgs('off consumo'))
+  expect(failed.text).toContain('No se pudo desactivar consumo')
+  expect(failed.text).toContain('terminó con código 1')
+  expect(failed.text).toContain('Plugin "consumo" not found')
+  expect(failed.text).not.toContain('Hecho.')
+})
+
+test('/mods on answers clearly when neither claude nor claude.cmd can be run', async ($, on) => {
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('process.run', () => {
+    throw new Error('spawn ENOENT')
+  })
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const { text } = await $.command.run(withArgs('on resumen-sesion'))
+  expect(text).toContain('No se pudo activar resumen-sesion')
+  expect(text).toContain('PATH')
+})
