@@ -200,6 +200,18 @@ async function writeData($: Ctx): Promise<void> {
   }
 }
 
+// (Re)arranca el latido. Si el módulo se recarga (por ejemplo al cambiar dataDir) sin un session.start
+// nuevo, turn.complete y tool.call lo vuelven a arrancar: sin esto la página solo veía latido justo
+// después de cada turno y pasaba de "En línea" a "Sin señal" una y otra vez.
+function latir($: Ctx): void {
+  try {
+    beat?.cancel()
+    beat = $.clock.every(BEAT_MS, () => void writeData($))
+  } catch {
+    // Sin latido la página marca "sin señal", pero el resto sigue.
+  }
+}
+
 const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
 // Interruptor del HUD. El mod no puede cerrar la ventana del navegador sin matar procesos ajenos,
@@ -278,12 +290,7 @@ export const register: Register = (on, options) => {
     } catch {
       // El HUD es opcional: la sesión sigue.
     }
-    try {
-      beat?.cancel()
-      beat = $.clock.every(BEAT_MS, () => void writeData($))
-    } catch {
-      // Sin latido la página marca "sin señal", pero el resto sigue.
-    }
+    latir($)
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -389,6 +396,7 @@ export const register: Register = (on, options) => {
     await update($, ctx, () => ({ tokens: s.context.tokens ?? 0, window: s.context.window, percent: s.context.percent ?? 0 }))
     updatedAt = await $.clock.now()
     await writeData($)
+    if (!beat) latir($)
     return next(e)
   })
 
@@ -412,6 +420,7 @@ export const register: Register = (on, options) => {
     await update($, ctx, () => ({ tokens: s.context.tokens ?? 0, window: s.context.window, percent: s.context.percent ?? 0 }))
     updatedAt = await $.clock.now()
     await writeData($)
+    if (!beat) latir($)
     return ran
   }).catch(($, e, next) => next(e))
 }

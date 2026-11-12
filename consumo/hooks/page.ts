@@ -748,21 +748,26 @@ function pintaSenal(){
 // Un error de sintaxis en datos.js (escritura a medias) no debe ensuciar la consola ni parar nada.
 window.onerror=function(msg,src){if(src&&(String(src).indexOf('datos.js')>=0||String(src).indexOf('estado.js')>=0))return true};
 // Una sola lectura a la vez: si una tarda, no se mezclan respuestas viejas con nuevas.
-var cargando=0;
+// Una lectura colgada más de 5 s se abandona (cuenta como fallida) y sus avisos ya no hacen nada:
+// si no, su onload tardío leería el CONSUMO que la lectura nueva acaba de borrar.
+var cargando=0,actual=null;
 function load(){
   var now=Date.now();
   if(cargando&&now-cargando<5000)return;
+  if(actual){actual.onload=actual.onerror=null;actual.remove();actual=null;alFallar(ST)}
   cargando=now;
   window.CONSUMO=undefined;
   var s=document.createElement('script');
+  actual=s;
   s.src='datos.js?'+now;
   s.onload=function(){
-    s.remove();cargando=0;
+    if(actual!==s)return;
+    actual=null;s.remove();cargando=0;
     var d=window.CONSUMO;
     if(alCargar(ST,d,Date.now())){try{render(d)}catch(err){}}
     pintaSenal();
   };
-  s.onerror=function(){s.remove();cargando=0;alFallar(ST);pintaSenal()};
+  s.onerror=function(){if(actual!==s)return;actual=null;s.remove();cargando=0;alFallar(ST);pintaSenal()};
   document.head.appendChild(s);
 }
 // Interruptor /jarvis: el mod escribe estado.json y su copia estado.js ({"abierto": false} al cerrar).

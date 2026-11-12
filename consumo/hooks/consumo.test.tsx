@@ -278,6 +278,59 @@ test('(e) with datos.js missing the window still opens and the page shows an emp
   expect(L.senal(st, T0 + 12_000).aviso).toBe('datos.js no responde')
 })
 
+test('(m) señal: SIN SEÑAL needs 3 reads in a row without a new heartbeat, and a valid read clears it at once', () => {
+  const L = logica()
+  const st = L.nuevoEstado(T0)
+  expect(L.alCargar(st, datos(T0), T0)).toBe(true)
+  expect(L.senal(st, T0).estado).toBe('ok')
+  // Ventana en segundo plano: el navegador deja de leer un minuto y la primera lectura falla.
+  L.alFallar(st)
+  let s = L.senal(st, T0 + 60_000)
+  expect(s.alerta).toBe(false)
+  expect(s.texto).toBe('Comprobando')
+  L.alFallar(st)
+  expect(L.senal(st, T0 + 61_000).alerta).toBe(false)
+  // Tercera lectura fallida seguida: ahora sí.
+  L.alFallar(st)
+  s = L.senal(st, T0 + 62_000)
+  expect(s.alerta).toBe(true)
+  expect(s.estado).toBe('off')
+  expect(s.aviso).toBe('datos.js no responde')
+  // Vuelve un dato válido con latido nuevo: el aviso se va en esa misma lectura.
+  expect(L.alCargar(st, datos(T0 + 63_000), T0 + 63_000)).toBe(true)
+  s = L.senal(st, T0 + 63_000)
+  expect(s.alerta).toBe(false)
+  expect(s.estado).toBe('ok')
+  expect(s.texto).toBe('En línea')
+  expect(st.fails).toBe(0)
+  expect(st.misses).toBe(0)
+  // Fallos sueltos entre lecturas buenas nunca acumulan: cada latido nuevo pone la cuenta a cero.
+  for (let t = 64_000; t <= 90_000; t += 1000) {
+    if (t % 2000 === 0) L.alFallar(st)
+    else L.alCargar(st, datos(T0 + t), T0 + t)
+    expect(L.senal(st, T0 + t).alerta).toBe(false)
+    expect(st.misses).toBeLessThan(2)
+  }
+  // Un dato válido pero con el mismo latido (el plugin se paró) no apaga el aviso.
+  for (let t = 91_000; t <= 105_000; t += 1000) L.alCargar(st, datos(T0 + 89_000), T0 + t)
+  expect(L.senal(st, T0 + 105_000).alerta).toBe(true)
+  expect(L.senal(st, T0 + 105_000).aviso).toBe('Sin señal hace 16 s')
+  // La página abandona una lectura colgada y no deja que su onload tardío cuente.
+  expect(PAGE).toContain('if(actual!==s)return;')
+})
+
+test('(n) señal: the heartbeat starts again on the next tool call if the module was reloaded', async ($, on) => {
+  const clock = mock.clock(on, { now: 1_000 })
+  const { writes } = base(on, () => 0)
+  on('tool.call', () => ({ result: {} }))
+  // Sin session.start (módulo recargado a mitad de sesión): la primera herramienta arranca el latido.
+  await $.tool.call({ tool: 'TaskList' })
+  const n0 = writes.filter(w => w.path.endsWith('datos.js')).length
+  expect(n0).toBeGreaterThan(0)
+  await clock.advance(9_000)
+  expect(writes.filter(w => w.path.endsWith('datos.js')).length).toBeGreaterThanOrEqual(n0 + 3)
+})
+
 // ---------- Plan de Claude (TaskCreate / TaskUpdate) ----------
 
 // Lo que la herramienta contesta, bajo el plugin: TaskCreate da un id nuevo, TaskUpdate dice que fue bien.
