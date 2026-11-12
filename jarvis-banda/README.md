@@ -1,42 +1,93 @@
 # jarvis-banda
 
-Mod para Claude Code que dibuja una banda estilo HUD de J.A.R.V.I.S. encima del prompt. Reacciona a lo que pasa en la sesión y cambia de color según el modelo que trabaja.
+**Español** · [English](#english)
 
-```
-◑ J.A.R.V.I.S. // ONLINE · MODELO OPUS-5.5 · CTX 5% · TAREA: Bash
-EJECUTANDO Bash
-```
+Mod para Claude Code que dibuja una línea estilo J.A.R.V.I.S. encima del prompt con el estado en vivo de la sesión.
+
+![jarvis-banda delegando](../images/banda-delegando.png)
+
+*Aproximación en HTML, no es la salida real de la terminal.*
+
+## Qué hace
+
+Una sola línea que cambia con lo que pasa en la sesión:
+
+| Símbolo | Estado | Cuándo |
+|---|---|---|
+| ◌ | ESPERANDO ÓRDENES | al empezar la sesión y al terminar cada turno |
+| ◐ | PROCESANDO · modelo | al enviar un mensaje, y al terminar una herramienta o subagente |
+| ◑ | EJECUTANDO herramienta | mientras corre una herramienta (Bash, Edit…) |
+| ◒ | DELEGANDO → tipo (modelo) | al lanzar un subagente |
+
+El color depende del modelo: Haiku cian, Opus ámbar, Fable violeta, otros blanco azulado. Al delegar, toma el color del modelo del subagente.
+
+| Esperando | Procesando | Ejecutando |
+|---|---|---|
+| ![esperando](../images/banda-esperando.png) | ![procesando](../images/banda-procesando.png) | ![ejecutando](../images/banda-ejecutando.png) |
 
 ## Instalación
 
 ```
 /plugin marketplace add deriva1945-ui/portero-claude
-/plugin install jarvis-banda@portero-claude
+/plugin install jarvis-banda@jarvis-essential-pack
 ```
 
-## Qué hace
+## Qué no hace
 
-Estados (cambian por eventos, sin temporizadores):
+- No muestra coste ni contexto: eso está en el mod `consumo`.
+- No toca la línea de estado ni muestra avisos.
+- No usa temporizadores: solo cambia cuando hay un evento.
+- Si algo falla al leer el estado, la línea desaparece y el prompt sigue normal.
+- No se ha probado dentro de todas las terminales de Windows.
 
-| Símbolo | Estado | Cuándo |
+## Licencia
+
+MIT. Ver [LICENSE](LICENSE).
+
+---
+
+<a id="english"></a>
+
+# jarvis-banda (English)
+
+A Claude Code mod that draws one J.A.R.V.I.S.-style line above the prompt with the session's live state.
+
+![jarvis-banda delegating](../images/banda-delegando.png)
+
+*HTML approximation, not the real terminal output.*
+
+## What it does
+
+One line that changes with what happens in the session (labels are in Spanish):
+
+| Symbol | State | When |
 |---|---|---|
-| ◌ | ESPERANDO ÓRDENES | al iniciar la sesión |
-| ◐ | PROCESANDO · <modelo> | al enviar un prompt, y al terminar cada herramienta |
-| ◑ | EJECUTANDO <herramienta> | mientras corre una herramienta del hilo principal |
-| ◒ | DELEGANDO → <tipo> (<modelo>) | al lanzar un subagente |
-| ● | TAREA COMPLETADA · <tokens> · <coste> | al terminar el turno; vuelve a procesar con el siguiente prompt |
+| ◌ | ESPERANDO ÓRDENES (awaiting orders) | when the session starts and after each turn |
+| ◐ | PROCESANDO · model (processing) | when you send a message, and after a tool or subagent ends |
+| ◑ | EJECUTANDO tool (running) | while a tool runs (Bash, Edit…) |
+| ◒ | DELEGANDO → type (model) (delegating) | when a subagent starts |
 
-Color por modelo: Haiku cian (#7dd3fc), Opus ámbar (#fbbf24), Fable violeta (#c4b5fd), cualquier otro blanco azulado (#dbeafe). Mientras se delega, la banda toma el color del modelo del subagente (ámbar si es Opus).
+The color depends on the model: Haiku cyan, Opus amber, Fable violet, others bluish white. While delegating, it uses the subagent's model color.
 
-Al terminar un turno la banda añade:
+| Waiting | Processing | Running |
+|---|---|---|
+| ![waiting](../images/banda-esperando.png) | ![processing](../images/banda-procesando.png) | ![running](../images/banda-ejecutando.png) |
 
-- REPARTO: porcentaje de tokens (entrada + salida) por familia de modelo en ese turno, hilo principal y subagentes juntos (por ejemplo, HAIKU 30% · OPUS 70%).
-- CTX: barra de 10 segmentos con el contexto usado, el porcentaje y los tokens frente a la ventana.
+## Install
 
-Además:
+```
+/plugin marketplace add deriva1945-ui/portero-claude
+/plugin install jarvis-banda@jarvis-essential-pack
+```
 
-- Pone el estado actual en la línea de estado de Claude Code.
-- Muestra un aviso (toast) al terminar cada turno, con tokens y coste del turno.
-- Muestra un aviso cuando termina un subagente que corre en Opus.
+## What it does not do
 
-El coste del turno sale del contador de la sesión (diferencia entre el inicio y el final del turno). Si alguna lectura falla, la banda cede su sitio y no rompe el prompt.
+- It does not show cost or context: that is the `consumo` mod.
+- It does not touch the status line or show notices.
+- It uses no timers: it only changes when an event happens.
+- If reading the state fails, the line disappears and the prompt works as usual.
+- It has not been tested in every Windows terminal.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

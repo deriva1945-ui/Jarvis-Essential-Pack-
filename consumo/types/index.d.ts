@@ -2,6 +2,8 @@ export type AgentRow = { model: string; input: number; output: number; cacheRead
 export type ModelRow = { input: number; output: number; cacheRead: number; cacheWrite: number; turns: number }
 // Un turno del historial: quién, con qué modelo, cuánto y lo que subió el contador de coste.
 export type TurnRec = {
+  // turnId del motor; falta en historiales guardados por la versión anterior.
+  id?: string
   at: number
   agent: string
   model: string
@@ -12,6 +14,16 @@ export type TurnRec = {
   cost: number | null
 }
 export type CtxSnap = { tokens: number; window: number; percent: number }
+// Libro del coste y de los turnos vistos, en un solo átomo para que update() lo cambie de una vez:
+// last: último valor del contador de coste de la sesión (null si aún no se conoce);
+// base: lo acumulado antes de que el contador volviera a empezar (/clear, reanudar);
+// ids: turnos ya contados (para no duplicar); turn: lo que decidió la última actualización.
+export type Ledger = {
+  last: number | null
+  base: number
+  ids: string[]
+  turn: { id: string; dup: boolean; cost: number | null } | null
+}
 
 declare module 'claude-code' {
   interface PluginState {
@@ -21,7 +33,7 @@ declare module 'claude-code' {
       hist: Shaped<TurnRec[]>
       labels: Shaped<Record<string, string>>
       ctx: Shaped<CtxSnap | null>
-      total: Shaped<number>
+      ledger: Shaped<Ledger>
     }
   }
 }

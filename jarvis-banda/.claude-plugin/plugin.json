@@ -1,1 +1,1 @@
-{ "name": "jarvis-banda", "version": "0.1.0", "description": "Banda HUD estilo J.A.R.V.I.S. encima del prompt: estado en directo, color por modelo, reparto Haiku/Opus y contexto usado.", "author": { "name": "deriva1945-ui" }, "types": "./types/index.d.ts" }
+{ "name": "jarvis-banda", "version": "0.2.0", "description": "Línea HUD estilo J.A.R.V.I.S. encima del prompt: estado en vivo con símbolo y color por modelo.", "author": { "name": "deriva1945-ui" }, "types": "./types/index.d.ts" }

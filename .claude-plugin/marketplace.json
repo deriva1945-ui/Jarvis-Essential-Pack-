@@ -1,13 +1,14 @@
 {
   "name": "jarvis-essential-pack",
+  "description": "Cinco mods estilo J.A.R.V.I.S. para Claude Code: reparto de tareas, resumen de sesión, HUD de consumo, banda de estado y /mods.",
   "owner": {
     "name": "deriva1945-ui"
   },
   "plugins": [
     {
       "name": "portero",
-      "source": "./",
-      "description": "Clasifica cada petición: ligeras con el modelo de la sesión, pesadas delegadas a un subagente potente."
+      "source": "./portero",
+      "description": "Clasifica cada petición: ligeras con el modelo de la sesión, pesadas delegadas a un subagente Opus."
     },
     {
       "name": "resumen-sesion",
@@ -17,12 +18,17 @@
     {
       "name": "consumo",
       "source": "./consumo",
-      "description": "Panel en directo: contexto, coste y tokens por agente y modelo."
+      "description": "Ventana HUD en directo: contexto, coste y tokens por agente y modelo."
     },
     {
       "name": "jarvis-banda",
       "source": "./jarvis-banda",
-      "description": "Banda HUD estilo J.A.R.V.I.S. encima del prompt: estado en directo, color por modelo, reparto por modelo y contexto usado."
+      "description": "Línea HUD estilo J.A.R.V.I.S. encima del prompt: estado en vivo con color por modelo."
+    },
+    {
+      "name": "mods-estado",
+      "source": "./mods-estado",
+      "description": "Comando /mods: muestra qué mods del pack están activos."
     }
   ]
 }

@@ -1,1 +1,5 @@
 C:\\CLAUDE*
+# Generados al desarrollar o probar los mods
+**/.claude-plugin/types/
+**/tsconfig.json
+**/datos.js
