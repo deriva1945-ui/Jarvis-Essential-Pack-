@@ -18,7 +18,7 @@
     {
       "name": "consumo",
       "source": "./consumo",
-      "description": "Ventana HUD en directo: contexto, coste y tokens por agente y modelo."
+      "description": "Ventana HUD en directo: contexto, coste, tokens por modelo, plan, comparativa Haiku/Opus y /jarvis."
     },
     {
       "name": "jarvis-banda",
@@ -28,7 +28,7 @@
     {
       "name": "mods-estado",
       "source": "./mods-estado",
-      "description": "Comando /mods: muestra qué mods del pack están activos."
+      "description": "Comando /mods: qué mods del pack están activos; /mods on y /mods off."
     }
   ]
 }

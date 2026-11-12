@@ -1,7 +1,7 @@
 {
   "name": "mods-estado",
-  "version": "0.1.0",
-  "description": "Muestra qué mods del pack jarvis-essential-pack están activos en la sesión.",
+  "version": "0.2.0",
+  "description": "Comando /mods: muestra qué mods del pack jarvis-essential-pack están activos; /mods on y /mods off los activan o desactivan.",
   "author": {
     "name": "deriva1945-ui"
   }
