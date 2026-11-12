@@ -7,7 +7,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="Licencia MIT" src="https://img.shields.io/badge/licencia-MIT-22d3ee"></a>
   <a href="https://docs.claude.com/en/docs/claude-code"><img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-mods-d97757"></a>
-  <img alt="Versión 0.1.0" src="https://img.shields.io/badge/versi%C3%B3n-0.1.0-64748b">
+  <a href="CHANGELOG.md"><img alt="Versión 0.2.0" src="https://img.shields.io/badge/versi%C3%B3n-0.2.0-64748b"></a>
   <a href="CONTRIBUTING.md"><img alt="Contribuciones bienvenidas" src="https://img.shields.io/badge/contribuciones-bienvenidas-34d399"></a>
 </p>
 
@@ -19,6 +19,7 @@
 
 ## Índice
 
+- [Novedades](#es-novedades)
 - [Los mods](#es-mods)
 - [Instalación](#es-instalacion)
 - [Cargar los mods en cada sesión](#es-cargar)
@@ -28,17 +29,29 @@
 - [Contribuir](#es-contribuir)
 - [Licencia](#es-licencia)
 
+<a id="es-novedades"></a>
+
+## Novedades
+
+**Versión 0.2.0 del pack**
+
+- **consumo 0.3.0:** comparativa Haiku frente a Opus en el HUD y comando `/jarvis` para abrir y cerrar la ventana.
+- **mods-estado 0.2.0:** `/mods on <nombre>` y `/mods off <nombre>` activan o desactivan un mod del pack.
+- **jarvis-banda 0.2.0:** una sola línea con el estado en vivo y el modelo del subagente al delegar.
+
+Todos los cambios en [CHANGELOG.md](CHANGELOG.md).
+
 <a id="es-mods"></a>
 
 ## Los mods
 
 | Mod | Qué hace | Imagen |
 |---|---|---|
-| **[portero](portero/)** | Mira cada petición y decide quién la hace. Lo ligero, el modelo de la sesión. Lo pesado, un subagente Opus. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
-| **[resumen-sesion](resumen-sesion/)** | Si vuelves tras 2 horas sin escribir, Haiku escribe un resumen de traspaso para seguir en una sesión nueva. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
-| **[consumo](consumo/)** | Ventana HUD en directo, en blanco-cian: barra del plan, contexto usado, coste y tokens por agente y por modelo. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
-| **[jarvis-banda](jarvis-banda/)** | Una línea encima del prompt con el estado en vivo: esperando, procesando, ejecutando o delegando. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
-| **[mods-estado](mods-estado/)** | Comando `/mods`: lista los plugins activos y marca los del pack. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
+| **[portero](portero/)**<br><sub>v0.1.0</sub> | Mira cada petición y decide quién la hace. Lo ligero, el modelo de la sesión. Lo pesado, un subagente Opus. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
+| **[resumen-sesion](resumen-sesion/)**<br><sub>v0.1.0</sub> | Si vuelves tras 2 horas sin escribir, Haiku escribe un resumen de traspaso para seguir en una sesión nueva. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
+| **[consumo](consumo/)**<br><sub>v0.3.0</sub> | Ventana HUD en directo, en blanco-cian: barra del plan, contexto usado, coste, tokens por agente y por modelo, y comparativa Haiku frente a Opus. `/jarvis` la abre o la cierra. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
+| **[jarvis-banda](jarvis-banda/)**<br><sub>v0.2.0</sub> | Una línea encima del prompt con el estado en vivo: esperando, procesando, ejecutando o delegando. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
+| **[mods-estado](mods-estado/)**<br><sub>v0.2.0</sub> | Comando `/mods`: lista los plugins activos y marca los del pack. `/mods on` y `/mods off` activan o desactivan un mod. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
 
 Cada mod es independiente. Instala solo los que quieras.
 
@@ -125,7 +138,8 @@ Más detalle y un diagrama en [docs/como-funciona.md](docs/como-funciona.md).
 - **Sin audio en Windows.** Los mods no reproducen sonidos ni voz.
 - **portero no cambia el modelo del hilo principal.** Si la sesión usa Opus, lo ligero también va con Opus. Para ahorrar, pon la sesión en Haiku con `/model`.
 - **El HUD de consumo no se ha probado en todos los PC.** Puede variar con la versión de Windows, el navegador o el escalado de pantalla.
-- **mods-estado no ve los mods cargados con `--plugin-dir`.** Salen como "no cargado" aunque estén en uso.
+- **mods-estado no ve los mods cargados con `--plugin-dir`.** Salen como "no cargado" aunque estén en uso, y `/mods on` y `/mods off` no los cambian.
+- **`/jarvis` no siempre cierra la ventana.** `window.close()` puede no funcionar en algunas versiones de Edge; entonces la página avisa y la cierras a mano.
 - **Textos en español.** Lo que los mods muestran en la terminal está en español.
 
 <a id="es-contribuir"></a>
@@ -156,6 +170,7 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE). Cada mod lleva también su propio 
 
 ## Contents
 
+- [What's new](#en-whats-new)
 - [The mods](#en-mods)
 - [Install](#en-install)
 - [Load the mods in every session](#en-load)
@@ -165,17 +180,29 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE). Cada mod lleva también su propio 
 - [Contributing](#en-contributing)
 - [License](#en-license)
 
+<a id="en-whats-new"></a>
+
+## What's new
+
+**Pack version 0.2.0**
+
+- **consumo 0.3.0:** Haiku versus Opus comparison in the HUD, and a `/jarvis` command that opens and closes the window.
+- **mods-estado 0.2.0:** `/mods on <name>` and `/mods off <name>` enable or disable a pack mod.
+- **jarvis-banda 0.2.0:** a single line with the live state, and the subagent's model while delegating.
+
+Every change is in [CHANGELOG.md](CHANGELOG.md).
+
 <a id="en-mods"></a>
 
 ## The mods
 
 | Mod | What it does | Image |
 |---|---|---|
-| **[portero](portero/)** | Looks at each request and decides who handles it. Light work: the session model. Heavy work: an Opus subagent. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
-| **[resumen-sesion](resumen-sesion/)** | When you come back after 2 hours without typing, Haiku writes a handover summary so you can continue in a new session. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
-| **[consumo](consumo/)** | Live white-cyan HUD window: plan bar, context used, cost, and tokens per agent and per model. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
-| **[jarvis-banda](jarvis-banda/)** | One line above the prompt with the live state: waiting, processing, running a tool, or delegating. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
-| **[mods-estado](mods-estado/)** | `/mods` command: lists active plugins and marks the ones from this pack. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
+| **[portero](portero/)**<br><sub>v0.1.0</sub> | Looks at each request and decides who handles it. Light work: the session model. Heavy work: an Opus subagent. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
+| **[resumen-sesion](resumen-sesion/)**<br><sub>v0.1.0</sub> | When you come back after 2 hours without typing, Haiku writes a handover summary so you can continue in a new session. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
+| **[consumo](consumo/)**<br><sub>v0.3.0</sub> | Live white-cyan HUD window: plan bar, context used, cost, tokens per agent and per model, and a Haiku versus Opus comparison. `/jarvis` opens or closes it. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
+| **[jarvis-banda](jarvis-banda/)**<br><sub>v0.2.0</sub> | One line above the prompt with the live state: waiting, processing, running a tool, or delegating. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
+| **[mods-estado](mods-estado/)**<br><sub>v0.2.0</sub> | `/mods` command: lists active plugins and marks the ones from this pack. `/mods on` and `/mods off` enable or disable a mod. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
 
 Each mod works on its own. Install only the ones you want.
 
@@ -262,7 +289,8 @@ More detail and a diagram in [docs/how-it-works.md](docs/how-it-works.md).
 - **No audio on Windows.** The mods play no sounds or voice.
 - **portero does not change the main thread's model.** If the session runs on Opus, light work also runs on Opus. To save, switch the session to Haiku with `/model`.
 - **The consumo HUD has not been tested on every PC.** It may vary with the Windows version, the browser or display scaling.
-- **mods-estado cannot see mods loaded with `--plugin-dir`.** They show as "not loaded" even when in use.
+- **mods-estado cannot see mods loaded with `--plugin-dir`.** They show as "not loaded" even when in use, and `/mods on` and `/mods off` do not change them.
+- **`/jarvis` does not always close the window.** `window.close()` may not work in some Edge versions; the page then shows a notice and you close it by hand.
 - **Spanish labels.** What the mods show in the terminal is in Spanish.
 
 <a id="en-contributing"></a>

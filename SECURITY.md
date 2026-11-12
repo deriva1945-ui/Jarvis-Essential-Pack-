@@ -31,8 +31,8 @@ Incluye, por el canal privado:
 
 Para valorar el riesgo:
 
-- `consumo` escribe en `C:\CLAUDE\consumo` y abre Edge o Chrome.
-- `mods-estado` ejecuta `claude plugin list` y lee `C:\CLAUDE\mods`.
+- `consumo` escribe en `C:\CLAUDE\consumo` (la página, `datos.js`, `estado.json` y `estado.js`) y abre Edge o Chrome. `/jarvis` no cierra procesos: solo cambia `estado.json`.
+- `mods-estado` ejecuta `claude plugin list` y lee `C:\CLAUDE\mods`. Con `/mods on` y `/mods off` ejecuta `claude plugin enable` o `claude plugin disable`, solo con nombres del pack.
 - `portero` y `resumen-sesion` envían texto de la conversación a un modelo de Claude, dentro de la misma sesión.
 - Ningún mod envía datos a servidores de terceros.
 
@@ -71,7 +71,7 @@ Through the private channel, include:
 
 To help you judge the risk:
 
-- `consumo` writes to `C:\CLAUDE\consumo` and opens Edge or Chrome.
-- `mods-estado` runs `claude plugin list` and reads `C:\CLAUDE\mods`.
+- `consumo` writes to `C:\CLAUDE\consumo` (the page, `datos.js`, `estado.json` and `estado.js`) and opens Edge or Chrome. `/jarvis` does not kill processes: it only changes `estado.json`.
+- `mods-estado` runs `claude plugin list` and reads `C:\CLAUDE\mods`. With `/mods on` and `/mods off` it runs `claude plugin enable` or `claude plugin disable`, only with pack names.
 - `portero` and `resumen-sesion` send conversation text to a Claude model, inside the same session.
 - No mod sends data to third-party servers.

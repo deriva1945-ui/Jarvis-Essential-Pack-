@@ -21,12 +21,12 @@ All five mods follow the same path: **events → hooks → data → screen**.
 |---|---|---|---|
 | [portero](../portero/) | `prompt.submit`, `agent.spawn` | the turn's route (light or heavy) | a note in the turn and, if heavy, an Opus subagent |
 | [resumen-sesion](../resumen-sesion/) | `turn.complete`, `prompt.submit` | the time of the last turn | a Haiku summary in context and a notice |
-| [consumo](../consumo/) | `session.start`, `turn.complete`, `tool.call`, `agent.spawn` | tokens, cost, turns and plan; all written to `datos.js` | a HUD window that reloads `datos.js` every second |
+| [consumo](../consumo/) | `session.start`, `turn.complete`, `tool.call`, `agent.spawn`, `command.run` | tokens, cost, turns, plan, the Haiku/Opus comparison and whether the HUD is open; written to `datos.js` and `estado.js` | a HUD window that reloads `datos.js` every second, and the `/jarvis` reply |
 | [jarvis-banda](../jarvis-banda/) | `session.start`, `prompt.submit`, `tool.call`, `agent.spawn`, `turn.complete`, `ui.render` | phase, tool and models | a line above the prompt |
-| [mods-estado](../mods-estado/) | `session.start`, `command.run` | nothing: it works it out on the spot | the `/mods` report |
+| [mods-estado](../mods-estado/) | `session.start`, `command.run` | nothing: it works it out on the spot | the `/mods` report and the `/mods on` / `/mods off` reply |
 
 ## Rules they all follow
 
 - **They do not break the session.** If a mod fails, it lets the event through unchanged.
 - **They only listen to what they need.** A mod does not see events it does not ask for.
-- **They do not store your conversation.** The only thing written to disk is `consumo`'s `datos.js` (numbers, model names, each subagent's short description and plan task titles).
+- **They do not store your conversation.** The only things written to disk are `consumo`'s files in `C:\CLAUDE\consumo`: the page, `datos.js` (numbers, model names, each subagent's short description and plan task titles) and `estado.json` / `estado.js` (whether the HUD is open).

@@ -11,7 +11,7 @@ EN: Do not paste personal data, tokens or keys. For security bugs, read SECURITY
 -->
 
 **Mod y versión · Mod and version**
-<!-- p. ej. / e.g. consumo 0.1.0 -->
+<!-- p. ej. / e.g. consumo 0.3.0 -->
 
 **Qué pasa · What happens**
 
