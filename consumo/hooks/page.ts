@@ -8,6 +8,7 @@
 //   900-1599    dos columnas, sin la gráfica de tokens por turno.
 //   < 900       una columna: contexto, coste, reparto por modelo, agentes, últimos turnos.
 //   Mínimo 420 px de ancho sin desplazamiento horizontal.
+// Arriba, a todo el ancho: barra de progreso del plan de Claude (TaskCreate / TaskUpdate), con la lista plegable.
 // Tecla D o botón de la cabecera: modo cómodo / compacto (se guarda en localStorage).
 import { LOGICA } from './senal'
 
@@ -18,7 +19,7 @@ export const PAGE = `<!doctype html>
 <style>
 :root{
   --bg:#03060a;--cy:#4fd8ff;--cy2:#1d8fb8;--cyd:rgba(79,216,255,.16);
-  --am:#ffb347;--rd:#ff5f6e;--txt:#e6f6fc;--sub:#a9cbdb;--faint:#163040;
+  --am:#ffb347;--rd:#ff5f6e;--ok:#5cff9d;--txt:#e6f6fc;--sub:#a9cbdb;--faint:#163040;
   --f-opus:#ffb347;--f-haiku:#4fd8ff;--f-fable:#7cffc4;--f-sonnet:#c4adff;--f-otro:#b4c7d4;
   --fa:rgba(79,216,255,.75);--fb:rgba(255,179,71,.6);--glow:rgba(79,216,255,.22);
   --cut:14px;--hl:79,216,255;--grid:rgba(79,216,255,.38);
@@ -90,7 +91,7 @@ h1 .brand{color:var(--sub)}
 .pnl>.in:after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:30%;pointer-events:none;
   background:linear-gradient(100deg,transparent,rgba(var(--hl),.07),transparent);animation:sheen 9s ease-in-out infinite}
 .pnl:nth-child(2)>.in:after{animation-delay:1.5s}.pnl:nth-child(3)>.in:after{animation-delay:3s}.pnl:nth-child(4)>.in:after{animation-delay:4.5s}
-.pnl:nth-child(5)>.in:after{animation-delay:6s}.pnl:nth-child(6)>.in:after{animation-delay:7.5s}
+.pnl:nth-child(5)>.in:after{animation-delay:6s}#p-plan>.in:after{animation-delay:2.2s}.pnl:nth-child(6)>.in:after{animation-delay:7.5s}
 .pnl:before,.pnl:after{content:"";position:absolute;width:18px;height:18px;z-index:2;pointer-events:none}
 .pnl:before{right:-3px;top:-3px;border-top:2px solid var(--am);border-right:2px solid var(--am)}
 .pnl:after{left:-3px;bottom:-3px;border-bottom:2px solid var(--am);border-left:2px solid var(--am)}
@@ -98,6 +99,41 @@ body.lv-x .pnl:before,body.lv-x .pnl:after{border-color:var(--rd)}
 .ph{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:10px;padding-bottom:7px;border-bottom:1px dashed var(--faint);flex:none;min-width:0}
 .ph .t{font-size:var(--fk);letter-spacing:.12em;text-transform:uppercase;color:var(--cy);text-shadow:0 0 8px rgba(79,216,255,.5);white-space:nowrap}
 .ph .r{margin-left:auto;font-size:var(--fk);color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+
+/* Plan: barra de progreso a todo el ancho, encima de la rejilla */
+#p-plan{flex:none}
+#p-plan>.in{gap:10px}
+.plh{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;min-width:0}
+.plt{font-size:clamp(18px,calc(.6vw + .7vh + 6px),30px);color:var(--txt);letter-spacing:.08em;white-space:nowrap;text-shadow:0 0 10px rgba(79,216,255,.45)}
+.plt b{font-weight:normal;color:var(--cy)}
+.plt.vacio{color:var(--sub);text-shadow:none;font-size:var(--fv)}
+.plok{display:none;font-size:var(--fk);letter-spacing:.12em;color:var(--bg);background:var(--ok);padding:2px 10px;box-shadow:0 0 12px var(--ok);
+  clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+.plcur{margin-left:auto;font-size:var(--fk);color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:100%}
+.plcur em{font-style:normal;color:var(--am)}
+.plbar{position:relative;height:clamp(18px,2.2vh,28px);background:rgba(22,48,64,.7);border:1px solid var(--cy2);overflow:hidden;
+  clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)}
+.plfill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--cy);box-shadow:0 0 14px var(--cy);
+  background-image:repeating-linear-gradient(90deg,transparent 0 14px,rgba(3,6,10,.4) 14px 17px);
+  transition:width 1.1s cubic-bezier(.2,.8,.2,1),background-color .6s,box-shadow .6s}
+#p-plan.done .plt b{color:var(--ok)}
+#p-plan.done .plok{display:inline-block}
+#p-plan.done .plfill{background-color:var(--ok);box-shadow:0 0 18px var(--ok)}
+#p-plan.done .plbar{border-color:var(--ok)}
+.pll summary{cursor:pointer;font-size:var(--fk);color:var(--cy);letter-spacing:.06em;text-transform:uppercase;list-style:none;display:inline-block}
+.pll summary::-webkit-details-marker{display:none}
+.pll summary:before{content:"+ ";color:var(--am)}
+.pll[open] summary:before{content:"- "}
+.pll summary:focus-visible{outline:1px solid var(--cy);outline-offset:3px}
+.pll ol{margin:8px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:4px 18px;max-height:min(16vh,9em);overflow-y:auto}
+.pll li{display:flex;gap:10px;align-items:baseline;min-width:0;font-size:var(--fk);color:var(--txt)}
+.pll li span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pll li i{font-style:normal;flex:none;width:7.5em;color:var(--sub);text-transform:uppercase;letter-spacing:.04em}
+.pll li.c i{color:var(--ok)}.pll li.c span{color:var(--sub);text-decoration:line-through}
+.pll li.e i{color:var(--am)}
+.pll.off{display:none}
+body.compact .pll,body.compact .plcur{display:none}
+body.compact #p-plan>.in{gap:6px}
 
 /* Rejilla: una sola, con áreas que cambian según el ancho */
 .grid{flex:1;display:grid;gap:var(--gap);min-height:0;min-width:0;
@@ -109,7 +145,7 @@ body.compact .grid{grid-template-areas:"ctx" "cost" "mod" "agt"}
 
 /* Contexto */
 .ctxb{display:flex;flex-direction:column;align-items:center;gap:var(--gap);flex:1;min-height:0;justify-content:center}
-.reactor{position:relative;width:100%;max-width:min(300px,34vh);aspect-ratio:1;flex:none}
+.reactor{position:relative;width:100%;max-width:min(300px,29vh);aspect-ratio:1;flex:none}
 .reactor svg{position:relative;width:100%;height:100%;display:block;overflow:visible}
 /* Anillos holográficos 3D y núcleo de reactor: capas que giran en ejes distintos */
 .holo{position:absolute;inset:0;perspective:640px;pointer-events:none;color:#4fd8ff;transition:color .8s}
@@ -183,7 +219,7 @@ body.compact .cmp .nm span{display:none}
 .r-al{text-align:right}
 
 /* Gráfica */
-.chart{position:relative;flex:1;min-height:180px}
+.chart{position:relative;flex:1;min-height:100px}
 .chart svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .chart text{font:14px var(--mono);fill:var(--sub)}
 .legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:var(--fk);color:var(--sub);margin-top:8px;flex:none}
@@ -243,6 +279,8 @@ body.compact .floor{opacity:.3}
   .reactor{max-width:min(260px,60vw)}
 }
 @media (max-width:640px){
+  .plcur{margin-left:0;flex-basis:100%}
+  .pll li i{width:6.5em}
   h1{letter-spacing:.1em}
   h1 .brand{display:none}
   .hstat .opt{display:none}
@@ -265,18 +303,19 @@ body.compact .floor{opacity:.3}
     grid-template-areas:"ctx mod mod" "ctx chart hist" "cost agt agt"}
   body.compact .grid{grid-template-areas:"ctx mod mod" "ctx chart chart" "cost agt agt"}
   #p-chart{display:block}
-  .reactor{max-width:min(380px,34vh)}
+  .reactor{max-width:min(380px,24vh)}
 }
 
 /* Si la ventana es alta y ancha, todo cabe sin desplazar la página. */
 @media (min-width:900px) and (min-height:700px){
   .wrap{height:100vh}
-  .grid{overflow:hidden;grid-template-rows:auto minmax(0,1fr) minmax(0,.85fr)}
+  /* La fila de abajo (coste) nunca se recorta: el alto que quita la barra del plan sale de la fila del medio. */
+  .grid{overflow:hidden;grid-template-rows:auto minmax(0,1fr) minmax(min-content,.85fr)}
   body.compact .grid{grid-template-rows:auto minmax(0,1fr) auto}
   .tblw{max-height:none}
 }
 @media (min-width:1600px) and (min-height:700px){
-  .grid,body.compact .grid{grid-template-rows:auto minmax(0,1fr) minmax(0,1fr)}
+  .grid,body.compact .grid{grid-template-rows:auto minmax(0,1fr) minmax(min-content,1fr)}
 }
 /* Columna derecha estrecha (900-1199 px): reparto de agentes sin barra. */
 @media (min-width:900px) and (max-width:1199px){
@@ -304,6 +343,16 @@ body.compact .floor{opacity:.3}
     <button id="dens" type="button" title="Cambiar densidad (tecla D)"><kbd>D</kbd><span id="dens-l">Compacto</span></button>
   </div>
 </header>
+
+<section class="pnl" id="p-plan"><div class="fr"></div><div class="in">
+  <div class="plh">
+    <span class="plt vacio num" id="pltxt">PLAN · sin tareas activas</span>
+    <span class="plok">COMPLETADO</span>
+    <span class="plcur" id="plcur"></span>
+  </div>
+  <div class="plbar" role="progressbar" aria-label="Progreso del plan" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="plbar"><div class="plfill" id="plfill"></div></div>
+  <details class="pll off" id="pll"><summary id="plsum">Tareas</summary><ol id="plist"></ol></details>
+</div></section>
 
 <div class="grid">
   <section class="pnl" id="p-ctx"><div class="fr"></div><div class="in">
@@ -388,14 +437,14 @@ body.compact .floor{opacity:.3}
 </div>
 <script>
 var FAM={opus:'Opus',haiku:'Haiku',fable:'Fable',sonnet:'Sonnet',otro:'Otro'};
-var WARN=70,CRIT=85,NT=60,DKEY='consumo.densidad';
+var WARN=70,CRIT=85,NT=60,DKEY='consumo.densidad',PKEY='consumo.plan.abierto';
 var lastData=null,seenTurns={},firstRender=true;
 // Señal y lectura de datos.js: funciones de senal.ts, probadas en consumo.test.tsx.
 /*LOGICA*/
 ` + LOGICA + `
 /*FIN*/
 var ST=nuevoEstado(Date.now());
-var VACIO={modelo:'',contexto:{tokens:0,window:0,percent:0},alerta:'normal',coste:0,modelos:[],agentes:[],historial:[],actualizado:0,latido:0};
+var VACIO={modelo:'',contexto:{tokens:0,window:0,percent:0},alerta:'normal',coste:0,modelos:[],agentes:[],historial:[],plan:null,actualizado:0,latido:0};
 function $id(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function n(x){return Number(x||0).toLocaleString('es-ES')}
@@ -593,10 +642,39 @@ function renderCtx(d){
   $id('ctxfree').textContent=n(Math.max(0,(c.window||0)-(c.tokens||0)));
 }
 
+// Plan de Claude: N de M · P %, la barra se llena con transición y al 100 % pasa a verde.
+var ESTADO={'pendiente':'Pendiente','en curso':'En curso','completada':'Hecha'};
+function renderPlan(d){
+  var p=d.plan,box=$id('p-plan'),txt=$id('pltxt'),bar=$id('plbar'),lst=$id('pll');
+  var ok=!!(p&&p.total>0);
+  var tot=ok?Number(p.total)||0:0,hechas=ok?Math.min(tot,Number(p.completadas)||0):0;
+  var pct=ok?Math.max(0,Math.min(100,Math.round(Number(p.porcentaje!=null?p.porcentaje:hechas*100/tot)||0))):0;
+  if(ok&&hechas===tot)pct=100;
+  var done=ok&&pct>=100;
+  box.classList.toggle('done',done);
+  txt.className='plt num'+(ok?'':' vacio');
+  txt.innerHTML=ok?'PLAN · <b>'+n(hechas)+' de '+n(tot)+'</b> · <b>'+pct+' %</b>':'PLAN · sin tareas activas';
+  $id('plfill').style.width=pct+'%';
+  bar.setAttribute('aria-valuenow',String(pct));
+  var ts=ok&&p.tareas?p.tareas:[];
+  var cur=ts.filter(function(t){return t.estado==='en curso'})[0];
+  $id('plcur').innerHTML=cur?'<em>En curso</em> · '+esc(cur.titulo):'';
+  $id('plcur').title=cur?cur.titulo:'';
+  lst.classList.toggle('off',!ts.length);
+  $id('plsum').textContent='Tareas ('+ts.length+')';
+  $id('plist').innerHTML=ts.map(function(t){
+    var c=t.estado==='completada'?'c':t.estado==='en curso'?'e':'p';
+    return '<li class="'+c+'" title="'+esc(t.titulo)+'"><i>'+esc(ESTADO[t.estado]||t.estado)+'</i><span>'+esc(t.titulo)+'</span></li>';
+  }).join('');
+}
+(function(){var v=null;try{v=localStorage.getItem(PKEY)}catch(e){}if(v==='1')$id('pll').open=true})();
+$id('pll').addEventListener('toggle',function(){try{localStorage.setItem(PKEY,$id('pll').open?'1':'0')}catch(e){}});
+
 function render(d){
   if(!d)return;
   lastData=d;
   renderCtx(d);
+  renderPlan(d);
   tween('coste',Number(d.coste||0),function(v){return v.toFixed(4)+'<small>USD</small>'});
   $id('modelo').textContent=d.modelo||'—';
   renderModels(d);

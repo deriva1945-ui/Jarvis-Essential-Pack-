@@ -3,12 +3,13 @@ import type { TestBody } from 'claude-code/testing'
 
 import { observe } from './ledger'
 import { PAGE } from './page'
+import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
 import { alCargar, alFallar, LOGICA, nuevoEstado, senal, valido } from './senal'
 
 const ok = { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
 
 test('the page has the key sections, the size breakpoints and the density toggle', () => {
-  for (const id of ['p-ctx', 'p-cost', 'p-mod', 'p-chart', 'p-hist', 'p-agt', 'dens']) {
+  for (const id of ['p-plan', 'plfill', 'pll', 'p-ctx', 'p-cost', 'p-mod', 'p-chart', 'p-hist', 'p-agt', 'dens']) {
     expect(PAGE).toContain(`id="${id}"`)
   }
   expect(PAGE).toContain('Reparto por modelo')
@@ -270,4 +271,81 @@ test('(e) with datos.js missing the window still opens and the page shows an emp
     if (t <= 10_000) expect(s.texto).toBe('Esperando')
   }
   expect(L.senal(st, T0 + 12_000).aviso).toBe('datos.js no responde')
+})
+
+// ---------- Plan de Claude (TaskCreate / TaskUpdate) ----------
+
+// Lo que la herramienta contesta, bajo el plugin: TaskCreate da un id nuevo, TaskUpdate dice que fue bien.
+const planBase = (on: On) => {
+  let seq = 0
+  on('tool.call', (_, e) => {
+    if (e.tool === 'TaskCreate') return { result: { task: { id: String(++seq), subject: e.subject } } }
+    if (e.tool === 'TaskUpdate') return { result: { success: true, taskId: e.taskId, updatedFields: e.status ? ['status'] : [] } }
+    return { result: {} }
+  })
+}
+const crea = (subject: string) => ({ tool: 'TaskCreate', subject, description: subject }) as const
+const marca = (taskId: string, status: 'pending' | 'in_progress' | 'completed' | 'deleted') => ({ tool: 'TaskUpdate', taskId, status }) as const
+
+test('(f) plan: with no tasks the plan block is null and the page shows "sin tareas activas"', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  const { last } = base(on, () => 0)
+  planBase(on)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(last().plan).toBeNull()
+  // Una herramienta que no es del plan no lo crea.
+  await $.tool.call({ tool: 'TaskList' })
+  expect(last().plan).toBeNull()
+  expect(resumen(PLAN0)).toBeNull()
+  // Una tarea creada y luego borrada deja el plan vacío otra vez.
+  expect(resumen(actualizar(crear(PLAN0, '1', 'a'), '1', { status: 'deleted' }))).toBeNull()
+  expect(PAGE).toContain('PLAN · sin tareas activas')
+  expect(PAGE).toContain('COMPLETADO')
+  expect(PAGE).toContain('plan:null')
+})
+
+test('(g) plan: 3 of 7 completed is 43 %, with one in progress and the titles in order', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  const { last } = base(on, () => 0)
+  planBase(on)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  for (let i = 1; i <= 7; i++) await $.tool.call(crea('Tarea ' + i))
+  for (const id of ['1', '2', '3']) await $.tool.call(marca(id, 'completed'))
+  await $.tool.call(marca('4', 'in_progress'))
+  const p = last().plan
+  expect(p.total).toBe(7)
+  expect(p.completadas).toBe(3)
+  expect(p.enCurso).toBe(1)
+  expect(p.porcentaje).toBe(43)
+  expect(p.tareas.map((t: { titulo: string }) => t.titulo)).toEqual(['Tarea 1', 'Tarea 2', 'Tarea 3', 'Tarea 4', 'Tarea 5', 'Tarea 6', 'Tarea 7'])
+  expect(p.tareas.map((t: { estado: string }) => t.estado)).toEqual(['completada', 'completada', 'completada', 'en curso', 'pendiente', 'pendiente', 'pendiente'])
+})
+
+test('(h) plan: all tasks completed is 100 %, and a task completed twice counts once', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  const { last } = base(on, () => 0)
+  planBase(on)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  for (let i = 1; i <= 3; i++) await $.tool.call(crea('T' + i))
+  await $.tool.call(marca('1', 'completed'))
+  await $.tool.call(marca('1', 'completed'))
+  let p = last().plan
+  expect(p.completadas).toBe(1)
+  expect(p.porcentaje).toBe(33)
+  await $.tool.call(marca('2', 'completed'))
+  await $.tool.call(marca('3', 'completed'))
+  await $.tool.call(marca('3', 'completed'))
+  p = last().plan
+  expect(p.total).toBe(3)
+  expect(p.completadas).toBe(3)
+  expect(p.porcentaje).toBe(100)
+
+  // Lógica pura: una creación repetida con el mismo id tampoco suma otra tarea.
+  let v = crear(PLAN0, 'a', 'A')
+  v = crear(v, 'a', 'A')
+  v = actualizar(v, 'a', { status: 'completed' })
+  v = actualizar(v, 'a', { status: 'completed' })
+  expect(resumen(v)).toEqual({ total: 1, completadas: 1, enCurso: 0, porcentaje: 100, tareas: [{ titulo: 'A', estado: 'completada' }] })
+  expect(idCreada({ task: { id: '9', subject: 'x' } })).toEqual({ id: '9', subject: 'x' })
+  expect(idCreada(undefined)).toBeNull()
 })
