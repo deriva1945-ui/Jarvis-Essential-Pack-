@@ -5,6 +5,19 @@ Format based on Keep a Changelog. Versions follow SemVer.
 
 Cada versión del pack agrupa las versiones de los mods que cambian. · Each pack version groups the mod versions that change.
 
+## [Unreleased]
+
+### mods-estado 0.4.0
+
+- **ES:** `/mods` muestra una tabla del pack: por cada mod, estado (activo, desactivado, falló al cargar, no instalado), versión instalada (de `claude plugin list --json`, con la salida de texto como respaldo), versión de la copia local (del `plugin.json` en `modsDir`) y `≠` si no coinciden. mods-estado aparece como "en uso" si se cargó con `--plugin-dir`.
+- **ES:** Avisos: mods del pack que fallaron al cargar, con el texto del error y una sugerencia; versiones distintas entre la copia local y la instalada; mods sin cargar; y restos del marketplace antiguo `portero-claude`, con los comandos para limpiarlos (no borra nada).
+- **ES:** Nuevo `/mods actualizar` (o `update`): muestra los comandos exactos para actualizar los mods instalados y la copia local (`git pull` y copia con `cp -R` o `robocopy`), sin ejecutarlos. Nuevo `/mods ayuda` (o `help`).
+- **ES:** Nueva opción **`idioma`** (`es` o `en`). `modsDir` sigue igual.
+- **EN:** `/mods` shows a pack table: for each mod, its state (active, disabled, failed to load, not installed), installed version (from `claude plugin list --json`, falling back to the text output), local copy version (from `plugin.json` in `modsDir`) and `≠` when they differ. mods-estado shows as "in use" when loaded with `--plugin-dir`.
+- **EN:** Warnings: pack mods that failed to load, with the error text and a suggestion; version differences between the local copy and the installed one; mods not loaded; and leftovers from the old `portero-claude` marketplace, with the commands to clean them up (it deletes nothing).
+- **EN:** New `/mods update` (or `actualizar`): shows the exact commands to update the installed mods and the local copy (`git pull` and a copy with `cp -R` or `robocopy`), without running them. New `/mods help` (or `ayuda`).
+- **EN:** New **`idioma`** option (`es` or `en`). `modsDir` is unchanged.
+
 ## [0.3.0] - 2026-11-12
 
 Pack `jarvis-essential-pack` 0.3.0: consumo 0.4.0 y mods-estado 0.3.0. portero y resumen-sesion siguen en 0.1.0 y jarvis-banda en 0.2.0. · consumo 0.4.0 and mods-estado 0.3.0. portero and resumen-sesion stay at 0.1.0 and jarvis-banda at 0.2.0.

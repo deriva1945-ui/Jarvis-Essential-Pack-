@@ -31,3 +31,17 @@ export const unir = (dir: string, name: string) => {
   const base = sinBarraFinal(dir)
   return /[\\/]$/.test(base) ? base + name : base + sepOf(base) + name
 }
+
+// Ruta de Windows: con letra de unidad ("C:\x", "C:/x") o con "\".
+export const esRutaWindows = (p: string) => /^[A-Za-z]:[\\/]/.test(p) || p.includes('\\')
+
+// Carpeta que contiene a "dir" (sin la última parte). La raíz se queda como está.
+export const padre = (dir: string) => {
+  const base = sinBarraFinal(dir)
+  const cut = Math.max(base.lastIndexOf('/'), base.lastIndexOf('\\'))
+  if (cut < 0) return base
+  const head = base.slice(0, cut)
+  // "C:\x" → "C:\", "/x" → "/"
+  if (head === '' || /^[A-Za-z]:$/.test(head)) return base.slice(0, cut + 1)
+  return head
+}

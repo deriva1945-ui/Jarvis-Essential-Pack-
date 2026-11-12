@@ -1,11 +1,21 @@
 {
   "name": "mods-estado",
-  "version": "0.3.0",
-  "description": "Comando /mods: muestra qué mods del pack jarvis-essential-pack están activos; /mods on y /mods off los activan o desactivan.",
+  "version": "0.4.0",
+  "description": "Comando /mods: diagnóstico del pack jarvis-essential-pack (versión instalada y de la copia local, mods rotos, instalaciones antiguas); /mods on, off, actualizar y ayuda.",
   "author": {
     "name": "deriva1945-ui"
   },
   "userConfig": {
+    "idioma": {
+      "type": "string",
+      "title": "Idioma / Language",
+      "description": "Idioma de los textos de /mods: es (español) o en (English). Por defecto: es.",
+      "default": "es",
+      "options": [
+        "es",
+        "en"
+      ]
+    },
     "modsDir": {
       "type": "string",
       "title": "Carpeta del pack",
