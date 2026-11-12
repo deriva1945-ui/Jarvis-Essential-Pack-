@@ -4,7 +4,6 @@ import type { Hook, Register, Timer } from 'claude-code'
 import type { AgentRow, CtxSnap, ModelRow, TurnRec } from '../types'
 import { PAGE } from './page'
 
-const PANE = 'consumo'
 const SHAPE = { shape: 'consumo-1' }
 const DIR = 'C:\\CLAUDE\\consumo'
 const PAGE_URL = 'file:///C:/CLAUDE/consumo/index.html'
@@ -145,8 +144,6 @@ const EMPTY: Snap = { r: {}, m: {}, h: [], lb: {}, c: null, t: 0, model: '', upd
 // Escribe los datos que lee la página. Un fallo aquí no debe romper la sesión.
 const payload = (data: Data) => `window.CONSUMO = ${JSON.stringify(data)};`
 
-const FAM_LABEL: Record<Familia, string> = { haiku: 'Haiku', opus: 'Opus', fable: 'Fable', sonnet: 'Sonnet', otro: 'Otro' }
-
 type Ctx = Parameters<Hook<'tool.call'>>[0]
 
 let beat: Timer | undefined
@@ -177,9 +174,6 @@ async function writeData($: Ctx): Promise<void> {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'consumo', description: 'Abre el panel de consumo' })
-    void $.ui.open({ id: PANE, title: 'Consumo' })
-
     // Punto de partida del contador de coste: el coste de cada turno es lo que sube desde aquí.
     try {
       const u = await $.session.usage()
@@ -197,7 +191,7 @@ export const register: Register = on => {
         await $.process.run(['cmd', '/c', 'start', '', 'chrome', `--app=${PAGE_URL}`])
       }
     } catch {
-      // Sin ventana aparte: el panel lateral sigue funcionando.
+      // Sin ventana aparte: los datos se siguen guardando por si se abre a mano.
     }
     try {
       beat?.cancel()
@@ -207,11 +201,6 @@ export const register: Register = on => {
     }
     return next(e)
   }).catch(($, e, next) => next(e))
-
-  on('command.run', { command: 'consumo' }, async $ => {
-    await $.ui.open({ id: PANE, title: 'Consumo' })
-    return { text: 'Panel de consumo abierto.' }
-  })
 
   on('agent.spawn', async ($, e, next) => {
     const r = await next(e)
@@ -286,52 +275,4 @@ export const register: Register = on => {
     await writeData($)
     return ran
   }).catch(($, e, next) => next(e))
-
-  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
-    const r = await read($, rows)
-    const m = await read($, models)
-    const hs = await read($, hist)
-    const lb = await read($, labels)
-    const c = await read($, ctx)
-    const t = await read($, total)
-    const model = await $.session.model()
-    const keys = Object.keys(r)
-    const mods = toModelos(m, r, model)
-    const lvl = alerta(c)
-    const last = hs[hs.length - 1]
-
-    return (
-      <Box flexDirection="column">
-        <Text>Modelo de la sesión: {model}</Text>
-        <Text color={lvl === 'critica' ? 'red' : lvl === 'alta' ? 'yellow' : undefined}>
-          Contexto: {c ? `${c.tokens.toLocaleString()} / ${c.window.toLocaleString()} tokens (${c.percent}%)` : 'sin datos todavía'}
-          {lvl === 'critica' ? ` · CRÍTICO (≥${CRIT}%)` : lvl === 'alta' ? ` · ALTO (≥${WARN}%)` : ''}
-        </Text>
-        <Text>Coste acumulado: {t.toFixed(4)} USD</Text>
-        {mods.length > 0 && <Text bold>Por modelo</Text>}
-        {mods.map(x => (
-          <Text key={x.modelo}>
-            {FAM_LABEL[x.familia]}{x.principal ? ' (principal)' : ''} · {x.modelo} · {x.reparto}% del trabajo · turnos {x.turnos} ({x.repartoTurnos}%) · entrada {x.entrada} · salida {x.salida} · caché {x.cache}
-          </Text>
-        ))}
-        {keys.length === 0 && <Text dimColor>Sin turnos todavía.</Text>}
-        {keys.length > 0 && <Text bold>Por agente</Text>}
-        {keys.map(k => {
-          const a = r[k]
-          if (!a) return null
-          return (
-            <Text key={k}>
-              {agentName(k, lb)} · {a.model} · entrada {a.input} · salida {a.output} · caché {a.cacheRead} · turnos {a.turns}
-            </Text>
-          )
-        })}
-        {last && (
-          <Text dimColor>
-            Último turno: {agentName(last.agent, lb)} · {last.model} · {last.input + last.output} tokens{last.cost !== null ? ` · ≈${last.cost.toFixed(4)} USD` : ''}
-          </Text>
-        )}
-      </Box>
-    )
-  })
 }

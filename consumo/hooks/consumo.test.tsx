@@ -1,55 +1,76 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-const PANE = {
-  plugin: 'consumo',
-  component: 'Pane',
-  requestId: 'consumo',
-  props: {
-    title: 'Consumo',
-    isFocused: false,
-    bodyColumns: 60,
-    placement: 'dock',
-    scroll: { offset: 0, bodyRows: 20 },
-    view: {},
-  },
-} as const
+import { PAGE } from './page'
 
-test('the pane shows the model, the context and the cost', async ($, on) => {
+const ok = { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+
+test('the page has the key sections, the size breakpoints and the density toggle', () => {
+  for (const id of ['p-ctx', 'p-cost', 'p-mod', 'p-chart', 'p-hist', 'p-agt', 'dens']) {
+    expect(PAGE).toContain(`id="${id}"`)
+  }
+  expect(PAGE).toContain('Reparto por modelo')
+  expect(PAGE).toContain('datos.js')
+  expect(PAGE).toContain('@media (min-width:1600px)')
+  expect(PAGE).toContain('@media (min-width:900px)')
+  expect(PAGE).toContain('@media (max-width:899px)')
+  expect(PAGE).toContain('localStorage')
+  expect(PAGE).toContain('text-overflow:ellipsis')
+  // Etiquetas >= 14 px y valores >= 16 px.
+  expect(PAGE).toContain('--fk:clamp(14px,')
+  expect(PAGE).toContain('--fv:clamp(16px,')
+  expect(PAGE).not.toContain('#6b7a90')
+})
+
+test('session.start writes the page and the data and opens the window, without a side pane', async ($, on) => {
   mock.clock(on, { now: 1_000 })
+  const writes: { path: string; text: string }[] = []
+  const runs: (readonly string[])[] = []
+  const opens: unknown[] = []
+  on('fs.write', (_, e) => {
+    writes.push(e)
+    return { value: undefined }
+  })
+  on('process.run', (_, e) => {
+    runs.push(e.argv)
+    return ok
+  })
+  on('ui.open', (_, e) => {
+    opens.push(e)
+    return { value: { isPlaced: true } }
+  })
   on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('command.register', () => ({ value: { command: 'consumo' } }))
-  on('ui.open', () => ({ value: { isPlaced: true } }))
   on('session.model', () => ({ value: 'claude-haiku-5-5' }))
   on('session.usage', () => ({
-    value: {
-      startedAt: 0,
-      context: { tokens: 1000, window: 200000, percent: 1 },
-      rateLimits: [],
-      cost: { usd: 0.25 },
-    },
+    value: { startedAt: 0, context: { tokens: 1000, window: 200000, percent: 1 }, rateLimits: [], cost: { usd: 0.25 } },
   }))
 
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
 
-  expect((await ui.find({ type: 'Text', text: /Modelo de la sesión/ }))?.text).toContain('claude-haiku-5-5')
-  expect((await ui.find({ type: 'Text', text: /Coste acumulado/ }))?.text).toContain('USD')
-  expect((await ui.find({ type: 'Text', text: /Sin turnos todavía/ }))?.text).toBe('Sin turnos todavía.')
-  await ui.unmount()
+  expect(opens).toHaveLength(0)
+  expect(writes.find(w => w.path.endsWith('index.html'))?.text).toBe(PAGE)
+  const d = writes.find(w => w.path.endsWith('datos.js'))?.text ?? ''
+  expect(d).toContain('window.CONSUMO = ')
+  expect(d).toContain('claude-haiku-5-5')
+  expect(runs.some(a => a.some(x => x.includes('--app=file:///C:/CLAUDE/consumo/index.html')))).toBe(true)
 })
 
-test('the pane splits the work by model', async ($, on) => {
-  mock.clock(on, { now: 1_000 })
+test('datos.js splits the work by model and carries the history, the alert and a heartbeat', async ($, on) => {
+  const clock = mock.clock(on, { now: 1_000 })
+  const writes: { path: string; text: string }[] = []
+  on('fs.write', (_, e) => {
+    writes.push(e)
+    return { value: undefined }
+  })
+  on('process.run', () => ok)
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.model', () => ({ value: 'claude-fable-5' }))
+  let usd = 0.5
   on('session.usage', () => ({
-    value: {
-      startedAt: 0,
-      context: { tokens: 5000, window: 200000, percent: 3 },
-      rateLimits: [],
-      cost: { usd: 1.5 },
-    },
+    value: { startedAt: 0, context: { tokens: 176000, window: 200000, percent: 88 }, rateLimits: [], cost: { usd } },
   }))
   on('turn.complete', () => ({ text: '' }))
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
 
   const usage = (model: string, input: number, output: number) => ({
     model,
@@ -60,44 +81,10 @@ test('the pane splits the work by model', async ($, on) => {
   })
   const turn = { answer: '', durationMs: 1, isAborted: false, reason: 'answer' } as const
   await $.turn.complete({ ...turn, turnId: 't1', usage: usage('claude-fable-5', 100, 100) })
+  usd = 0.75
   await $.turn.complete({ ...turn, turnId: 't2', agentId: 'a1', usage: usage('claude-opus-5-5', 500, 100) })
   await $.turn.complete({ ...turn, turnId: 't3', agentId: 'a2', usage: usage('claude-haiku-5-5', 150, 50) })
   await $.turn.complete({ ...turn, turnId: 't4', agentId: 'a2', usage: usage('claude-haiku-5-5', 0, 0) })
-
-  for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount({ ...PANE, surface })
-    expect((await ui.find({ type: 'Text', text: /^Opus/ }))?.text).toContain('60% del trabajo')
-    expect((await ui.find({ type: 'Text', text: /^Haiku/ }))?.text).toContain('turnos 2 (50%)')
-    expect((await ui.find({ type: 'Text', text: /^Fable/ }))?.text).toContain('(principal)')
-    expect((await ui.find({ type: 'Text', text: /^Principal/ }))?.text).toContain('claude-fable-5')
-    await ui.unmount()
-  }
-})
-
-test('datos.js carries the history, the alert and a heartbeat', async ($, on) => {
-  const clock = mock.clock(on, { now: 1_000 })
-  const writes: { path: string; text: string }[] = []
-  on('fs.write', (_, e) => {
-    writes.push(e)
-    return { value: undefined }
-  })
-  on('process.run', () => ({ value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
-  on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('command.register', () => ({ value: { command: 'consumo' } }))
-  on('ui.open', () => ({ value: { isPlaced: true } }))
-  on('session.model', () => ({ value: 'claude-fable-5' }))
-  let usd = 0.5
-  on('session.usage', () => ({
-    value: { startedAt: 0, context: { tokens: 176000, window: 200000, percent: 88 }, rateLimits: [], cost: { usd } },
-  }))
-  on('turn.complete', () => ({ text: '' }))
-
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  usd = 0.75
-  await $.turn.complete({
-    answer: '', durationMs: 1, isAborted: false, reason: 'answer', turnId: 't1', agentId: 'a1',
-    usage: { model: 'claude-opus-5-5', input_tokens: 300, output_tokens: 50, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
-  })
 
   const last = () => {
     const w = writes.filter(x => x.path.endsWith('datos.js')).at(-1)
@@ -105,17 +92,18 @@ test('datos.js carries the history, the alert and a heartbeat', async ($, on) =>
   }
   const d = last()
   expect(d.alerta).toBe('critica')
-  expect(d.historial).toHaveLength(1)
-  expect(d.historial[0].familia).toBe('opus')
-  expect(d.historial[0].coste).toBe(0.25)
+  expect(d.historial).toHaveLength(4)
+  expect(d.historial[1].familia).toBe('opus')
+  expect(d.historial[1].coste).toBe(0.25)
+  const by = (f: string) => d.modelos.find((m: { familia: string }) => m.familia === f)
+  expect(by('opus').reparto).toBe(60)
+  expect(by('haiku').turnos).toBe(2)
+  expect(by('haiku').repartoTurnos).toBe(50)
+  expect(by('fable').principal).toBe(true)
+  expect(d.agentes.find((a: { nombre: string }) => a.nombre === 'Principal').modelo).toBe('claude-fable-5')
 
   const before = d.latido
   await clock.advance(3_000)
   expect(last().latido).toBeGreaterThan(before)
   expect(last().actualizado).toBe(d.actualizado)
-
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect((await ui.find({ type: 'Text', text: /Contexto/ }))?.text).toContain('CRÍTICO')
-  expect((await ui.find({ type: 'Text', text: /Último turno/ }))?.text).toContain('350 tokens')
-  await ui.unmount()
 })
