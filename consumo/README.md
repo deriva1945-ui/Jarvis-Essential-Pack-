@@ -4,7 +4,7 @@
 
 **Español** · [English](#en)
 
-Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens. Estética blanco-cian sobre fondo azul-negro, con la barra del plan arriba y una comparativa de Haiku frente a Opus. El comando `/jarvis` abre o cierra el HUD.
+Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens. Seis temas de color (por defecto `natural`: grafito cálido con un solo acento, sin neón, con el globo y el anillo 3D), con la barra del plan arriba y una comparativa de Haiku frente a Opus. El comando `/jarvis` abre o cierra el HUD, y las opciones de [Personalización](#es-personalizacion) cambian tema, acento, densidad, idioma, ritmo de lectura y paneles visibles.
 
 ![HUD de consumo](../images/consumo-1920x1080.jpg)
 
@@ -17,17 +17,20 @@ Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y t
 - **Comparativa Haiku frente a Opus:** lo que costó la sesión y lo que habría costado si el trabajo enviado a Haiku hubiera ido a Opus, con el coste por token de tus propios turnos. Muestra el ahorro en USD y en %. Necesita más de 1000 tokens de cada modelo; si no, pone "sin datos de Opus todavía" (o de Haiku) y no estima nada.
 - **Comando `/jarvis`:** abre el HUD si está cerrado y lo cierra si está abierto.
 - Avisa cuando el contexto pasa del **70 %** y del **85 %**: por encima del 85 % el HUD entero pasa a rojo de alerta.
-- Si los datos dejan de llegar 10 segundos, marca "sin señal".
+- Si pasan 10 segundos sin latido nuevo **y** van 3 lecturas seguidas sin él, marca "Sin señal". Una lectura fallida suelta no enciende el aviso, y el primer latido nuevo lo apaga.
+- No parpadea: pinta los paneles una vez y después solo cambia los textos y barras que cambian. Si solo llega el latido, no toca nada.
 - Funciona sin conexión: todo va dentro de la página.
-- La tecla `D` (o el botón de la cabecera) cambia entre modo cómodo y compacto. La elección se recuerda.
+- La tecla `D` (o el botón de la cabecera) cambia entre modo cómodo y compacto mientras la ventana está abierta. Al abrir el HUD manda la opción `densidad`.
 
-Se adapta al tamaño de la ventana:
+Se adapta al tamaño de la ventana (cada panel se ajusta además por dentro según su propio ancho):
 
 | Ancho | Diseño |
 |---|---|
-| 1600 px o más | rejilla completa, con la gráfica de tokens por turno |
-| 900 a 1599 px | dos columnas, sin la gráfica |
-| menos de 900 px | una columna; funciona desde 420 px sin desplazamiento horizontal |
+| 1600 px o más y 1000 px de alto | todo cabe sin desplazar: plan arriba, tres columnas y abajo la gráfica junto a los últimos turnos |
+| 1200 px o más | tres columnas: contexto, coste y comparativa, reparto y agentes |
+| 900 a 1199 px | dos columnas; reparto y agentes lado a lado |
+| 560 a 899 px | contexto a la izquierda, coste y comparativa a la derecha; el resto a todo el ancho |
+| menos de 560 px | una columna; funciona desde 320 px sin desplazamiento horizontal |
 
 | 900 × 600 | 420 × 860 |
 |---|---|
@@ -72,8 +75,8 @@ El mod no tiene comando `/consumo`: `/jarvis` es su único comando.
 4. El **coste** sale del contador de la propia sesión: el coste de un turno es lo que sube ese contador. No usa tabla de precios.
 5. Las llamadas a `TaskCreate` y `TaskUpdate` alimentan la barra del plan.
 6. Todo se escribe en `datos.js` (en la carpeta de datos) tras cada turno o herramienta, y además cada 3 segundos como latido.
-7. **La página recarga `datos.js` cada segundo** y redibuja. Si en 10 segundos no llega un latido nuevo, muestra "sin señal".
-8. La página también carga `estado.js` cada segundo. Es una copia de `estado.json` en forma de script, porque el navegador no deja leer un `.json` desde `file://`.
+7. **La página recarga `datos.js` cada segundo** (o cada `actualizacion` segundos) y cambia solo lo que cambió. Con 10 segundos sin latido nuevo y 3 lecturas seguidas sin él, muestra "Sin señal".
+8. La página también carga `estado.js` con el mismo ritmo. Es una copia de `estado.json` en forma de script, porque el navegador no deja leer un `.json` desde `file://`.
 
 Archivos que crea en tu PC, todos en la carpeta de datos: `index.html` (la página), `datos.js` (los datos), `estado.json` y `estado.js` (si el HUD está abierto).
 
@@ -119,18 +122,31 @@ También puedes cambiarla dentro de Claude Code con `/plugin configure consumo@j
 
 El cambio se aplica al reiniciar Claude Code.
 
+<a id="es-personalizacion"></a>
+
 ## Personalización
 
-Además de `dataDir`, el HUD tiene estas opciones. Todas van a `datos.js` en el campo `config` (ya validadas), y la página las lee de ahí.
+Además de `dataDir`, el HUD tiene estas opciones. Todas van a `datos.js` en el campo `config` (ya validadas), y la página las aplica al leerlo.
 
 | Opción | Valores | Por defecto | Qué cambia |
 | --- | --- | --- | --- |
-| `tema` | `mark-ii`, `mark-l`, `stark`, `hibrido`, `claro`, `natural` | `hibrido` | Tema del HUD. `natural`: grafito cálido con un solo acento, sin neón ni rejilla, con el globo y los anillos 3D. La página lo aplica en la siguiente lectura de datos.js, sin recargar. |
-| `acento` | color hex: `#rgb` o `#rrggbb` | `#7fe7ff` | Color de acento. |
-| `densidad` | `comodo`, `compacto` | `comodo` | Espaciado de los paneles. |
-| `idioma` | `es`, `en` | `es` | Idioma de los textos del HUD. |
+| `tema` | `natural`, `mark-ii`, `mark-l`, `stark`, `hibrido`, `claro` | `natural` | Tema de color del HUD (atributo `data-tema` de la página). |
+| `acento` | color hex: `#rgb` o `#rrggbb` | `#7fe7ff` | Color de acento. Con el valor por defecto cada tema usa su propio acento; otro valor sustituye al del tema. |
+| `densidad` | `comodo`, `compacto` | `comodo` | Densidad con la que se abre el HUD. La tecla `D` la cambia mientras la ventana sigue abierta. |
+| `idioma` | `es`, `en` | `es` | Idioma de las etiquetas, la hora y los números del HUD. Los nombres de agentes, modelos y tareas no se traducen. |
 | `actualizacion` | número de segundos, de 1 a 5 | `1` | Cada cuánto la página vuelve a leer `datos.js`. |
-| `paneles` | lista con `contexto`, `coste`, `reparto`, `agentes`, `historial`, `grafica`, `comparativa`, `plan` | todos | Paneles visibles (se muestran siempre en el orden del HUD). |
+| `paneles` | lista con `contexto`, `coste`, `reparto`, `agentes`, `historial`, `grafica`, `comparativa`, `plan` | todos | Paneles visibles. Si quitas alguno, los demás se recolocan sin huecos (en el orden del HUD). |
+
+Los temas:
+
+- `natural` (por defecto): grafito cálido, texto marfil y un solo acento salvia; sin brillos, cristal, rejilla ni escaneo. Arriba, en una franja, contexto (globo, anillo y núcleo 3D), coste y comparativa; debajo, el detalle. Cifras de tabla en monoespaciada.
+- `hibrido`: blanco-cian sobre azul-negro, con el anillo del globo en ámbar.
+- `mark-ii`: cian eléctrico sobre azul-negro profundo, con más brillo.
+- `mark-l`: blanco y celeste, paneles de cristal más claros.
+- `stark`: ámbar y oro sobre carbón.
+- `claro`: fondo claro con acentos en azul, para trabajar de día.
+
+En todos el rojo se reserva para las alertas. En modo compacto los brillos, el desenfoque y el fondo animado se apagan.
 
 Valores que no valen:
 
@@ -190,7 +206,7 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE).
 
 [Español](#es) · **English**
 
-Opens a live HUD window with what the session spends: context, cost and tokens. White-cyan look on a blue-black background, with the plan bar at the top and a Haiku versus Opus comparison. The `/jarvis` command opens or closes the HUD.
+Opens a live HUD window with what the session spends: context, cost and tokens. Six colour themes (by default `natural`: warm graphite with a single accent, no neon, keeps the 3D globe and ring), with the plan bar at the top and a Haiku versus Opus comparison. The `/jarvis` command opens or closes the HUD, and the [Customisation](#en-customisation) options change theme, accent, density, language, refresh rate and visible panels.
 
 ![consumo HUD](../images/consumo-1920x1080.jpg)
 
@@ -203,17 +219,20 @@ Opens a live HUD window with what the session spends: context, cost and tokens. 
 - **Haiku versus Opus comparison:** what the session cost and what it would have cost if the work sent to Haiku had gone to Opus, using the cost per token of your own turns. It shows the saving in USD and %. It needs more than 1000 tokens from each model; otherwise it shows "sin datos de Opus todavía" (no Opus data yet, or Haiku) and estimates nothing.
 - **`/jarvis` command:** opens the HUD when it is closed and closes it when it is open.
 - It warns when context goes over **70 %** and **85 %**: above 85 % the whole HUD turns alert red.
-- If data stops arriving for 10 seconds, it shows "sin señal" (no signal).
+- After 10 seconds without a new heartbeat **and** 3 reads in a row without one, it shows "Sin señal" (no signal). A single failed read does not trigger it, and the first new heartbeat clears it.
+- No flicker: it draws the panels once and then only changes the text and bars that change. If only the heartbeat arrives, it touches nothing.
 - It works offline: everything is inside the page.
-- The `D` key (or the header button) switches between comfortable and compact mode. The choice is remembered.
+- The `D` key (or the header button) switches between comfortable and compact mode while the window is open. When the HUD opens, the `densidad` option decides.
 
-It adapts to the window size:
+It adapts to the window size (and each panel also adjusts inside to its own width):
 
 | Width | Layout |
 |---|---|
-| 1600 px or more | full grid, with the tokens-per-turn chart |
-| 900 to 1599 px | two columns, without the chart |
-| under 900 px | one column; works from 420 px with no horizontal scroll |
+| 1600 px or more and 1000 px tall | everything fits without scrolling: plan at the top, three columns, and the chart next to the latest turns at the bottom |
+| 1200 px or more | three columns: context, cost and comparison, split and agents |
+| 900 to 1199 px | two columns; split by model and agents side by side |
+| 560 to 899 px | context on the left, cost and comparison on the right; the rest full width |
+| under 560 px | one column; works from 320 px with no horizontal scroll |
 
 | 900 × 600 | 420 × 860 |
 |---|---|
@@ -258,8 +277,8 @@ The mod has no `/consumo` command: `/jarvis` is its only command.
 4. **Cost** comes from the session's own counter: a turn's cost is how much that counter went up. No price table.
 5. Calls to `TaskCreate` and `TaskUpdate` feed the plan bar.
 6. Everything is written to `datos.js` (in the data folder) after each turn or tool, and every 3 seconds as a heartbeat.
-7. **The page reloads `datos.js` every second** and redraws. If no new heartbeat arrives in 10 seconds, it shows "sin señal".
-8. The page also loads `estado.js` every second. It is a script copy of `estado.json`, because the browser does not let a page read a `.json` file from `file://`.
+7. **The page reloads `datos.js` every second** (or every `actualizacion` seconds) and changes only what changed. After 10 seconds without a new heartbeat and 3 reads in a row without one, it shows "Sin señal".
+8. The page also loads `estado.js` at the same rate. It is a script copy of `estado.json`, because the browser does not let a page read a `.json` file from `file://`.
 
 Files it creates on your PC, all in the data folder: `index.html` (the page), `datos.js` (the data), `estado.json` and `estado.js` (whether the HUD is open).
 
@@ -305,18 +324,31 @@ You can also change it inside Claude Code with `/plugin configure consumo@jarvis
 
 The change applies when you restart Claude Code.
 
+<a id="en-customisation"></a>
+
 ## Customisation
 
-Besides `dataDir`, the HUD has these options. All of them go into `datos.js` under the `config` field (already validated), and the page reads them from there.
+Besides `dataDir`, the HUD has these options. All of them go into `datos.js` under the `config` field (already validated), and the page applies them when it reads it.
 
 | Option | Values | Default | What it changes |
 | --- | --- | --- | --- |
-| `tema` | `mark-ii`, `mark-l`, `stark`, `hibrido` (hybrid), `claro` (light), `natural` | `hibrido` | HUD theme. `natural`: warm graphite with a single accent, no neon or grid, keeps the 3D globe and rings. The page applies it on the next read of datos.js, without reloading. |
-| `acento` | hex colour: `#rgb` or `#rrggbb` | `#7fe7ff` | Accent colour. |
-| `densidad` | `comodo` (comfortable), `compacto` (compact) | `comodo` | Panel spacing. |
-| `idioma` | `es`, `en` | `es` | Language of the HUD labels. |
+| `tema` | `natural`, `mark-ii`, `mark-l`, `stark`, `hibrido` (hybrid), `claro` (light) | `natural` | HUD colour theme (the page's `data-tema` attribute). |
+| `acento` | hex colour: `#rgb` or `#rrggbb` | `#7fe7ff` | Accent colour. With the default each theme keeps its own accent; any other value replaces it. |
+| `densidad` | `comodo` (comfortable), `compacto` (compact) | `comodo` | Density the HUD opens with. The `D` key changes it while the window stays open. |
+| `idioma` | `es`, `en` | `es` | Language of the HUD labels, time and numbers. Agent, model and task names are not translated. |
 | `actualizacion` | number of seconds, 1 to 5 | `1` | How often the page re-reads `datos.js`. |
-| `paneles` | list of `contexto`, `coste`, `reparto`, `agentes`, `historial`, `grafica`, `comparativa`, `plan` | all | Visible panels (always shown in the HUD's own order). |
+| `paneles` | list of `contexto`, `coste`, `reparto` (split), `agentes` (agents), `historial` (history), `grafica` (chart), `comparativa` (comparison), `plan` | all | Visible panels. If you hide some, the rest move up with no gaps (in the HUD's own order). |
+
+The themes:
+
+- `natural` (default): warm graphite, ivory text and a single sage accent; no glow, glass, grid or scan line. A summary band at the top holds context (3D globe, ring and core), cost and the comparison; the detail sits below. Table figures in monospace.
+- `hibrido`: white-cyan on blue-black, with an amber ring around the globe.
+- `mark-ii`: electric cyan on deep blue-black, brighter glow.
+- `mark-l`: white and light blue, lighter glass panels.
+- `stark`: amber and gold on charcoal.
+- `claro`: light background with blue accents, for daytime work.
+
+Red is kept for alerts in every theme. In compact mode glows, blur and the animated background are turned off.
 
 Invalid values:
 

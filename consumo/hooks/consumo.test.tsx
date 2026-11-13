@@ -2,12 +2,14 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { TestBody } from 'claude-code/testing'
 
 import { calcular, COMP0, sumar } from './comparativa'
-import { CONFIG_DEFAULT, leerConfig, PANELES } from './config'
+import { CONFIG_DEFAULT, leerConfig, PANELES, TEMAS as TEMAS_CONFIG } from './config'
+import { DOM, firma, lista, ponAttr, ponEstilo, ponSegs, ponTexto } from './dom'
+import { EN, IDIOMA_JS, traducir } from './idioma'
 import { observe } from './ledger'
 import { PAGE } from './page'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
 import { DATA_DIR_DEFAULT, expandir, fileUrl, unir } from './rutas'
-import { alCargar, alFallar, aplicaTema, LOGICA, nuevoEstado, senal, valido } from './senal'
+import { alCargar, alFallar, LOGICA, nuevoEstado, senal, valido } from './senal'
 
 // Carpeta de prueba para la opción dataDir: los tests no dependen de ninguna ruta real.
 const PRUEBA = { options: { dataDir: '/prueba/consumo' } }
@@ -31,8 +33,42 @@ test('the page has the key sections, the size breakpoints and the density toggle
   expect(PAGE).not.toContain('#6b7a90')
 })
 
-// Temas: bloque de variables por tema en html[data-tema="..."]; sin atributo, hibrido.
-const TEMAS = ['hibrido', 'mark-ii', 'mark-l', 'stark', 'claro', 'natural']
+test('the layout adapts by container queries and documented breakpoints, with no text under 14 px', () => {
+  const css = PAGE.slice(PAGE.indexOf('<style>'), PAGE.indexOf('</style>'))
+  // Cada panel es un contenedor y se ajusta por dentro según su propio ancho.
+  expect(css).toMatch(/\.pnl\{[^}]*container-type:inline-size/)
+  for (const q of ['@container (max-width:599px)', '@container (max-width:459px)', '@container (max-width:419px)']) {
+    expect(css).toContain(q)
+  }
+  // Una rejilla con áreas nombradas; .grid no dibuja caja para que el plan pueda ir entre los paneles.
+  expect(css).toContain('.grid{display:contents}')
+  expect(css).toContain('grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "hist" "chart" "foot"')
+  // Breakpoints de ventana: los que se usan están documentados en el comentario del CSS.
+  const doc = css.slice(css.indexOf('/* ===== Breakpoints ====='), css.indexOf('*/', css.indexOf('/* ===== Breakpoints =====')))
+  expect(doc.length).toBeGreaterThan(100)
+  for (const [media, nota] of [
+    ['@media (min-width:560px)', '560 px'],
+    ['@media (min-width:900px)', '900 px'],
+    ['@media (min-width:1200px)', '1200 px'],
+    ['@media (min-width:1600px) and (min-height:1000px)', '1600 px y 1000 px de alto'],
+  ]) {
+    expect(css).toContain(media)
+    expect(doc).toContain(nota)
+  }
+  for (const nota of ['< 600 px', '< 460 px', '< 420 px', '14 px']) expect(doc).toContain(nota)
+  // clamp() con vw, vh y cqi.
+  expect(css).toMatch(/clamp\([^;]*vw/)
+  expect(css).toMatch(/clamp\([^;]*vh/)
+  expect(css).toMatch(/clamp\([^;]*cqi/)
+  // Ningún font-size (ni font abreviado) por debajo de 14 px.
+  const sizes = [...css.matchAll(/font(?:-size)?:\s*(?:[a-z0-9-]+\s+)?(?:clamp\()?(\d+(?:\.\d+)?)px/g)].map(m => Number(m[1]))
+  expect(sizes.length).toBeGreaterThan(3)
+  expect(sizes.filter(px => px < 14)).toEqual([])
+  expect(css).not.toMatch(/font-size:\s*(?:[0-9]|1[0-3])(?:\.\d+)?px/)
+})
+
+// Temas: bloque de variables por tema en html[data-tema="..."]; el HTML sale con natural.
+const TEMAS = ['natural', 'hibrido', 'mark-ii', 'mark-l', 'stark', 'claro']
 const VARS_TEMA = ['--bg', '--panel', '--txt', '--sub', '--acc', '--acc2', '--warn', '--crit', '--ok', '--modelo-opus', '--modelo-haiku', '--modelo-fable', '--modelo-otro']
 function bloqueTema(t: string): string {
   const sel = `html[data-tema="${t}"]{`
@@ -48,16 +84,17 @@ test('the page defines the six themes, each with every color variable', () => {
   }
 })
 
-test('the default theme (no data-tema attribute) is hibrido', () => {
-  // El bloque de :root es el mismo que el de hibrido; los demás temas solo se aplican con su atributo.
-  expect(PAGE).toContain(':root,html[data-tema="hibrido"]{')
-  for (const t of TEMAS.filter(x => x !== 'hibrido')) {
+test('the default theme is natural', () => {
+  // El HTML sale con data-tema="natural" y, sin atributo, :root:not([data-tema]) da las variables de natural.
+  // Los demás temas solo se aplican con su atributo.
+  expect(PAGE).toContain(':root:not([data-tema]),html[data-tema="natural"]{')
+  for (const t of TEMAS.filter(x => x !== 'natural')) {
     expect(PAGE).not.toContain(`:root,html[data-tema="${t}"]`)
+    expect(PAGE).not.toContain(`:root:not([data-tema]),html[data-tema="${t}"]`)
     expect(PAGE).toContain(`\nhtml[data-tema="${t}"]{`)
   }
-  expect(PAGE.indexOf(':root,html[data-tema="hibrido"]{') < PAGE.indexOf('html[data-tema="mark-ii"]{')).toBe(true)
-  // El HTML no fija ningún tema: lo pone quien abre la página.
-  expect(PAGE).toContain('<html lang="es">')
+  expect(PAGE.indexOf(':root:not([data-tema]),html[data-tema="natural"]{') < PAGE.indexOf('html[data-tema="hibrido"]{')).toBe(true)
+  expect(PAGE).toContain('<html lang="es" data-tema="natural">')
 })
 
 test('themes keep red for alerts only and drop effects in compact mode', () => {
@@ -321,6 +358,296 @@ test('(e) with datos.js missing the window still opens and the page shows an emp
     if (t <= 10_000) expect(s.texto).toBe('Esperando')
   }
   expect(L.senal(st, T0 + 12_000).aviso).toBe('datos.js no responde')
+})
+
+test('(m) señal: SIN SEÑAL needs 3 reads in a row without a new heartbeat, and a valid read clears it at once', () => {
+  const L = logica()
+  const st = L.nuevoEstado(T0)
+  expect(L.alCargar(st, datos(T0), T0)).toBe(true)
+  expect(L.senal(st, T0).estado).toBe('ok')
+  // Ventana en segundo plano: el navegador deja de leer un minuto y la primera lectura falla.
+  L.alFallar(st)
+  let s = L.senal(st, T0 + 60_000)
+  expect(s.alerta).toBe(false)
+  expect(s.texto).toBe('Comprobando')
+  L.alFallar(st)
+  expect(L.senal(st, T0 + 61_000).alerta).toBe(false)
+  // Tercera lectura fallida seguida: ahora sí.
+  L.alFallar(st)
+  s = L.senal(st, T0 + 62_000)
+  expect(s.alerta).toBe(true)
+  expect(s.estado).toBe('off')
+  expect(s.aviso).toBe('datos.js no responde')
+  // Vuelve un dato válido con latido nuevo: el aviso se va en esa misma lectura.
+  expect(L.alCargar(st, datos(T0 + 63_000), T0 + 63_000)).toBe(true)
+  s = L.senal(st, T0 + 63_000)
+  expect(s.alerta).toBe(false)
+  expect(s.estado).toBe('ok')
+  expect(s.texto).toBe('En línea')
+  expect(st.fails).toBe(0)
+  expect(st.misses).toBe(0)
+  // Fallos sueltos entre lecturas buenas nunca acumulan: cada latido nuevo pone la cuenta a cero.
+  for (let t = 64_000; t <= 90_000; t += 1000) {
+    if (t % 2000 === 0) L.alFallar(st)
+    else L.alCargar(st, datos(T0 + t), T0 + t)
+    expect(L.senal(st, T0 + t).alerta).toBe(false)
+    expect(st.misses).toBeLessThan(2)
+  }
+  // Un dato válido pero con el mismo latido (el plugin se paró) no apaga el aviso.
+  for (let t = 91_000; t <= 105_000; t += 1000) L.alCargar(st, datos(T0 + 89_000), T0 + t)
+  expect(L.senal(st, T0 + 105_000).alerta).toBe(true)
+  expect(L.senal(st, T0 + 105_000).aviso).toBe('Sin señal hace 16 s')
+  // La página abandona una lectura colgada y no deja que su onload tardío cuente.
+  expect(PAGE).toContain('if(actual!==s)return;')
+})
+
+test('(n) señal: the heartbeat starts again on the next tool call if the module was reloaded', async ($, on) => {
+  const clock = mock.clock(on, { now: 1_000 })
+  const { writes } = base(on, () => 0)
+  on('tool.call', () => ({ result: {} }))
+  // Sin session.start (módulo recargado a mitad de sesión): la primera herramienta arranca el latido.
+  await $.tool.call({ tool: 'TaskList' })
+  const n0 = writes.filter(w => w.path.endsWith('datos.js')).length
+  expect(n0).toBeGreaterThan(0)
+  await clock.advance(9_000)
+  expect(writes.filter(w => w.path.endsWith('datos.js')).length).toBeGreaterThanOrEqual(n0 + 3)
+})
+
+// ---------- Parpadeo: la página no reconstruye paneles ----------
+
+// DOM falso mínimo: cuenta cada escritura (texto, atributo, estilo, alta y baja de hijos).
+let escrituras = 0
+class Falso {
+  children: Falso[] = []
+  attrs: Record<string, string> = {}
+  estilo: Record<string, string> = {}
+  private txt = ''
+  style = {
+    getPropertyValue: (p: string) => this.estilo[p] ?? '',
+    setProperty: (p: string, v: string) => {
+      escrituras++
+      this.estilo[p] = v
+    },
+  }
+  get textContent(): string {
+    return this.txt
+  }
+  set textContent(v: string | null) {
+    escrituras++
+    this.txt = v ?? ''
+  }
+  getAttribute(k: string): string | null {
+    return this.attrs[k] ?? null
+  }
+  setAttribute(k: string, v: string): void {
+    escrituras++
+    this.attrs[k] = v
+  }
+  insertBefore(n: Falso, ref: Falso | null): void {
+    escrituras++
+    const i = this.children.indexOf(n)
+    if (i >= 0) this.children.splice(i, 1)
+    const j = ref ? this.children.indexOf(ref) : -1
+    if (j >= 0) this.children.splice(j, 0, n)
+    else this.children.push(n)
+  }
+  removeChild(n: Falso): void {
+    escrituras++
+    this.children.splice(this.children.indexOf(n), 1)
+  }
+}
+const segFalso = (count: number) => {
+  const s = new Falso()
+  for (let i = 0; i < count; i++) s.children.push(new Falso())
+  return s
+}
+type Turno = { hora: number; agente: string; tokens: number }
+const pintaTurnos = (box: Falso, hs: Turno[]) =>
+  lista(
+    box,
+    hs,
+    t => t.hora + '|' + t.agente,
+    () => {
+      const tr = new Falso()
+      tr.children.push(new Falso(), new Falso())
+      return tr
+    },
+    (tr, t) => {
+      const k = (tr as Falso).children
+      ponTexto(k[0] as Falso, t.agente)
+      ponTexto(k[1] as Falso, t.tokens)
+    },
+  )
+
+test('(o) parpadeo: a repeated read writes nothing and a new turn only adds its own row', () => {
+  const box = new Falso()
+  // Contenido inicial del HTML ("Sin turnos todavía", sin clave): se quita la primera vez.
+  box.children.push(new Falso())
+  let hs: Turno[] = [
+    { hora: 1, agente: 'Principal', tokens: 100 },
+    { hora: 2, agente: 'a1', tokens: 200 },
+  ]
+  let r = pintaTurnos(box, hs)
+  expect(r).toEqual({ creados: 2, quitados: 1, movidos: 0 })
+  const filas = [...box.children]
+
+  // La misma lectura otra vez (lo que pasaba cada segundo): cero escrituras, mismos nodos.
+  escrituras = 0
+  r = pintaTurnos(box, hs.map(t => ({ ...t })))
+  expect(r).toEqual({ creados: 0, quitados: 0, movidos: 0 })
+  expect(escrituras).toBe(0)
+  expect(box.children).toEqual(filas)
+  expect(box.children[0]).toBe(filas[0])
+
+  // Cambia un valor: solo se escribe ese nodo de texto.
+  escrituras = 0
+  hs = [hs[0] as Turno, { hora: 2, agente: 'a1', tokens: 250 }]
+  pintaTurnos(box, hs)
+  expect(escrituras).toBe(1)
+  expect(box.children[1]?.children[1]?.textContent).toBe('250')
+
+  // Turno nuevo arriba (la tabla va del más nuevo al más viejo): una fila nueva, las otras siguen siendo las mismas.
+  escrituras = 0
+  r = pintaTurnos(box, [{ hora: 3, agente: 'a2', tokens: 50 }, ...hs])
+  expect(r).toEqual({ creados: 1, quitados: 0, movidos: 0 })
+  expect(box.children[1]).toBe(filas[0])
+  expect(box.children[2]).toBe(filas[1])
+  expect(escrituras).toBe(3) // dos textos de la fila nueva y su alta
+
+  // Claves repetidas (dos agentes con la misma etiqueta) no se pisan.
+  const dup = new Falso()
+  pintaTurnos(dup, [{ hora: 1, agente: 'x', tokens: 1 }, { hora: 1, agente: 'x', tokens: 2 }])
+  expect(dup.children).toHaveLength(2)
+})
+
+test('(p) parpadeo: text, attributes, styles and segment bars are written only when they change', () => {
+  const el = new Falso()
+  escrituras = 0
+  expect(ponTexto(el, '12 %')).toBe(true)
+  expect(ponTexto(el, '12 %')).toBe(false)
+  expect(ponAttr(el, 'class', 'al on')).toBe(true)
+  expect(ponAttr(el, 'class', 'al on')).toBe(false)
+  expect(ponEstilo(el, 'width', '42.0%')).toBe(true)
+  // El navegador normaliza el valor ("42%"): se compara con el último puesto, no se vuelve a escribir.
+  el.estilo['width'] = '42%'
+  expect(ponEstilo(el, 'width', '42.0%')).toBe(false)
+  expect(escrituras).toBe(3)
+
+  const seg = segFalso(24)
+  expect(ponSegs(seg, 50)).toBeGreaterThan(0)
+  expect(seg.children.filter(i => i.attrs['class'] === 'on')).toHaveLength(12)
+  expect(ponSegs(seg, 50)).toBe(0)
+  // 51 % sigue siendo 12 de 24 segmentos: nada que tocar.
+  expect(ponSegs(seg, 51)).toBe(0)
+  // Fuera de rango se recorta y nunca hay segmentos negativos; un valor > 0 enciende al menos uno.
+  ponSegs(seg, -20)
+  expect(seg.children.filter(i => i.attrs['class'] === 'on')).toHaveLength(0)
+  ponSegs(seg, 0.1)
+  expect(seg.children.filter(i => i.attrs['class'] === 'on')).toHaveLength(1)
+  ponSegs(seg, 400)
+  expect(seg.children.filter(i => i.attrs['class'] === 'on')).toHaveLength(24)
+
+  // La firma ignora el latido: una lectura que solo trae latido nuevo no repinta nada.
+  expect(firma({ ...datos(T0), latido: T0 + 3000 })).toBe(firma({ ...datos(T0), latido: T0 + 6000 }))
+  expect(firma({ ...datos(T0), coste: 0.2 })).not.toBe(firma(datos(T0)))
+})
+
+test('(q) parpadeo: the page uses the diff helpers and no panel is rebuilt with innerHTML', () => {
+  expect(PAGE).toContain(DOM)
+  expect(PAGE).toContain('if(f===FIRMA)return;')
+  for (const viejo of [
+    "$id('cmp').innerHTML",
+    "$id('hrows').innerHTML",
+    "$id('rows').innerHTML",
+    "$id('link').innerHTML",
+    "$id('plist').innerHTML",
+    "$id('plcur').innerHTML",
+    "$id('cah').innerHTML",
+    "$id('ctk').innerHTML",
+    'txt.innerHTML',
+    'st.innerHTML',
+    'el.innerHTML=fmt',
+  ]) {
+    expect(PAGE).not.toContain(viejo)
+  }
+  // Los únicos innerHTML: crear una pieza nueva (mk), las marcas del dial al cargar y la gráfica,
+  // que solo se redibuja si entra un turno o cambia el tamaño.
+  expect(PAGE.match(/innerHTML=/g)).toHaveLength(4)
+  expect(PAGE).toContain('if(key===CHART)return;')
+})
+
+test('(r) métricas: one principal, shares add up, turns match everywhere, nothing negative, labels match the numbers', async ($, on) => {
+  mock.clock(on, { now: 1_000 })
+  let usd = 0.3
+  let ctxUsage: { tokens: number; window: number; percent?: number } = { tokens: 50_000, window: 200_000 }
+  const writes: { path: string; text: string }[] = []
+  on('fs.write', (_, e) => {
+    writes.push(e)
+    return { value: undefined }
+  })
+  on('process.run', () => ok)
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.model', () => ({ value: 'claude-fable-5' }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: ctxUsage, rateLimits: [], cost: { usd } } }))
+  on('turn.complete', () => ({ text: '' }))
+  const last = () => {
+    const w = writes.filter(x => x.path.endsWith('datos.js')).at(-1)
+    return JSON.parse((w?.text ?? '').replace(/^window\.CONSUMO = /, '').replace(/;$/, ''))
+  }
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  // Sin lectura del contexto todavía: ventana 0, no 1.
+  expect(last().contexto).toEqual({ tokens: 0, window: 0, percent: 0 })
+
+  // El hilo principal contesta con Opus (cambio de modelo); el de la sesión (Fable) aún no tiene turnos.
+  usd = 0.5
+  await $.turn.complete(turnOf('t1', undefined, 'claude-opus-5-5', 300))
+  let d = last()
+  expect(d.modelos.filter((m: { principal: boolean }) => m.principal).map((m: { modelo: string }) => m.modelo)).toEqual(['claude-opus-5-5'])
+  // Sin porcentaje del motor se calcula con tokens y ventana.
+  expect(d.contexto).toEqual({ tokens: 50_000, window: 200_000, percent: 25 })
+
+  usd = 0.6
+  await $.turn.complete(turnOf('t2', 'a1', 'claude-haiku-5-5', 90))
+  usd = 0.65
+  await $.turn.complete(turnOf('t3', undefined, 'claude-fable-5', 100))
+  usd = 0.65
+  await $.turn.complete(turnOf('t3', undefined, 'claude-fable-5', 100)) // repetido
+  ctxUsage = { tokens: 300_000, window: 200_000, percent: 150 }
+  usd = 0.7
+  await $.turn.complete(turnOf('t4', 'a1', 'claude-haiku-5-5', 0))
+  d = last()
+
+  // Un solo principal: ahora el modelo de la sesión, que ya tiene turnos.
+  const principales = d.modelos.filter((m: { principal: boolean }) => m.principal)
+  expect(principales.map((m: { modelo: string }) => m.modelo)).toEqual(['claude-fable-5'])
+  // Turnos: cabecera (modelos), agentes e historial dicen lo mismo, sin contar el repetido.
+  const turnosModelos = d.modelos.reduce((a: number, m: { turnos: number }) => a + m.turnos, 0)
+  expect(turnosModelos).toBe(4)
+  expect(d.agentes.reduce((a: number, x: { turns: number }) => a + x.turns, 0)).toBe(4)
+  expect(d.historial).toHaveLength(4)
+  // Reparto: porcentajes de trabajo y de turnos suman 100 (con redondeo a 0.1) y ninguno es negativo.
+  const suma = (k: string) => Math.round(d.modelos.reduce((a: number, m: Record<string, number>) => a + (m[k] ?? 0), 0))
+  expect(suma('reparto')).toBe(100)
+  expect(suma('repartoTurnos')).toBe(100)
+  // Trabajo = entrada + salida: 300 + 10, 90 + 10, 100 + 10, 0 + 10.
+  const by = (f: string) => d.modelos.find((m: { familia: string }) => m.familia === f)
+  expect(by('haiku').entrada + by('haiku').salida).toBe(110)
+  expect(by('opus').reparto).toBe(Math.round((310 * 1000) / 530) / 10)
+  // Coste por turno: lo que subió el contador, sin negativos, y la suma más lo de antes de arrancar es el total.
+  const costes = d.historial.map((h: { coste: number }) => h.coste)
+  expect(costes).toEqual([0.2, 0.1, 0.05, 0.05])
+  expect(costes.every((c: number) => c >= 0)).toBe(true)
+  expect(Math.round((0.3 + costes.reduce((a: number, c: number) => a + c, 0)) * 1e6) / 1e6).toBe(d.coste)
+  // Todos los números del bloque son >= 0, y el contexto se recorta a 100 %.
+  for (const m of d.modelos) for (const k of ['entrada', 'salida', 'cache', 'turnos', 'reparto', 'repartoTurnos']) expect(m[k]).toBeGreaterThanOrEqual(0)
+  expect(d.contexto.percent).toBe(100)
+
+  // Etiquetas de la página que cuadran con los números.
+  // Las etiquetas pasan por tx() para la opción idioma (es / en).
+  expect(PAGE).toContain("hs.length+tx(' de ')+n(total)+tx(' turnos')")
+  expect(PAGE).toContain("tx(' tokens con caché')+' · '")
+  expect(PAGE).toContain('Real en turnos')
 })
 
 // ---------- Plan de Claude (TaskCreate / TaskUpdate) ----------
@@ -705,7 +1032,7 @@ const arrancar = async ($: Parameters<TestBody>[0], on: Parameters<TestBody>[1])
 test('config: with no options datos.js carries the defaults and nothing is logged', PRUEBA, async ($, on) => {
   const { config, logs } = await arrancar($, on)
   expect(config).toEqual({
-    tema: 'hibrido',
+    tema: 'natural',
     acento: '#7fe7ff',
     densidad: 'comodo',
     idioma: 'es',
@@ -755,7 +1082,52 @@ test('config: leerConfig rejects bad values one by one and keeps the good ones',
   expect(leerConfig({}).avisos).toHaveLength(0)
 })
 
-// ---------- Tema natural y opción tema ----------
+test('config: the page applies config (data-tema on <html>, accent, density, language, refresh and panels)', () => {
+  expect(PAGE).toContain('aplicaConfig(d.config);')
+  expect(PAGE).toContain("ponAttr(root,'data-tema',TEMAS.indexOf(c.tema)>=0?c.tema:'natural');")
+  // Un cambio de tema vuelve a teñir el globo.
+  expect(PAGE).toContain('if(GLOBO.tinta)GLOBO.tinta();')
+  // Los mismos temas y paneles que valida config.ts.
+  const temas = /var TEMAS=(\[[^\]]*\])/.exec(PAGE)?.[1] ?? '[]'
+  expect(JSON.parse(temas.replace(/'/g, '"')).sort()).toEqual([...TEMAS_CONFIG].sort())
+  const ids = /var PANEL_ID=(\{[^}]*\})/.exec(PAGE)?.[1] ?? '{}'
+  expect(Object.keys(JSON.parse(ids.replace(/'/g, '"').replace(/(\w+):/g, '"$1":')))).toEqual([...PANELES])
+  expect(PAGE).toContain("root.style.setProperty('--acc',ac)")
+  expect(PAGE).toContain("setDens(dens==='compacto',false)")
+  expect(PAGE).toContain('lecturas(seg>=1&&seg<=5?seg*1000:1000)')
+  expect(PAGE).toContain("ponClase(document.body,'pn-sel',!todos)")
+  expect(PAGE).toContain('.pnl.pn-off{display:none!important}')
+  // El reloj sigue cada segundo; la lectura de datos.js va con la opción actualizacion.
+  expect(PAGE).toContain('setInterval(tick,1000);')
+  expect(PAGE).not.toContain('setInterval(function(){tick();load();loadEstado()},1000)')
+})
+
+test('config: idioma en translates the labels and leaves data alone', () => {
+  expect(PAGE).toContain(IDIOMA_JS)
+  expect(PAGE).toContain('function tr(s){return traducir(s,EN)}')
+  // El bloque se pega dentro de un template literal: sin acentos graves, dólar-llave ni barras invertidas.
+  for (const c of ['`', '$' + '{', String.fromCharCode(92)]) expect(IDIOMA_JS.includes(c)).toBe(false)
+  const tr = (s: string) => traducir(s, EN)
+  expect(tr('Sin señal hace 12 s')).toBe('No signal for 12 s')
+  expect(tr('Esperando')).toBe('Waiting')
+  expect(tr('En línea')).toBe('Online')
+  expect(tr('Comprobando')).toBe('Checking')
+  expect(tr('datos.js no responde')).toBe('datos.js is not responding')
+  expect(tr('Contexto crítico')).toBe('Critical context')
+  expect(tr('Reparto por modelo')).toBe('Split by model')
+  expect(tr('Últimos turnos')).toBe('Latest turns')
+  expect(tr('sin datos de Opus todavía')).toBe('no data for Opus yet')
+  expect(tr('sin datos de Opus todavía: sus turnos no tienen coste medido')).toBe('no data for Opus yet: its turns have no measured cost')
+  expect(tr('HUD cerrado. Escribe /jarvis para abrirlo.')).toBe('HUD closed. Type /jarvis to open it.')
+  for (const e of ['Pendiente', 'En curso', 'Hecha']) expect(tr(e) === e).toBe(false)
+  // Los textos de señal de senal.ts tienen traducción.
+  for (const s of ['En línea', 'Esperando', 'Comprobando', 'Sin señal', 'Sin datos nuevos']) expect(tr(s) === s).toBe(false)
+  // Los datos (nombres de agentes, modelos, títulos de tareas) no pasan por tx().
+  expect(PAGE).toContain('ponTexto(li.lastChild,t.titulo)')
+  expect(PAGE).toContain('ponTexto(k[1],t.agente)')
+})
+
+// ---------- Tema natural (por defecto) ----------
 
 // Contraste WCAG entre dos colores #rrggbb.
 const lum = (hex: string): number => {
@@ -768,6 +1140,8 @@ const contraste = (a: string, b: string): number => {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 }
 const varDe = (bloque: string, v: string): string => new RegExp(`${v}:(#[0-9a-f]{6})[;\\n]`).exec(bloque)?.[1] ?? ''
+const N = 'html[data-tema="natural"]'
+const reglasNatural = (): string[] => PAGE.split('\n').filter(l => l.includes(N))
 
 test('natural: the block has every color variable plus its own borders, globe tint and fonts', () => {
   const b = bloqueTema('natural')
@@ -775,95 +1149,48 @@ test('natural: the block has every color variable plus its own borders, globe ti
   for (const v of VARS_TEMA) expect(varDe(b, v).length).toBe(7)
   for (const v of ['--borde', '--borde-2']) expect(varDe(b, v).length).toBe(7)
   for (const v of ['--globo-rgb', '--globo-rgb-w', '--globo-rgb-x']) expect(new RegExp(`${v}:\\d+,\\d+,\\d+;`).test(b)).toBe(true)
-  for (const v of ['--sans:', '--cifra:', '--gap:', '--pad:', '--glow:0;', '--cristal:none;']) expect(b).toContain(v)
+  for (const v of ['--sans:', '--cifra:', '--mono:', '--gap:', '--pad:', '--glow:0;', '--cristal:none;']) expect(b).toContain(v)
 })
 
 test('natural: main text, labels and accent reach 4.5:1 on the background and on the panels', () => {
   const b = bloqueTema('natural')
-  const fondos = [varDe(b, '--bg'), varDe(b, '--panel')]
-  for (const f of fondos) {
+  for (const f of [varDe(b, '--bg'), varDe(b, '--panel')]) {
     for (const v of ['--txt', '--sub', '--acc', '--warn', '--crit', '--crit-txt', '--modelo-opus', '--modelo-haiku', '--modelo-fable', '--modelo-otro']) {
       const r = contraste(varDe(b, v), f)
       if (r < 4.5) throw new Error(`${v} sobre ${f}: ${r.toFixed(2)}`)
     }
   }
-  // El texto principal va muy por encima del mínimo.
   expect(contraste(varDe(b, '--txt'), varDe(b, '--panel')) >= 12).toBe(true)
+  // Las filas sin datos van en el gris de las etiquetas, no con transparencia.
+  expect(PAGE).toContain(`${N} .cmp .zero,${N} .cmp .zero b,`)
 })
 
-test('natural: keeps the 3D globe, ring and core, and drops neon, grid, scan and forced capitals', () => {
-  const N = 'html[data-tema="natural"]'
-  // El 3D es común a todos los temas y natural no lo apaga.
+test('natural: keeps the 3D globe, ring and core, and drops neon, glass, grid, scan and forced capitals', () => {
   for (const k of ['<canvas id="globe"', 'class="gring"', 'transform-style:preserve-3d', 'rotateX(72deg)', 'id="pct"']) expect(PAGE).toContain(k)
-  const reglas = PAGE.split('\n').filter(l => l.includes(N))
+  const reglas = reglasNatural()
   for (const l of reglas) {
     for (const sel of ['.gring', '#globe', '.reactor', '.halo', '.rc']) {
       if (l.includes(`${N} ${sel}{`)) expect(l).not.toContain('display:none')
     }
+    expect(/text-shadow:0 0 \d+px rgba\(var\(--acc/.test(l)).toBe(false)
+    // Solo la primera letra en mayúscula (texto de frase); nada de etiquetas en mayúsculas.
+    if (!l.includes('::first-letter')) expect(/text-transform:uppercase/.test(l)).toBe(false)
+    expect(/backdrop-filter:blur/.test(l)).toBe(false)
   }
   expect(PAGE).toContain(`${N} .gring svg{filter:none;animation-duration:30s}`)
   expect(PAGE).toContain(`${N} .neb,${N} .floor,${N} .scan,${N} .shift{display:none}`)
   expect(PAGE).toContain(`${N} .k{text-transform:none`)
   expect(PAGE).toContain(`${N} .ph .t{font-size:var(--fv);font-weight:600;letter-spacing:0;text-transform:none;text-shadow:none}`)
   expect(PAGE).toContain(`${N} h1 .brand{display:none}`)
-  // Ninguna regla de natural añade brillo de neón.
-  for (const l of reglas) expect(/text-shadow:0 0 \d+px rgba\(var\(--acc/.test(l)).toBe(false)
-  // Distribución propia en pantallas anchas: el contexto a un lado y los datos en una rejilla de tres columnas.
-  expect(PAGE).toContain(`grid-template-areas:"ctx cost mod agt" "ctx comp chart chart" "ctx comp hist hist"`)
+  // Cifras de tabla en monoespaciada; el globo toma su tinta del tema.
+  expect(PAGE).toContain(`${N} td.num,`)
+  expect(PAGE).toContain("tinta.n=cs?cs.getPropertyValue('--globo-rgb').trim():''")
 })
 
-test('tema: aplicaTema puts config.tema in data-tema and ignores a missing or unknown theme', () => {
-  const root = { dataset: {} as Record<string, string | undefined> }
-  expect(aplicaTema(root, { config: { tema: 'natural' } })).toBe('natural')
-  expect(root.dataset.tema).toBe('natural')
-  expect(aplicaTema(root, { config: { tema: 'iron' } })).toBeNull()
-  expect(aplicaTema(root, { config: {} })).toBeNull()
-  expect(aplicaTema(root, { contexto: {}, coste: 1 })).toBeNull()
-  expect(aplicaTema(root, null)).toBeNull()
-  expect(root.dataset.tema).toBe('natural')
-  expect(aplicaTema(root, { config: { tema: 'hibrido' } })).toBe('hibrido')
-  expect(root.dataset.tema).toBe('hibrido')
-  // Sin tema nunca se pone el atributo: la página queda en hibrido (:root).
-  const vacio = { dataset: {} as Record<string, string | undefined> }
-  aplicaTema(vacio, {})
-  expect('tema' in vacio.dataset).toBe(false)
-  // La página la lleva dentro, la llama al cargar (último tema guardado) y en cada lectura válida de datos.js.
-  expect(LOGICA).toContain('var aplicaTema=(')
-  expect(PAGE).toContain('var t=aplicaTema(document.documentElement,d);')
-  expect(PAGE).toContain('if(alCargar(ST,d,Date.now())){try{ponTema(d,true)}catch(err){}try{render(d)}catch(err){}}')
-  expect(PAGE).toContain("t=localStorage.getItem(TKEY)}catch(e){}if(t)try{ponTema({config:{tema:t}},false)}")
-})
-
-test(
-  'tema: the tema option travels through datos.js to data-tema (natural)',
-  { options: { dataDir: '/prueba/consumo', tema: 'natural' } },
-  async ($, on) => {
-    mock.clock(on, { now: 1_000 })
-    const writes: { path: string; text: string }[] = []
-    on('fs.write', (_, e) => {
-      writes.push(e)
-      return { value: undefined }
-    })
-    on('process.run', () => ok)
-    on('session.start', (_, e) => ({ cwd: e.cwd }))
-    on('session.model', () => ({ value: 'claude-haiku-5-5' }))
-    on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 0, window: 200000, percent: 0 }, rateLimits: [] } }))
-    await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-    const d = writes.filter(w => w.path === '/prueba/consumo/datos.js').at(-1)?.text ?? ''
-    const data = JSON.parse(d.slice('window.CONSUMO = '.length, -1)) as unknown
-    const st = nuevoEstado(1_000)
-    // Lo mismo que hace la página: lectura válida y luego el tema.
-    expect(alCargar(st, data, 1_000)).toBe(true)
-    const root = { dataset: {} as Record<string, string | undefined> }
-    expect(aplicaTema(root, data)).toBe('natural')
-    expect(root.dataset.tema).toBe('natural')
-    expect(leerConfig({ tema: 'natural' }).avisos).toHaveLength(0)
-  },
-)
-
-test('tema: with no option datos.js carries hibrido, the default theme', PRUEBA, async ($, on) => {
-  const { config } = await arrancar($, on)
-  const root = { dataset: {} as Record<string, string | undefined> }
-  expect(aplicaTema(root, { contexto: {}, coste: 0, config })).toBe('hibrido')
-  expect(root.dataset.tema).toBe('hibrido')
+test('natural: summary band layout that leaves the panel selection (pn-sel) alone', () => {
+  // Franja: contexto, coste y comparativa en una fila; el detalle debajo. Con todo a la vista en pantallas grandes.
+  expect(PAGE).toContain(`grid-template-areas:"head head head" "plan plan plan" "ctx cost comp" "mod chart chart" "agt hist hist" "foot foot foot"`)
+  expect(PAGE).toContain(`grid-template-areas:"head head head" "ctx cost comp" "mod agt agt" "plan plan plan" "hist hist hist" "chart chart chart" "foot foot foot"`)
+  // Las reglas de distribución de natural no tocan la rejilla cuando hay paneles ocultos.
+  for (const l of reglasNatural()) if (l.includes('grid-template-areas')) expect(l).toContain(':not(.pn-sel) .wrap')
 })

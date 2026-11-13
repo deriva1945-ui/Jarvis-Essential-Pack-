@@ -1,7 +1,7 @@
 {
   "name": "consumo",
-  "version": "0.4.0",
-  "description": "HUD en directo (blanco-cian): contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus y comando /jarvis para abrirlo o cerrarlo.",
+  "version": "0.6.0",
+  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus y comando /jarvis para abrirlo o cerrarlo. Seis temas (natural por defecto: grafito cálido, sin neón, con el globo 3D), sin parpadeo, adaptable a cualquier ventana y configurable (tema, acento, densidad, idioma, actualización y paneles).",
   "author": {
     "name": "deriva1945-ui"
   },
@@ -15,16 +15,16 @@
     "tema": {
       "type": "string",
       "title": "Tema / Theme",
-      "description": "Tema de color del HUD: mark-ii, mark-l, stark, hibrido, claro o natural (grafito cálido, sin neón, con el globo 3D). Por defecto: hibrido. / HUD colour theme: mark-ii, mark-l, stark, hibrido (hybrid), claro (light) or natural (warm graphite, no neon, keeps the 3D globe). Default: hibrido.",
+      "description": "Tema de color del HUD: natural (grafito cálido, sin neón, con el globo 3D), mark-ii, mark-l, stark, hibrido o claro. Por defecto: natural. / HUD colour theme: natural (warm graphite, no neon, keeps the 3D globe), mark-ii, mark-l, stark, hibrido (hybrid) or claro (light). Default: natural.",
       "options": [
+        "natural",
         "mark-ii",
         "mark-l",
         "stark",
         "hibrido",
-        "claro",
-        "natural"
+        "claro"
       ],
-      "default": "hibrido"
+      "default": "natural"
     },
     "acento": {
       "type": "string",

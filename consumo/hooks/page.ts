@@ -1,36 +1,65 @@
 // Página del panel. Se escribe como index.html en la carpeta de datos (opción dataDir) al iniciar la sesión.
-// Lee datos.js cada segundo (recargado con un script nuevo) y redibuja.
+// Lee datos.js cada segundo (recargado con un script nuevo). Pinta una vez y después solo cambia los textos,
+// atributos y estilos que cambian (dom.ts); si los datos no cambian (solo el latido), no toca nada.
 // Sin acentos graves, sin dólar-llave y sin barras invertidas dentro: es un template literal.
 // Todo en línea, sin CDN: tiene que funcionar offline desde file://.
 //
-// Tamaños de ventana:
-//   >= 1600 px  rejilla completa (contexto, coste, comparativa, reparto, gráfica, últimos turnos, agentes).
-//   900-1599    dos columnas, sin la gráfica de tokens por turno; la comparativa bajo el coste.
-//   < 900       una columna: contexto, coste, comparativa, reparto por modelo, agentes, últimos turnos.
-//   Mínimo 420 px de ancho sin desplazamiento horizontal.
+// Tamaños de ventana (detalle en el comentario de breakpoints del CSS):
+//   < 560 px          una columna, por prioridad: contexto, coste, comparativa, reparto, agentes, plan, últimos turnos, gráfica.
+//   560-899           dos columnas arriba (contexto | coste y comparativa) y el resto a todo el ancho.
+//   900-1199          dos columnas; reparto y agentes lado a lado; plan, últimos turnos y gráfica a todo el ancho.
+//   >= 1200           tres columnas: contexto | coste y comparativa | reparto y agentes.
+//   >= 1600 y alto >= 1000  todo cabe en la ventana: plan arriba y la gráfica con los últimos turnos llenan el alto que queda.
+//   Desde 320 px de ancho sin desplazamiento horizontal; los paneles se ajustan por dentro con container queries.
 // Arriba, a todo el ancho: barra de progreso del plan de Claude (TaskCreate / TaskUpdate), con la lista plegable.
-// Tecla D o botón de la cabecera: modo cómodo / compacto (se guarda en localStorage).
-// Temas (atributo data-tema en <html>): hibrido (por defecto, blanco-cian con anillo ámbar), mark-ii, mark-l, stark, claro y natural.
-// El tema llega en datos.js (config.tema, opción tema de userConfig) y se aplica al cargar y en cada lectura válida.
-// Natural: grafito cálido sin neón, paneles opacos con filo de 1 px y su propia distribución; conserva el globo y el anillo 3D.
+// Tecla D o botón de la cabecera: modo cómodo / compacto (se guarda en localStorage; al llegar datos.js manda la opción densidad).
+// Opciones del usuario (userConfig): llegan en datos.js como config y las aplica aplicaConfig(): tema, acento, densidad,
+// idioma (es / en), actualizacion (segundos entre lecturas) y paneles visibles.
+// Temas (atributo data-tema en <html>, lo pone aplicaConfig con config.tema): natural (por defecto), hibrido (blanco-cian con anillo
+// ámbar), mark-ii, mark-l, stark y claro. El HTML sale con data-tema="natural".
+// Natural: grafito cálido sin neón, paneles opacos con filo de 1 px, cifras de tabla en monoespaciada y su propia distribución
+// (franja de resumen: contexto, coste y comparativa en una fila; el detalle debajo). Conserva el globo, el anillo y el núcleo 3D.
 // Cada tema es un bloque de variables CSS (--bg, --panel, --txt, --sub, --acc, --acc2, --warn, --crit, --ok, --modelo-*); rojo solo en alertas.
 // Globo holográfico en canvas con un anillo inclinado (CSS 3D) que gira al revés, paneles de cristal y escaneo sutil.
 // Fondo: degradado radial, nebulosa difuminada y rejilla de perspectiva que avanza despacio (quieta en compacto y con movimiento reducido).
+import { DOM } from './dom'
+import { IDIOMA_JS } from './idioma'
 import { LOGICA } from './senal'
 
 export const PAGE = `<!doctype html>
-<html lang="es"><head><meta charset="utf-8">
+<html lang="es" data-tema="natural"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Consumo · HUD</title>
 <style>
-/* Temas. Cada tema es un bloque de variables sobre html[data-tema="..."]; sin atributo se usa hibrido.
+/* Temas. Cada tema es un bloque de variables sobre html[data-tema="..."]. El HTML sale con data-tema="natural" (el tema por defecto)
+   y la opción tema lo cambia; si alguien quita el atributo, :root:not([data-tema]) deja las variables de natural.
    Variables de cada tema: --bg fondo, --panel panel opaco (y respaldo sin desenfoque), --txt texto, --sub etiquetas,
    --acc acento, --acc2 segundo acento, --warn aviso (contexto alto), --crit alerta crítica (el único rojo),
    --ok plan completado, --modelo-opus / -haiku / -fable / -otro colores de familia.
    Las versiones -rgb (r,g,b) sirven para las transparencias. Todo texto pasa 4,5:1 sobre --bg y --panel.
    --glow escala los brillos (0 en compacto), --cristal es el desenfoque de los paneles y --globo-filtro tiñe el globo del canvas. */
-:root,html[data-tema="hibrido"]{
-  /* Híbrido (por defecto): blanco-cian sobre azul-negro, con el anillo del globo en ámbar. */
+:root:not([data-tema]),html[data-tema="natural"]{
+  /* Natural (por defecto): grafito cálido, texto marfil y un solo acento salvia. Sin brillos ni cristal; el globo, el anillo
+     inclinado y el núcleo siguen en 3D. --borde y --borde-2 son los filos de 1 px de los paneles, --globo-rgb*
+     tiñen las líneas del globo (normal, aviso, crítico) y --cifra es la letra de las cifras grandes. Distribución propia al final. */
+  --bg:#151412;--bg-rgb:21,20,18;--panel:#1d1b18;--txt:#eee8dc;--sub:#b8af9f;
+  --acc:#93c2a2;--acc-rgb:147,194,162;--acc2:#ddd5c7;--acc2-rgb:221,213,199;
+  --warn:#e3b562;--warn-rgb:227,181,98;--crit:#e5735f;--crit-rgb:229,115,95;--crit-txt:#f7d6cf;--ok:#a6cfb2;
+  --modelo-opus:#e4dccd;--modelo-haiku:#93c2a2;--modelo-fable:#bcaad9;--modelo-otro:#a8a194;
+  --ring1:#ddd5c7;--ring2:#93c2a2;--ring-rgb:147,194,162;
+  --glass:#1d1b18;--glass2:#1d1b18;--thbg:#1d1b18;--track:#2c2925;--mix:#ddd5c7;
+  --bg0:#171614;--bg1:#151412;--bg2:#131210;--neb2-rgb:147,194,162;--shadow:rgba(0,0,0,.24);
+  --glow:0;--cristal:none;--globo-filtro:none;--globo-filtro-x:none;
+  --globo-rgb:186,212,192;--globo-rgb-w:227,181,98;--globo-rgb-x:229,115,95;
+  --borde:#2d2a26;--borde-2:#3d3933;
+  --sans:'Segoe UI Variable Text','Segoe UI','Inter','Helvetica Neue','Liberation Sans','DejaVu Sans',system-ui,sans-serif;
+  --cifra:'Segoe UI Variable Display','Segoe UI','Inter','Helvetica Neue','Liberation Sans',sans-serif;
+  --mono:'JetBrains Mono','Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace;
+  --gap:clamp(14px,1.15vw,22px);--pad:clamp(16px,1.25vw,24px);
+  color-scheme:dark;
+}
+html[data-tema="hibrido"]{
+  /* Híbrido: blanco-cian sobre azul-negro, con el anillo del globo en ámbar. */
   --bg:#070b10;--bg-rgb:7,11,16;--panel:#0c1620;--txt:#f4feff;--sub:#a8f0ff;
   --acc:#7fe7ff;--acc-rgb:127,231,255;--acc2:#eaffff;--acc2-rgb:234,255,255;
   --warn:#ffffff;--warn-rgb:255,255,255;--crit:#ff4d4d;--crit-rgb:255,77,77;--crit-txt:#ffe1dc;--ok:#eaffff;
@@ -89,25 +118,6 @@ html[data-tema="claro"]{
   --glow:.3;--cristal:blur(12px);--globo-filtro:hue-rotate(14deg) saturate(1.6) brightness(.42);--globo-filtro-x:brightness(.8) saturate(1.4);
   color-scheme:light;
 }
-html[data-tema="natural"]{
-  /* Natural: grafito cálido, texto marfil y un solo acento salvia. Sin brillos ni cristal; el globo, el anillo
-     inclinado y el núcleo siguen en 3D. --borde y --borde-2 son los filos de 1 px de los paneles, --globo-rgb*
-     tiñen las líneas del globo (normal, aviso, crítico) y --cifra es la letra de las cifras grandes. Distribución propia al final. */
-  --bg:#151412;--bg-rgb:21,20,18;--panel:#1d1b18;--txt:#eee8dc;--sub:#b8af9f;
-  --acc:#93c2a2;--acc-rgb:147,194,162;--acc2:#ddd5c7;--acc2-rgb:221,213,199;
-  --warn:#e3b562;--warn-rgb:227,181,98;--crit:#e5735f;--crit-rgb:229,115,95;--crit-txt:#f7d6cf;--ok:#a6cfb2;
-  --modelo-opus:#e4dccd;--modelo-haiku:#93c2a2;--modelo-fable:#bcaad9;--modelo-otro:#a8a194;
-  --ring1:#ddd5c7;--ring2:#93c2a2;--ring-rgb:147,194,162;
-  --glass:#1d1b18;--glass2:#1d1b18;--thbg:#1d1b18;--track:#2c2925;--mix:#ddd5c7;
-  --bg0:#171614;--bg1:#151412;--bg2:#131210;--neb2-rgb:147,194,162;--shadow:rgba(0,0,0,.24);
-  --glow:0;--cristal:none;--globo-filtro:none;--globo-filtro-x:none;
-  --globo-rgb:186,212,192;--globo-rgb-w:227,181,98;--globo-rgb-x:229,115,95;
-  --borde:#2d2a26;--borde-2:#3d3933;
-  --sans:'Segoe UI Variable Text','Segoe UI','Inter','Helvetica Neue','Liberation Sans','DejaVu Sans',system-ui,sans-serif;
-  --cifra:'Segoe UI Variable Display','Segoe UI','Inter','Helvetica Neue','Liberation Sans',sans-serif;
-  --gap:clamp(14px,1.15vw,22px);--pad:clamp(16px,1.25vw,24px);
-  color-scheme:dark;
-}
 /* Derivados: se calculan con las variables del tema activo. Los nombres cortos (--ce, --wh, --wn, --rd, --f-*) los usa el script. */
 :root{
   --wh:var(--acc2);--ce:var(--acc);--wn:var(--warn);--rd:var(--crit);
@@ -118,9 +128,9 @@ html[data-tema="natural"]{
   --wc:linear-gradient(90deg,var(--acc2),var(--acc));
   --sans:Bahnschrift,'Segoe UI','Inter','Liberation Sans','DejaVu Sans',sans-serif;
   /* Texto: etiquetas >= 14 px, valores >= 16 px; crecen con la ventana. */
-  --fk:clamp(14px,calc(.32vw + .38vh + 5px),18px);
-  --fv:clamp(16px,calc(.42vw + .5vh + 5px),22px);
-  --fbig:clamp(34px,calc(1.6vw + 2.2vh),64px);
+  --fk:clamp(14px,calc(.32vw + .38vh + 5px),22px);
+  --fv:clamp(16px,calc(.42vw + .5vh + 5px),27px);
+  --fbig:clamp(34px,calc(1.6vw + 2.2vh),80px);
   --gap:clamp(10px,1vw,18px);
   --pad:clamp(12px,1vw,20px);
 }
@@ -146,12 +156,13 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:8;opac
   box-shadow:inset 0 0 130px rgba(var(--crit-rgb),.42)}
 body.lv-x:before{opacity:1;animation:alarm 1.6s ease-in-out infinite}
 body.lv-w:before{opacity:.5;box-shadow:inset 0 0 90px rgba(var(--warn-rgb),.2)}
-.wrap{position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column;gap:var(--gap);padding:var(--pad) clamp(16px,1.4vw,26px);max-width:2200px;margin:0 auto}
+.wrap{position:relative;z-index:2;min-height:100vh;display:grid;gap:var(--gap);padding:var(--pad) clamp(16px,1.4vw,26px);max-width:max(2200px,86vw);margin:0 auto;
+  grid-template-columns:minmax(0,1fr);align-content:start}
 .k{color:var(--sub);font-size:var(--fk);letter-spacing:.08em;text-transform:uppercase}
 .num{font-variant-numeric:tabular-nums}
 
 /* Cabecera */
-header{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;border-bottom:1px solid var(--line);padding-bottom:10px;position:relative}
+header{grid-area:head;min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;border-bottom:1px solid var(--line);padding-bottom:10px;position:relative}
 header:after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,var(--wh),var(--ce) 18%,transparent 40%)}
 .logo{flex:none;width:28px;height:28px;border:2px solid var(--wh);border-radius:50%;position:relative;box-shadow:0 0 10px rgba(var(--acc-rgb),calc(.5*var(--glow)))}
 .logo:after{content:"";position:absolute;inset:4px;border-radius:50%;border:1px dashed var(--ce);animation:spin 8s linear infinite}
@@ -175,7 +186,7 @@ h1 .brand{color:var(--sub)}
 #dens kbd{font:inherit;color:var(--ce);border:1px solid var(--ce);border-radius:4px;padding:0 5px;margin-right:8px}
 
 /* Paneles de cristal: fondo translúcido con desenfoque y borde en degradado blanco-cian; se ilumina en cian suave al pasar el ratón o al cambiar de estado. */
-.pnl{position:relative;min-width:0;min-height:0;border-radius:12px;border:1px solid transparent;
+.pnl{position:relative;min-width:0;min-height:0;container-type:inline-size;border-radius:12px;border:1px solid transparent;
   background:linear-gradient(160deg,var(--glass),var(--glass2)) padding-box,var(--bord) border-box;-webkit-backdrop-filter:var(--cristal);backdrop-filter:var(--cristal);
   box-shadow:0 18px 36px var(--shadow);transition:box-shadow .8s}
 .pnl:hover,.pnl.lit{background:linear-gradient(160deg,var(--glass),var(--glass2)) padding-box,var(--bord-on) border-box;box-shadow:0 0 22px rgba(var(--acc-rgb),calc(.18*var(--glow))),0 18px 36px var(--shadow);transition:box-shadow .25s}
@@ -194,14 +205,14 @@ body.lv-x .pnl:before,body.lv-x .pnl:after{border-color:var(--rd)}
 .ph .r{margin-left:auto;font-size:var(--fk);color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 
 /* Plan: barra de progreso a todo el ancho, encima de la rejilla */
-#p-plan{flex:none}
+#p-plan{grid-area:plan}
 #p-plan>.in{gap:10px}
 .plh{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;min-width:0}
 .plt{font-size:clamp(18px,calc(.6vw + .7vh + 6px),30px);color:var(--txt);letter-spacing:.08em;white-space:nowrap}
 .plt b{font-weight:normal;color:var(--txt);text-shadow:0 0 10px rgba(var(--acc-rgb),calc(.5*var(--glow)))}
 .plt.vacio{color:var(--sub);font-size:var(--fv)}
 .plok{display:none;font-size:var(--fk);letter-spacing:.12em;color:var(--bg);background:var(--ok);padding:2px 10px;border-radius:4px;box-shadow:0 0 12px rgba(var(--acc-rgb),calc(.6*var(--glow)))}
-.plcur{margin-left:auto;font-size:var(--fk);color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:100%}
+.plcur{margin-left:auto;font-size:var(--fk);color:var(--sub);min-width:0;max-width:100%;overflow-wrap:anywhere}
 .plcur em{font-style:normal;color:var(--ce)}
 .plbar{position:relative;height:clamp(16px,2vh,24px);background:var(--track);border:1px solid var(--edge);border-radius:999px;overflow:hidden}
 .plfill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:inherit;background-color:var(--ce);box-shadow:0 0 14px rgba(var(--acc-rgb),calc(.6*var(--glow)));
@@ -216,9 +227,9 @@ body.lv-x .pnl:before,body.lv-x .pnl:after{border-color:var(--rd)}
 .pll summary:before{content:"+ ";color:var(--wh)}
 .pll[open] summary:before{content:"- "}
 .pll summary:focus-visible{outline:1px solid var(--ce);outline-offset:3px}
-.pll ol{margin:8px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:4px 18px;max-height:min(16vh,9em);overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(var(--acc-rgb),.4) transparent}
+.pll ol{margin:8px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,max(340px,24em)),1fr));gap:4px 18px;max-height:min(18vh,9em);overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(var(--acc-rgb),.4) transparent}
 .pll li{display:flex;gap:10px;align-items:baseline;min-width:0;font-size:var(--fk);color:var(--txt)}
-.pll li span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pll li span{min-width:0;overflow-wrap:anywhere}
 .pll li i{font-style:normal;flex:none;width:7.5em;color:var(--sub);text-transform:uppercase;letter-spacing:.04em}
 .pll li.c i{color:var(--ce)}.pll li.c span{color:var(--sub);text-decoration:line-through}
 .pll li.e i{color:var(--wn);text-shadow:0 0 8px rgba(var(--acc-rgb),calc(.6*var(--glow)))}
@@ -226,17 +237,17 @@ body.lv-x .pnl:before,body.lv-x .pnl:after{border-color:var(--rd)}
 body.compact .pll,body.compact .plcur{display:none}
 body.compact #p-plan>.in{gap:6px}
 
-/* Rejilla: una sola, con áreas que cambian según el ancho */
-.grid{flex:1;display:grid;gap:var(--gap);min-height:0;min-width:0;
-  grid-template-columns:minmax(0,1fr);
-  grid-template-areas:"ctx" "cost" "comp" "mod" "agt" "hist"}
-#p-ctx{grid-area:ctx}#p-cost{grid-area:cost}#p-comp{grid-area:comp}#p-mod{grid-area:mod}#p-chart{grid-area:chart;display:none}#p-hist{grid-area:hist}#p-agt{grid-area:agt}
+/* Rejilla: una sola, la de .wrap. .grid no dibuja caja (display:contents), así el plan puede ir entre los paneles
+   según la prioridad. Áreas por tamaño en el bloque de breakpoints, al final del CSS. */
+.grid{display:contents}
+.wrap{grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "hist" "chart" "foot"}
+body.compact .wrap{grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "chart"}
+#p-ctx{grid-area:ctx}#p-cost{grid-area:cost}#p-comp{grid-area:comp}#p-mod{grid-area:mod}#p-chart{grid-area:chart}#p-hist{grid-area:hist}#p-agt{grid-area:agt}
 body.compact #p-hist{display:none}
-body.compact .grid{grid-template-areas:"ctx" "cost" "comp" "mod" "agt"}
 
 /* Contexto: globo holográfico (canvas) con un anillo blanco-cian inclinado (CSS 3D) que gira al revés, sobre un halo cian */
 .ctxb{display:flex;flex-direction:column;align-items:center;gap:var(--gap);flex:1;min-height:0;justify-content:center}
-.reactor{position:relative;width:100%;max-width:min(300px,29vh);aspect-ratio:1;flex:none}
+.reactor{position:relative;width:100%;max-width:clamp(150px,min(78cqi,34vh),300px);aspect-ratio:1;flex:none}
 /* Halo cian detrás del globo */
 .reactor:before{content:"";position:absolute;inset:-18%;border-radius:50%;pointer-events:none;
   background:radial-gradient(circle,rgba(var(--acc-rgb),.16),rgba(var(--acc-rgb),.06) 42%,transparent 68%)}
@@ -267,7 +278,7 @@ body.lv-x .rc .p small{color:var(--rd)}
 body.compact .kv .opt{display:none}
 
 /* Coste */
-.cost{font-size:var(--fbig);color:var(--txt);text-shadow:0 0 14px rgba(var(--acc-rgb),calc(.45*var(--glow)));line-height:1.05;margin:0 0 4px;white-space:nowrap}
+.cost{font-size:clamp(28px,16cqi,var(--fbig));color:var(--txt);text-shadow:0 0 14px rgba(var(--acc-rgb),calc(.45*var(--glow)));line-height:1.05;margin:0 0 4px;white-space:nowrap}
 .cost small{font-size:var(--fk);color:var(--sub);letter-spacing:.1em;margin-left:8px}
 .sub{color:var(--sub);font-size:var(--fk);margin-bottom:8px}
 .mdl{color:var(--ce);font-size:var(--fv);overflow-wrap:anywhere}
@@ -304,9 +315,10 @@ body.compact .cnote,body.compact .ctk,body.compact #p-comp .stack{display:none}
 .stack{display:flex;height:8px;gap:4px;margin:0 0 14px;flex:none}
 .stack div{height:100%;background:var(--c);background:linear-gradient(90deg,color-mix(in srgb,var(--c) 55%,var(--mix)),var(--c));box-shadow:0 0 8px var(--c);opacity:.9;min-width:3px;border-radius:2px}
 .stack.empty{background:var(--track)}
+.stack div{transition:flex-grow .6s}
 
 /* Reparto por modelo: nombre, barra, %, turnos */
-.cmp{display:grid;grid-template-columns:minmax(130px,15em) minmax(60px,1fr) 4.5em 5.5em;gap:10px 16px;align-items:center}
+.cmp{display:grid;grid-template-columns:minmax(130px,15em) minmax(5.5em,1fr) 4.5em 5.5em;gap:10px 16px;align-items:center}
 .cmp .hd{font-size:var(--fk);color:var(--sub);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
 .cmp .nm{display:flex;flex-direction:column;min-width:0;border-left:2px solid var(--c);padding-left:10px}
 .cmp .nm b{font-weight:normal;color:var(--c);letter-spacing:.12em;font-size:var(--fv);white-space:nowrap}
@@ -317,10 +329,11 @@ body.compact .cmp .nm span{display:none}
 .cmp .tn{font-size:var(--fv);color:var(--txt);text-align:right;white-space:nowrap}
 .cmp .hd.tn{font-size:var(--fk);color:var(--sub)}
 .cmp .zero{opacity:.55}
+.cmp .filas,.cmp .fila{display:contents}
 .r-al{text-align:right}
 
 /* Gráfica */
-.chart{position:relative;flex:1;min-height:70px}
+.chart{position:relative;flex:1;min-height:clamp(170px,28vh,340px)}
 .chart svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .chart text{font:14px var(--sans);fill:var(--sub)}
 .legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:var(--fk);color:var(--sub);margin-top:8px;flex:none}
@@ -336,6 +349,8 @@ td{font-size:var(--fv)}
 th{color:var(--sub);font-weight:normal;font-size:var(--fk);letter-spacing:.06em;text-transform:uppercase;position:sticky;top:0;background:var(--thbg);z-index:1}
 th:first-child,td:first-child{padding-left:2px}
 .al-l{text-align:left}
+/* Nombres de agente: se parten en varias líneas en vez de cortarse. */
+td.al-l{white-space:normal;overflow-wrap:anywhere}
 th .sh{display:none}
 .w-hora{width:6.2em}.w-mdl{width:6.5em}.w-tok{width:6em}.w-usd{width:5.8em}.w-trn{width:6.4em}.w-share{width:11em}
 tbody tr:hover td{background:rgba(var(--acc-rgb),.05)}
@@ -348,7 +363,7 @@ tr.new td{animation:flash 1.4s ease-out}
 .share .sv{flex:none;min-width:3.5em;text-align:right}
 .empty-row{color:var(--sub);text-align:left!important;font-size:var(--fk)!important;padding:14px 8px!important}
 
-footer{display:flex;gap:18px;justify-content:space-between;font-size:var(--fk);color:var(--sub);border-top:1px solid var(--line);border-image:linear-gradient(90deg,rgba(var(--acc2-rgb),.4),rgba(var(--acc-rgb),.2) 50%,rgba(var(--acc-rgb),.05)) 1;padding-top:8px;flex-wrap:wrap}
+footer{grid-area:foot;display:flex;gap:18px;justify-content:space-between;font-size:var(--fk);color:var(--sub);border-top:1px solid var(--line);border-image:linear-gradient(90deg,rgba(var(--acc2-rgb),.4),rgba(var(--acc-rgb),.2) 50%,rgba(var(--acc-rgb),.05)) 1;padding-top:8px;flex-wrap:wrap}
 footer .line{flex:1;align-self:center;height:1px;background:linear-gradient(90deg,var(--line),transparent);min-width:20px}
 body.compact footer{display:none}
 
@@ -366,66 +381,113 @@ body.compact footer{display:none}
 /* Compacto: menos capas de efecto, la lectura primero */
 body.compact .scan,body.compact .gring svg .g2{display:none}
 
-/* < 900 px: una columna. Estrecho: menos columnas en las tablas. */
+/* ===== Breakpoints =====
+   Ventana (media queries, ancho x alto):
+     base   < 560 px   una columna por prioridad: contexto, coste, comparativa, reparto, agentes, plan, últimos turnos, gráfica.
+     560 px             dos columnas arriba: contexto | coste + comparativa; reparto, agentes, plan, turnos y gráfica a todo el ancho.
+     900 px             dos columnas: contexto | coste + comparativa; reparto | agentes; plan, turnos y gráfica a todo el ancho.
+     1200 px            tres columnas: contexto | coste + comparativa | reparto + agentes; plan, turnos y gráfica a todo el ancho.
+     1600 px y 1000 px de alto   pantalla completa sin desplazar: plan arriba, las tres columnas y abajo gráfica | turnos con el alto que queda.
+     Por debajo de 1000 px de alto la página se desplaza en vertical; nunca en horizontal.
+   Panel (container queries, ancho del propio panel; cada .pnl es container-type:inline-size):
+     < 600 px   tablas sin hora ni turnos; reparto de agentes solo con el %.
+     < 460 px   reparto por modelo sin la columna de turnos; comparativa con la barra bajo su etiqueta.
+     < 420 px   tablas sin la columna de modelo; reparto por modelo en dos líneas (nombre y %, barra debajo).
+   Texto: nunca por debajo de 14 px (--fk); los nombres largos se parten en varias líneas en vez de cortarse. */
+
+/* Cabecera estrecha */
 @media (max-width:899px){
   .hstat{margin-left:0;width:100%;justify-content:space-between}
   .hstat>div{text-align:left}
-  .reactor{max-width:min(260px,60vw)}
 }
-@media (max-width:640px){
+@media (max-width:559px){
   .plcur{margin-left:0;flex-basis:100%}
-  .pll li i{width:6.5em}
   h1{letter-spacing:.14em}
   h1 .brand{display:none}
   .hstat .opt{display:none}
-  .cmp{grid-template-columns:minmax(0,1.3fr) minmax(40px,1fr) 4em}
-  .cmp .tn,.cmp .hd.tn{display:none}
-  .h-hora,.a-turnos{display:none}
-  .w-mdl{width:5.4em}.w-tok{width:5.2em}.w-usd{width:5.4em}.w-share{width:4.2em}
+  .wrap{padding-left:16px;padding-right:16px}
 }
 
-/* 900-1599 px: dos columnas, sin la gráfica */
+/* 560 px: contexto a la izquierda, coste y comparativa a la derecha */
+@media (min-width:560px){
+  .wrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:"head head" "ctx cost" "ctx comp" "mod mod" "agt agt" "plan plan" "hist hist" "chart chart" "foot foot"}
+  body.compact .wrap{grid-template-areas:"head head" "ctx cost" "ctx comp" "mod mod" "agt agt" "plan plan" "chart chart"}
+}
+/* 900 px: reparto y agentes lado a lado; la gráfica a todo el ancho para que sus etiquetas no se junten */
 @media (min-width:900px){
-  .grid{grid-template-columns:minmax(300px,.8fr) minmax(0,1.5fr);
-    grid-template-areas:"ctx mod" "ctx agt" "cost hist" "comp hist"}
-  body.compact .grid{grid-template-areas:"ctx mod" "ctx agt" "cost agt" "comp agt"}
+  .wrap{grid-template-columns:minmax(0,.85fr) minmax(0,1fr);
+    grid-template-areas:"head head" "ctx cost" "ctx comp" "mod agt" "plan plan" "hist hist" "chart chart" "foot foot"}
+  body.compact .wrap{grid-template-areas:"head head" "ctx cost" "ctx comp" "mod agt" "plan plan" "chart chart"}
 }
-
-/* >= 1600 px: rejilla completa */
-@media (min-width:1600px){
-  .grid{grid-template-columns:minmax(360px,460px) minmax(0,1.1fr) minmax(0,1fr);
-    grid-template-areas:"ctx mod mod" "ctx chart hist" "cost comp agt"}
-  body.compact .grid{grid-template-areas:"ctx mod mod" "ctx chart chart" "cost comp agt"}
-  #p-chart{display:block}
-  .reactor{max-width:min(380px,24vh)}
+/* 1200 px: tres columnas */
+@media (min-width:1200px){
+  .wrap{grid-template-columns:minmax(0,.9fr) minmax(0,1fr) minmax(0,1.15fr);
+    grid-template-areas:"head head head" "ctx cost mod" "ctx comp agt" "plan plan plan" "hist hist hist" "chart chart chart" "foot foot foot"}
+  body.compact .wrap{grid-template-areas:"head head head" "ctx cost mod" "ctx comp agt" "plan plan plan" "chart chart chart"}
 }
+/* Mientras la página se desplaza, la tabla de turnos no pasa de un alto razonable. */
+.tblw{max-height:clamp(220px,50vh,440px)}
 
-/* Si la ventana es alta y ancha, todo cabe sin desplazar la página. En dos columnas (900-1599) la columna
-   izquierda lleva contexto, coste y comparativa, así que hace falta más alto: por debajo de 1000 px la página se desplaza. */
-@media (min-width:900px) and (max-width:1599px) and (min-height:1000px),(min-width:1600px) and (min-height:700px){
-  .wrap{height:100vh}
-  .grid{overflow:hidden}
+/* 1600 px y 1000 px de alto: todo en la ventana, sin desplazar. La última fila (gráfica | turnos) se queda con el alto libre. */
+@media (min-width:1600px) and (min-height:1000px){
+  .wrap{height:100vh;grid-template-columns:minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.1fr);
+    grid-template-rows:auto min-content min-content min-content minmax(236px,1fr) auto;
+    grid-template-areas:"head head head" "plan plan plan" "ctx cost mod" "ctx comp agt" "chart chart hist" "foot foot foot"}
+  body.compact .wrap{grid-template-rows:auto min-content min-content min-content minmax(236px,1fr);
+    grid-template-areas:"head head head" "plan plan plan" "ctx cost mod" "ctx comp agt" "chart chart chart"}
   .tblw{max-height:none}
+  .chart{min-height:120px}
+  .reactor{max-width:clamp(200px,min(70cqi,23vh),440px)}
 }
-@media (min-width:900px) and (max-width:1599px) and (min-height:1000px){
-  /* Las filas de abajo (coste y comparativa) nunca se recortan: el alto que quita la barra del plan sale de la fila del medio. */
-  .grid{grid-template-rows:auto minmax(0,1fr) min-content minmax(min-content,.85fr)}
-  body.compact .grid{grid-template-rows:auto minmax(0,1fr) auto auto}
+/* Pantalla completa con poco alto (1000-1199 px, p. ej. 1920x1080): márgenes más justos para que quepa todo. */
+@media (min-width:1600px) and (min-height:1000px) and (max-height:1199px){
+  :root{--gap:10px;--pad:12px}
+  body.compact{--gap:10px;--pad:12px}
+  .plt{font-size:clamp(18px,calc(.5vw + .5vh + 6px),26px)}
+  .plbar{height:16px}
+  header{padding-bottom:6px}
+  .ph{margin-bottom:8px;padding-bottom:5px}
+  #p-plan>.in{gap:8px}
+  .stack{margin-bottom:10px}
+  .pll ol{margin-top:4px}
+  .kv{gap:4px 16px}
+  th,td{padding-top:4px;padding-bottom:4px}
+  .cmp{row-gap:6px}
+  .legend{margin-top:4px}
+  .reactor{max-width:clamp(200px,min(70cqi,20vh),440px)}
 }
-@media (min-width:1600px) and (min-height:700px){
-  .grid,body.compact .grid{grid-template-rows:auto minmax(0,1fr) minmax(min-content,1fr)}
-}
-/* Columnas estrechas (900-1199 px): reparto de agentes sin barra y comparativa en dos líneas. */
-@media (min-width:900px) and (max-width:1199px){
-  /* Comparativa en la columna izquierda estrecha: la barra debajo de su etiqueta y su cifra. */
-  .cpb{grid-template-columns:minmax(0,1fr) auto;gap:4px 14px}
-  .cpb .v{grid-column:2}
-  .cpb .cbar{grid-column:1/-1;margin-bottom:6px}
-  .w-share{width:4.5em}
+
+/* Dentro de cada panel, según su propio ancho */
+@container (max-width:599px){
+  .h-hora,.a-turnos,#hist td:first-child{display:none}
   .share .seg,th .lg{display:none}
   th .sh{display:inline}
+  th,td{padding-left:5px;padding-right:5px}
+  .w-mdl{width:6.4em}.w-tok{width:6.2em}.w-usd{width:6.2em}.w-share{width:4em}
+  .share .sv{min-width:0}
+  .pll li i{width:6.8em}
 }
-@media (max-width:640px){.share .seg,th .lg{display:none}th .sh{display:inline}}
+@container (max-width:459px){
+  .cmp{grid-template-columns:minmax(0,1fr) minmax(48px,1fr) 4em;gap:8px 12px}
+  .cmp .tn,.cmp .hd.tn{display:none}
+  .cpb{grid-template-columns:minmax(0,1fr) auto;gap:4px 14px}
+  .cpb .k{grid-column:1;white-space:normal}
+  .cpb .v{grid-column:2}
+  .cpb .cbar{grid-column:1/-1;margin-bottom:6px}
+}
+@container (max-width:419px){
+  /* La leyenda de la comparativa parte sus líneas: sin esto, a 320 px se sale por la derecha. */
+  .ctk span{white-space:normal}
+  #atab th:nth-child(2),#atab td:nth-child(2),#hist th:nth-child(3),#hist td:nth-child(3){display:none}
+  .cmp{grid-template-columns:minmax(0,1fr) auto;grid-auto-flow:row dense;gap:6px 12px}
+  .cmp .hd:nth-child(2){display:none}
+  .cmp .nm{grid-column:1}
+  .cmp .pc{grid-column:2}
+  .cmp>div:has(>.seg){grid-column:1/-1;margin-bottom:6px}
+  .cmp .nm b{white-space:normal}
+  .kv{gap:6px 10px}
+}
 /* HUD cerrado con /jarvis: si window.close() no cierra la ventana, queda este aviso encima de todo. */
 .hudoff{display:none;position:fixed;inset:0;z-index:50;align-items:center;justify-content:center;padding:16px;text-align:center;background:var(--bg);color:var(--txt);font:600 clamp(16px,2.4vw,22px)/1.4 system-ui,sans-serif;letter-spacing:.04em}
 body.hud-off .hudoff{display:flex}
@@ -530,7 +592,10 @@ html[data-tema="natural"] .rc .p small{color:var(--sub);font-weight:400;letter-s
 html[data-tema="natural"] body.lv-w .rc .p small{color:var(--warn)}
 html[data-tema="natural"] body.lv-x .rc .p{color:var(--crit-txt);text-shadow:0 0 6px var(--panel),0 0 16px var(--panel)}
 html[data-tema="natural"] .rc .k{color:var(--sub);text-shadow:0 0 6px var(--panel)}
-html[data-tema="natural"] .kv{gap:0 16px;border-top:1px solid var(--borde)}
+html[data-tema="natural"] .kv{grid-template-columns:minmax(0,1fr) auto;gap:0;border-top:1px solid var(--borde)}
+html[data-tema="natural"] .kv>.v{padding-left:16px}
+/* Celdas a toda la altura de su fila: las líneas de separación de etiqueta y cifra quedan a la misma altura. */
+html[data-tema="natural"] .kv{align-items:stretch}
 html[data-tema="natural"] .kv>span{padding:9px 0;border-bottom:1px solid var(--borde)}
 /* Coste y comparativa */
 html[data-tema="natural"] .cost{font-family:var(--cifra);font-weight:300;letter-spacing:-.02em;text-shadow:none;margin-bottom:8px}
@@ -569,47 +634,50 @@ html[data-tema="natural"] footer .line{background:none}
 html[data-tema="natural"] body:before{box-shadow:inset 0 0 90px rgba(var(--crit-rgb),.2)}
 html[data-tema="natural"] body.lv-x:before{animation:none;opacity:1}
 html[data-tema="natural"] body.lv-w:before{opacity:0}
-/* Distribución natural. Menos de 900 px: una columna; el núcleo a un lado de sus cifras si cabe. */
-@media (min-width:560px) and (max-width:899px){
-  html[data-tema="natural"] .ctxb{flex-direction:row;align-items:center}
-  html[data-tema="natural"] .reactor{max-width:min(240px,42vw)}
-  html[data-tema="natural"] .kv{flex:1}
+/* Detalle del natural definitivo. Cifras de tabla en monoespaciada; títulos y cifras grandes en sans. */
+html[data-tema="natural"] td.num,html[data-tema="natural"] .kv .v,html[data-tema="natural"] .cpb .v,html[data-tema="natural"] .cmp div.pc,html[data-tema="natural"] .cmp div.tn,html[data-tema="natural"] .share .sv,html[data-tema="natural"] .ctk b{font-family:var(--mono);font-size:max(14px,.92em);letter-spacing:0}
+/* Filas sin datos: en el gris de las etiquetas, no con transparencia (el contraste no baja de 4,5:1). */
+html[data-tema="natural"] .cmp .zero,html[data-tema="natural"] .cmp .zero b,html[data-tema="natural"] #p-comp.nodata .cpb .opus,html[data-tema="natural"] #p-comp.nodata #cvopus{opacity:1;color:var(--sub)}
+html[data-tema="natural"] .plok{text-transform:lowercase}
+html[data-tema="natural"] .plok::first-letter{text-transform:uppercase}
+/* Coste: la cifra arriba y el modelo de la sesión al pie del panel. */
+html[data-tema="natural"] #p-cost .in>.k{margin-top:auto;padding-top:12px}
+
+/* Distribución natural: franja de resumen. Arriba, en una fila, lo que se mira de un vistazo: contexto (el núcleo 3D a un lado
+   de sus cifras), coste y comparativa. Debajo, el detalle. La prioridad de los paneles es la de siempre (contexto, coste,
+   comparativa, reparto, agentes, plan, últimos turnos, gráfica); con paneles ocultos manda la recolocación de pn-sel.
+   Menos de 560 px: una columna y el núcleo encima de sus cifras. */
+@media (max-width:559px){
+  html[data-tema="natural"] .reactor{max-width:min(240px,64vw)}
 }
-/* 900-1599 px: el contexto a la izquierda; coste, comparativa y reparto a la derecha; las tablas debajo. */
-@media (min-width:900px) and (max-width:1599px){
-  html[data-tema="natural"] .grid{grid-template-columns:minmax(300px,.85fr) minmax(0,1.5fr);
-    grid-template-areas:"ctx cost" "ctx comp" "ctx mod" "agt hist"}
-  html[data-tema="natural"] body.compact .grid{grid-template-areas:"ctx cost" "ctx comp" "ctx mod" "agt agt"}
-  /* El panel de contexto es alto: el núcleo arriba, a la vista sin desplazar. */
-  html[data-tema="natural"] .ctxb{justify-content:flex-start;padding-top:8px}
+@media (min-width:560px){
+  html[data-tema="natural"] .ctxb{flex-direction:row;align-items:center;justify-content:flex-start;gap:clamp(18px,2vw,40px)}
+  html[data-tema="natural"] .reactor{width:clamp(150px,min(40%,24vh),300px);max-width:none}
+  html[data-tema="natural"] .kv{flex:1;min-width:0}
+  html[data-tema="natural"] body:not(.pn-sel) .wrap{grid-template-areas:"head head" "ctx ctx" "cost comp" "mod mod" "agt agt" "plan plan" "hist hist" "chart chart" "foot foot"}
+  html[data-tema="natural"] body.compact:not(.pn-sel) .wrap{grid-template-areas:"head head" "ctx ctx" "cost comp" "mod mod" "agt agt" "plan plan" "chart chart"}
 }
-@media (min-width:900px) and (max-width:1199px){
-  html[data-tema="natural"] .grid{grid-template-areas:"ctx cost" "ctx comp" "ctx mod" "agt agt" "hist hist"}
+/* 900-1199 px: reparto y agentes lado a lado. */
+@media (min-width:900px){
+  html[data-tema="natural"] body:not(.pn-sel) .wrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:"head head" "ctx ctx" "cost comp" "mod agt" "plan plan" "hist hist" "chart chart" "foot foot"}
+  html[data-tema="natural"] body.compact:not(.pn-sel) .wrap{grid-template-areas:"head head" "ctx ctx" "cost comp" "mod agt" "plan plan" "chart chart"}
 }
-@media (min-width:900px) and (max-width:1599px) and (min-height:1000px){
-  html[data-tema="natural"] .grid,html[data-tema="natural"] body.compact .grid{grid-template-rows:auto auto minmax(min-content,1fr) minmax(0,1fr)}
+/* 1200 px o más: la franja de tres paneles; debajo, reparto a la izquierda y agentes a su lado. */
+@media (min-width:1200px){
+  html[data-tema="natural"] body:not(.pn-sel) .wrap{grid-template-columns:minmax(0,1.3fr) minmax(0,.85fr) minmax(0,1fr);
+    grid-template-areas:"head head head" "ctx cost comp" "mod agt agt" "plan plan plan" "hist hist hist" "chart chart chart" "foot foot foot"}
+  html[data-tema="natural"] body.compact:not(.pn-sel) .wrap{grid-template-areas:"head head head" "ctx cost comp" "mod agt agt" "plan plan plan" "chart chart chart"}
 }
-@media (min-width:900px) and (max-width:1199px) and (min-height:1000px){
-  html[data-tema="natural"] .grid{grid-template-rows:auto auto minmax(min-content,1fr) minmax(0,1fr) minmax(0,1fr)}
-}
-/* 1600 px o más: el contexto ocupa la columna izquierda entera; a la derecha, una rejilla de tres columnas:
-   arriba coste, reparto y agentes; debajo la comparativa a la izquierda y la gráfica y los últimos turnos a su lado. */
-@media (min-width:1600px){
-  html[data-tema="natural"] .grid{grid-template-columns:minmax(380px,440px) repeat(3,minmax(0,1fr));
-    grid-template-areas:"ctx cost mod agt" "ctx comp chart chart" "ctx comp hist hist"}
-  html[data-tema="natural"] body.compact .grid{grid-template-areas:"ctx cost mod agt" "ctx comp chart chart" "ctx comp chart chart"}
-  html[data-tema="natural"] .reactor{max-width:min(360px,34vh)}
-  /* Agentes en una columna: sin turnos y el reparto solo en %. */
-  html[data-tema="natural"] #p-agt .a-turnos,html[data-tema="natural"] #p-agt .share .seg,html[data-tema="natural"] #p-agt th .lg{display:none}
-  html[data-tema="natural"] #p-agt th .sh{display:inline}
-  html[data-tema="natural"] #p-agt .w-share{width:4.5em}
-  html[data-tema="natural"] #p-agt .tblw{max-height:9.6em}
-  /* Reparto por modelo en una columna: los turnos ya van en su cabecera. */
-  html[data-tema="natural"] .cmp{grid-template-columns:minmax(0,1.3fr) minmax(40px,1fr) 4em}
-  html[data-tema="natural"] .cmp .tn,html[data-tema="natural"] .cmp .hd.tn{display:none}
-}
-@media (min-width:1600px) and (min-height:700px){
-  html[data-tema="natural"] .grid,html[data-tema="natural"] body.compact .grid{grid-template-rows:auto minmax(0,1.1fr) minmax(0,1fr)}
+/* 1600 px o más y alto de 1000 o más: todo cabe. El plan arriba, la franja, y debajo reparto con la gráfica y agentes con los
+   últimos turnos. La fila del medio toma el alto de su contenido y la de abajo, lo que sobra. */
+@media (min-width:1600px) and (min-height:1000px){
+  html[data-tema="natural"] body:not(.pn-sel) .wrap{grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr) minmax(0,1fr);
+    grid-template-rows:auto min-content min-content min-content minmax(150px,1fr) auto;
+    grid-template-areas:"head head head" "plan plan plan" "ctx cost comp" "mod chart chart" "agt hist hist" "foot foot foot"}
+  html[data-tema="natural"] body.compact:not(.pn-sel) .wrap{grid-template-rows:auto min-content min-content minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:"head head head" "plan plan plan" "ctx cost comp" "mod chart chart" "agt chart chart"}
+  html[data-tema="natural"] .reactor{width:clamp(170px,min(40%,20vh),400px)}
 }
 
 /* Sin backdrop-filter (o con transparencia reducida): paneles opacos para que el fondo no estorbe la lectura. */
@@ -626,6 +694,12 @@ body.compact .pnl{--glass:var(--panel);--glass2:var(--panel);-webkit-backdrop-fi
 body.compact .neb,body.compact .floor{display:none}
 /* Movimiento reducido: el globo sigue quieto (lo para el script) y la rejilla y el escaneo no se mueven. */
 @media (prefers-reduced-motion:reduce){.floor i{animation:none}}
+/* Opción paneles: los paneles que no se piden se ocultan y los demás se colocan en una rejilla
+   que se rellena sola (sin huecos de las áreas fijas). Cabecera, plan, gráfica, turnos y pie van a todo el ancho. */
+.pnl.pn-off{display:none!important}
+body.pn-sel .wrap{height:auto;grid-template-rows:none;grid-template-areas:none;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel .pnl{grid-area:auto!important}
+body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-sel #p-chart,body.pn-sel #p-hist{grid-column:1/-1}
 </style></head>
 <body>
 <div class="hudoff" id="hudoff" role="status">HUD cerrado. Escribe /jarvis para abrirlo.</div>
@@ -641,7 +715,7 @@ body.compact .neb,body.compact .floor{display:none}
     <div class="al" id="al-sig">Sin señal</div>
   </div>
   <div class="hstat">
-    <div><div class="k">Señal</div><div class="v" id="link"><span class="dot wait"></span>Esperando</div></div>
+    <div><div class="k">Señal</div><div class="v" id="link"><span class="dot wait" id="ldot"></span><span id="ltxt">Esperando</span></div></div>
     <div class="opt"><div class="k">Turnos</div><div class="v num" id="hturns">0</div></div>
     <div><div class="k">Reloj</div><div class="v num" id="clock">--:--:--</div></div>
     <button id="dens" type="button" title="Cambiar densidad (tecla D)"><kbd>D</kbd><span id="dens-l">Compacto</span></button>
@@ -650,9 +724,9 @@ body.compact .neb,body.compact .floor{display:none}
 
 <section class="pnl" id="p-plan"><div class="in">
   <div class="plh">
-    <span class="plt vacio num" id="pltxt">PLAN · sin tareas activas</span>
+    <span class="plt vacio num" id="pltxt"><span id="plv">PLAN · sin tareas activas</span><span id="pln" hidden>PLAN · <b id="plnm"></b> · <b id="plpc"></b></span></span>
     <span class="plok">COMPLETADO</span>
-    <span class="plcur" id="plcur"></span>
+    <span class="plcur" id="plcur" hidden><em>En curso</em> · <span id="plcurt"></span></span>
   </div>
   <div class="plbar" role="progressbar" aria-label="Progreso del plan" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="plbar"><div class="plfill" id="plfill"></div></div>
   <details class="pll off" id="pll"><summary id="plsum">Tareas</summary><ol id="plist"></ol></details>
@@ -677,7 +751,7 @@ body.compact .neb,body.compact .floor{display:none}
           <circle class="g2" cx="100" cy="100" r="88" fill="none" stroke="#7fe7ff" stroke-opacity=".6" stroke-width="1.6" stroke-dasharray="2 5"/>
           <circle cx="100" cy="4" r="3" fill="#f4feff"/>
         </svg></div></div>
-        <div class="rc"><div class="p num" id="pct">0<small>%</small></div><div class="k">usado</div></div>
+        <div class="rc"><div class="p num" id="pct"><span id="pctv">0</span><small>%</small></div><div class="k">usado</div></div>
       </div>
       <div class="kv">
         <span class="k">Tokens</span><span class="v num" id="ctxtok">0</span>
@@ -690,7 +764,7 @@ body.compact .neb,body.compact .floor{display:none}
 
   <section class="pnl" id="p-cost"><div class="in">
     <div class="ph"><span class="t">Coste</span></div>
-    <div class="cost num" id="coste">0.0000<small>USD</small></div>
+    <div class="cost num" id="coste"><span id="costev">0.0000</span><small>USD</small></div>
     <div class="sub" id="clast">Sin turnos todavía</div>
     <div class="k">Modelo de la sesión</div>
     <div class="mdl" id="modelo">—</div>
@@ -699,10 +773,10 @@ body.compact .neb,body.compact .floor{display:none}
   <section class="pnl" id="p-comp"><div class="in">
     <div class="ph"><span class="t">Comparativa · Haiku frente a Opus</span><span class="r num" id="cpct">sin estimación</span></div>
     <div class="cpb">
-      <span class="k">Real</span><span class="v num" id="cvreal">0.0000 USD</span><div class="cbar real"><i id="cbreal"></i></div>
+      <span class="k" title="Suma del coste de los turnos contados; el panel Coste incluye además lo gastado antes de abrir el HUD">Real en turnos</span><span class="v num" id="cvreal">0.0000 USD</span><div class="cbar real"><i id="cbreal"></i></div>
       <span class="k opus">Todo en Opus</span><span class="v num" id="cvopus">—</span><div class="cbar opus"><i id="cbopus"></i></div>
     </div>
-    <div class="cah num" id="cah">sin datos de Opus todavía</div>
+    <div class="cah num" id="cah"><span id="cahm">sin datos de Opus todavía</span><span id="caho" hidden><span id="cahl">Ahorro</span> <b id="caha"></b> · <b id="cahp"></b><span id="cahs"></span></span></div>
     <div class="stack empty" id="cstack"></div>
     <div class="ctk num" id="ctk"></div>
     <div class="cnote">Estimación según tus turnos reales; el caché y la mezcla de entrada y salida afectan.</div>
@@ -711,7 +785,7 @@ body.compact .neb,body.compact .floor{display:none}
   <section class="pnl" id="p-mod"><div class="in">
     <div class="ph"><span class="t">Reparto por modelo</span><span class="r num" id="mtot">0 tokens</span></div>
     <div class="stack empty" id="stack"></div>
-    <div class="cmp" id="cmp"></div>
+    <div class="cmp" id="cmp"><span class="hd">Modelo</span><span class="hd">Trabajo</span><span class="hd r-al">%</span><span class="hd tn r-al">Turnos</span><div class="filas" id="cmpr"></div></div>
   </div></section>
 
   <section class="pnl" id="p-chart"><div class="in">
@@ -745,36 +819,42 @@ body.compact .neb,body.compact .floor{display:none}
 </div>
 <script>
 var FAM={opus:'Opus',haiku:'Haiku',fable:'Fable',sonnet:'Sonnet',otro:'Otro'};
-var WARN=70,CRIT=85,NT=60,DKEY='consumo.densidad',PKEY='consumo.plan.abierto',TKEY='consumo.tema';
-var lastData=null,seenTurns={},firstRender=true;
+var WARN=70,CRIT=85,NT=60,DKEY='consumo.densidad',PKEY='consumo.plan.abierto';
+var lastData=null,firstRender=true;
 // Señal y lectura de datos.js: funciones de senal.ts, probadas en consumo.test.tsx.
 /*LOGICA*/
 ` + LOGICA + `
 /*FIN*/
+/*DOM*/
+` + DOM + `
+/*FIN DOM*/
 var ST=nuevoEstado(Date.now());
-// Tema: config.tema de datos.js (opción tema de userConfig) va a data-tema de <html> en cada lectura válida.
-// Al cargar se pone el último tema visto (si el navegador deja guardarlo) para no pasar por hibrido un segundo.
-// Sin opción, sin atributo: hibrido. Un cambio de tema vuelve a teñir el globo y redibuja la gráfica.
-var temaVisto=null;
-function ponTema(d,guardar){
-  var t=aplicaTema(document.documentElement,d);
-  if(!t||t===temaVisto)return;
-  temaVisto=t;
-  if(guardar){try{localStorage.setItem(TKEY,t)}catch(e){}}
-  if(GLOBO.tinta)GLOBO.tinta();
-  if(lastData)try{renderChart(lastData)}catch(e){}
-}
 var VACIO={modelo:'',contexto:{tokens:0,window:0,percent:0},alerta:'normal',coste:0,modelos:[],agentes:[],historial:[],plan:null,comparativa:null,actualizado:0,latido:0};
 function $id(i){return document.getElementById(i)}
+// Personalización (userConfig): llega en datos.js como config, ya validada por el mod. La aplica aplicaConfig().
+// Idioma: los textos de la página están en español; con idioma en se traducen con EN (pares de texto, del más
+// largo al más corto). Solo se traducen etiquetas, nunca datos (nombres de agentes, modelos o tareas).
+var IDIOMA='es',LOC='es-ES';
+/*IDIOMA*/
+` + IDIOMA_JS + `
+/*FIN IDIOMA*/
+function tr(s){return traducir(s,EN)}
+function tx(s){return IDIOMA==='en'?tr(s):String(s)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
-function n(x){return Number(x||0).toLocaleString('es-ES')}
+function n(x){return Number(x||0).toLocaleString(LOC)}
 function kn(x){x=Number(x||0);if(x>=1e6)return (x/1e6).toFixed(x>=1e7?1:2)+'M';if(x>=1e4)return (x/1e3).toFixed(1)+'k';return n(x)}
 function fam(m){m=String(m||'').toLowerCase();for(var k in FAM){if(k!=='otro'&&m.indexOf(k)>=0)return k}return 'otro'}
 function col(f){return 'var(--f-'+(FAM[f]?f:'otro')+')'}
 var HEX={opus:'#e8fbff',haiku:'#7fe7ff',fable:'#c4b5fd',sonnet:'#dbeafe',otro:'#dbeafe'};
-function segs(p,c,cls,count){count=count||24;var on=Math.round(Math.max(0,Math.min(100,p))*count/100);if(p>0&&on===0)on=1;var h='';for(var i=0;i<count;i++)h+='<i'+(i<on?' class="on" style="--k:'+(on>1?(i/(on-1)).toFixed(2):1)+'"':'')+'></i>';return '<div class="seg'+(cls?' '+cls:'')+'" style="--c:'+c+'">'+h+'</div>'}
+// Piezas que se crean una vez (al aparecer una fila nueva); después solo se actualizan con ponTexto, ponAttr, ponEstilo y ponSegs.
+function mk(tag,cls,html){var e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e}
+function segsEl(c,cls,count){var d=mk('div','seg'+(cls?' '+cls:''),new Array(count+1).join('<i></i>'));ponEstilo(d,'--c',c);return d}
+function ponClase(e,c,on){on=!!on;if(e.classList.contains(c)===on)return false;e.classList.toggle(c,on);return true}
+function ver(e,on){on=!!on;if(e.hidden!==on)return false;e.hidden=!on;return true}
+var VACIA=[{vacia:true}];
+function filaVacia(){return mk('tr','','<td colspan="5" class="empty-row">'+tx('Sin turnos todavía')+'</td>')}
 function pc(x){x=Number(x||0);return (x>=10||x===0?Math.round(x):x.toFixed(1))}
-function hhmm(t){return t?new Date(t).toLocaleTimeString('es-ES'):'—'}
+function hhmm(t){return t?new Date(t).toLocaleTimeString(LOC):'—'}
 (function(){
   var g=$id('ticks'),h='';
   for(var i=0;i<NT;i++){var a=(i/NT)*360;h+='<line class="tick" x1="100" y1="15" x2="100" y2="22" transform="rotate('+a.toFixed(2)+' 100 100)"/>'}
@@ -784,7 +864,7 @@ function hhmm(t){return t?new Date(t).toLocaleTimeString('es-ES'):'—'}
 // Densidad: cómodo (por defecto) o compacto. La preferencia se guarda si el navegador deja.
 function setDens(c,save){
   document.body.classList.toggle('compact',c);
-  $id('dens-l').textContent=c?'Cómodo':'Compacto';
+  ponTexto($id('dens-l'),tx(c?'Cómodo':'Compacto'));
   $id('dens').setAttribute('aria-pressed',c?'true':'false');
   if(save){try{localStorage.setItem(DKEY,c?'compacto':'comodo')}catch(e){}}
   if(lastData)renderChart(lastData);
@@ -810,7 +890,7 @@ function modelosDe(d){
 function comparativa(d,ms){
   var out=[],used={};
   var main=ms.filter(function(x){return x.principal})[0];
-  function vacio(f){return {modelo:'sin turnos',familia:f,entrada:0,salida:0,cache:0,turnos:0,reparto:0,repartoTurnos:0,zero:true}}
+  function vacio(f){return {modelo:tx('sin turnos'),familia:f,entrada:0,salida:0,cache:0,turnos:0,reparto:0,repartoTurnos:0,zero:true}}
   if(main){out.push({x:main,rol:'principal'});used[main.modelo]=1}
   else out.push({x:{modelo:d.modelo||'—',familia:fam(d.modelo),entrada:0,salida:0,cache:0,turnos:0,reparto:0,repartoTurnos:0,zero:true},rol:'principal'});
   ['opus','haiku'].forEach(function(f){
@@ -822,32 +902,48 @@ function comparativa(d,ms){
   return out;
 }
 
+function filaModelo(r){
+  var f=mk('div','fila','<div class="nm"><b><em>'+tx('principal')+'</em></b><span></span></div><div></div><div class="pc num"></div><div class="tn num"></div>');
+  var b=f.children[0].firstChild;b.insertBefore(document.createTextNode(''),b.firstChild);
+  f.children[1].appendChild(segsEl(col(r.x.familia),'',24));
+  return f;
+}
+function ponFilaModelo(f,r){
+  var x=r.x,c=col(x.familia),k=f.children,nm=k[0],b=nm.firstChild,sg=k[1].firstChild;
+  ponAttr(nm,'title',x.modelo+tx(' · entrada ')+n(x.entrada)+tx(' · salida ')+n(x.salida)+tx(' · caché ')+n(x.cache));
+  ponEstilo(nm,'--c',c);ponEstilo(k[2],'--c',c);ponEstilo(sg,'--c',c);
+  ponTexto(b.firstChild,FAM[x.familia]||x.familia);
+  ver(b.lastChild,!!r.rol);
+  ponTexto(nm.lastChild,x.modelo);
+  ponSegs(sg,x.reparto);
+  ponTexto(k[2],pc(x.reparto)+'%');
+  ponTexto(k[3],n(x.turnos));
+  for(var i=0;i<4;i++)ponClase(k[i],'zero',!!x.zero);
+}
 function renderModels(d){
   var ms=modelosDe(d);
   var work=ms.reduce(function(a,x){return a+x.entrada+x.salida},0);
   var turns=ms.reduce(function(a,x){return a+x.turnos},0);
-  $id('hturns').textContent=n(turns);
-  $id('mtot').textContent=kn(work)+' tokens · '+n(turns)+' turnos';
+  ponTexto($id('hturns'),n(turns));
+  ponTexto($id('mtot'),kn(work)+' tokens · '+n(turns)+tx(' turnos'));
   var st=$id('stack');
-  st.className='stack'+(work?'':' empty');
-  st.innerHTML=work?ms.map(function(x){return '<div title="'+esc(x.modelo)+' '+pc(x.reparto)+'%" style="--c:'+col(x.familia)+';flex-grow:'+((x.entrada+x.salida)||0)+'"></div>'}).join(''):'';
-  var h='<span class="hd">Modelo</span><span class="hd">Trabajo</span><span class="hd r-al">%</span><span class="hd tn r-al">Turnos</span>';
-  comparativa(d,ms).forEach(function(r){
-    var x=r.x,c=col(x.familia),z=x.zero?' zero':'';
-    var tip=x.modelo+' · entrada '+n(x.entrada)+' · salida '+n(x.salida)+' · caché '+n(x.cache);
-    h+='<div class="nm'+z+'" style="--c:'+c+'" title="'+esc(tip)+'"><b>'+esc(FAM[x.familia]||x.familia)+(r.rol?'<em>principal</em>':'')+'</b><span>'+esc(x.modelo)+'</span></div>'+
-      '<div class="'+z+'">'+segs(x.reparto,c,'',24)+'</div>'+
-      '<div class="pc num'+z+'" style="--c:'+c+'">'+pc(x.reparto)+'%</div>'+
-      '<div class="tn num'+z+'">'+n(x.turnos)+'</div>';
+  ponClase(st,'empty',!work);
+  lista(st,work?ms:[],function(x){return x.modelo},function(){return mk('div')},function(e,x){
+    ponAttr(e,'title',x.modelo+' '+pc(x.reparto)+'%');ponEstilo(e,'--c',col(x.familia));ponEstilo(e,'flex-grow',String((x.entrada+x.salida)||0));
   });
-  $id('cmp').innerHTML=h;
+  lista($id('cmpr'),comparativa(d,ms),function(r){return r.x.familia+'|'+r.x.modelo},filaModelo,ponFilaModelo);
 }
 
+var CHART='';
 // Gráfica SVG: barras apiladas entrada/salida por turno, color del modelo; línea blanca con el coste.
 function renderChart(d){
   var hs=d.historial||[],box=$id('chart');
   if(!box.offsetParent||!box.clientWidth)return;
   var W=Math.max(200,box.clientWidth),H=Math.max(140,box.clientHeight);
+  // La gráfica solo se redibuja si entra un turno o cambia el tamaño; el latido no la toca.
+  var key=W+'x'+H+'|'+JSON.stringify(hs);
+  if(key===CHART)return;
+  CHART=key;
   var hasC=hs.some(function(t){return t.coste!=null});
   var L=60,R=hasC?62:12,T=10,B=26;
   var iw=W-L-R,ih=H-T-B;
@@ -865,7 +961,7 @@ function renderChart(d){
     }
   }
   if(!hs.length){
-    s+='<text x="'+(L+iw/2)+'" y="'+(T+ih/2)+'" text-anchor="middle">Sin turnos todavía</text>';
+    s+='<text x="'+(L+iw/2)+'" y="'+(T+ih/2)+'" text-anchor="middle">'+tx('Sin turnos todavía')+'</text>';
   }
   var slot=iw/Math.max(hs.length,20),bw=Math.max(3,Math.min(28,slot*0.62)),pts=[];
   var every=Math.max(1,Math.ceil(hs.length/(iw/48)));
@@ -874,7 +970,7 @@ function renderChart(d){
     var x=L+slot*j+(slot-bw)/2;
     var hi=ih*t.entrada/top,ho=ih*t.salida/top;
     var y0=T+ih;
-    s+='<g><title>'+esc(hhmm(t.hora)+' · '+t.agente+' · '+t.modelo+' · entrada '+n(t.entrada)+' · salida '+n(t.salida)+(t.coste!=null?' · '+Number(t.coste).toFixed(4)+' USD':''))+'</title>'+
+    s+='<g><title>'+esc(hhmm(t.hora)+' · '+t.agente+' · '+t.modelo+tx(' · entrada ')+n(t.entrada)+tx(' · salida ')+n(t.salida)+(t.coste!=null?' · '+Number(t.coste).toFixed(4)+' USD':''))+'</title>'+
       '<rect class="bar" x="'+x.toFixed(1)+'" y="'+(y0-hi).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,hi).toFixed(1)+'" fill="'+c+'" fill-opacity=".38" stroke="'+c+'" stroke-opacity=".7" stroke-width="1"/>'+
       '<rect class="bar" x="'+x.toFixed(1)+'" y="'+(y0-hi-ho).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,ho).toFixed(1)+'" fill="'+c+'" style="filter:drop-shadow(0 0 3px '+c+')"/></g>';
     if(j%every===0||j===hs.length-1)s+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+(j+1)+'</text>';
@@ -884,44 +980,54 @@ function renderChart(d){
   pts.forEach(function(p){var q=p.split(',');s+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="2.6" fill="#070b10" stroke="#f4feff" stroke-width="1.4"/>'});
   s+='</svg>';
   box.innerHTML=s;
-  $id('cmax').textContent=hs.length?('pico '+kn(mx)+' tokens'):'';
+  ponTexto($id('cmax'),hs.length?(tx('pico')+' '+kn(mx)+' tokens'):'');
   var fams={};hs.forEach(function(t){fams[t.familia||fam(t.modelo)]=1});
   var lg=Object.keys(fams).map(function(f){return '<span><i style="--c:'+col(f)+'"></i>'+FAM[f]+'</span>'}).join('');
-  lg+='<span>claro = entrada, vivo = salida</span>';
-  if(ctop)lg+='<span><i class="ln" style="--c:var(--txt)"></i>USD por turno</span>';
+  lg+='<span>'+tx('claro = entrada, vivo = salida')+'</span>';
+  if(ctop)lg+='<span><i class="ln" style="--c:var(--txt)"></i>'+tx('USD por turno')+'</span>';
   $id('clegend').innerHTML=lg;
 }
 
+function filaTurno(){return mk('tr','','<td class="al-l dimc num h-hora"></td><td class="al-l"></td><td class="al-l"><span class="ftag"></span></td><td class="num"></td><td class="num amc"></td>')}
 function renderHist(d){
   var hs=(d.historial||[]).slice().reverse();
-  $id('hcount').textContent=hs.length+(hs.length===1?' turno':' turnos');
-  var fresh={};
-  $id('hrows').innerHTML=hs.length?hs.map(function(t){
-    var f=t.familia||fam(t.modelo),c=col(f),id=t.hora+'|'+t.agente;
-    var isNew=!firstRender&&!seenTurns[id];fresh[id]=1;
-    return '<tr'+(isNew?' class="new"':'')+'><td class="al-l dimc num h-hora">'+esc(hhmm(t.hora))+'</td>'+
-      '<td class="al-l" title="'+esc(t.agente)+'">'+esc(t.agente)+'</td>'+
-      '<td class="al-l" style="--c:'+c+'" title="'+esc(t.modelo)+'"><span class="ftag">'+esc(FAM[f]||f)+'</span></td>'+
-      '<td class="num">'+kn(t.entrada+t.salida)+'</td>'+
-      '<td class="num amc">'+(t.coste!=null?Number(t.coste).toFixed(4):'—')+'</td></tr>';
-  }).join(''):'<tr><td colspan="5" class="empty-row">Sin turnos todavía</td></tr>';
-  seenTurns=fresh;if(hs.length)firstRender=false;
+  // La tabla guarda los últimos 20: si hay más turnos, el contador lo dice ("20 de 35 turnos") y cuadra con la cabecera.
+  var total=modelosDe(d).reduce(function(a,x){return a+(x.turnos||0)},0);
+  ponTexto($id('hcount'),hs.length<total?hs.length+tx(' de ')+n(total)+tx(' turnos'):hs.length+tx(hs.length===1?' turno':' turnos'));
+  var marcar=!firstRender;
+  lista($id('hrows'),hs.length?hs:VACIA,function(t){return t.vacia?'vacia':t.hora+'|'+t.agente+'|'+t.modelo},function(t){return t.vacia?filaVacia():filaTurno()},function(tr,t,i,nuevo){
+    if(t.vacia)return;
+    var f=t.familia||fam(t.modelo),c=col(f),k=tr.children;
+    if(nuevo&&marcar)tr.className='new';
+    ponTexto(k[0],hhmm(t.hora));
+    ponAttr(k[1],'title',t.agente);ponTexto(k[1],t.agente);
+    ponAttr(k[2],'title',t.modelo);ponEstilo(k[2],'--c',c);ponTexto(k[2].firstChild,FAM[f]||f);
+    ponTexto(k[3],kn(t.entrada+t.salida));
+    ponTexto(k[4],t.coste!=null?Number(t.coste).toFixed(4):'—');
+  });
+  if(hs.length)firstRender=false;
   var last=d.historial&&d.historial[d.historial.length-1];
-  $id('clast').textContent=last&&last.coste!=null?('Último turno ≈ '+Number(last.coste).toFixed(4)+' USD'):(last?'Último turno sin coste':'Sin turnos todavía');
+  ponTexto($id('clast'),last&&last.coste!=null?(tx('Último turno')+' ≈ '+Number(last.coste).toFixed(4)+' USD'):tx(last?'Último turno sin coste':'Sin turnos todavía'));
 }
 
+function filaAgente(){
+  var tr=mk('tr','','<td class="al-l"></td><td class="al-l"><span class="ftag"></span></td><td class="num"></td><td class="num a-turnos"></td><td><div class="share"><span class="sv num"></span></div></td>');
+  var sh=tr.children[4].firstChild;sh.insertBefore(segsEl('var(--ce)','sm',16),sh.firstChild);
+  return tr;
+}
 function renderAgents(d){
   var agentes=d.agentes||[];
   var total=agentes.reduce(function(a,x){return a+x.input+x.output},0)||1;
-  $id('acount').textContent=agentes.length+(agentes.length===1?' agente':' agentes');
-  $id('rows').innerHTML=agentes.length?agentes.map(function(x){
-    var s=(x.input+x.output)*100/total,f=fam(x.modelo),cc=col(f);
-    var tip=x.nombre+' · entrada '+n(x.input)+' · salida '+n(x.output)+' · caché '+n(x.cacheRead);
-    return '<tr><td class="al-l" title="'+esc(x.nombre)+'">'+esc(x.nombre)+'</td>'+
-      '<td class="al-l" title="'+esc(x.modelo)+'" style="--c:'+cc+'"><span class="ftag">'+esc(FAM[f]||f)+'</span></td>'+
-      '<td class="num" title="'+esc(tip)+'">'+kn(x.input+x.output)+'</td><td class="num a-turnos">'+n(x.turns)+'</td>'+
-      '<td><div class="share">'+segs(s,cc,'sm',16)+'<span class="sv num">'+pc(s)+'%</span></div></td></tr>';
-  }).join(''):'<tr><td colspan="5" class="empty-row">Sin turnos todavía</td></tr>';
+  ponTexto($id('acount'),agentes.length+tx(agentes.length===1?' agente':' agentes'));
+  lista($id('rows'),agentes.length?agentes:VACIA,function(x){return x.vacia?'vacia':x.nombre},function(x){return x.vacia?filaVacia():filaAgente()},function(tr,x){
+    if(x.vacia)return;
+    var s=(x.input+x.output)*100/total,f=fam(x.modelo),cc=col(f),k=tr.children,sh=k[4].firstChild,sg=sh.firstChild;
+    ponAttr(k[0],'title',x.nombre);ponTexto(k[0],x.nombre);
+    ponAttr(k[1],'title',x.modelo);ponEstilo(k[1],'--c',cc);ponTexto(k[1].firstChild,FAM[f]||f);
+    ponAttr(k[2],'title',x.nombre+tx(' · entrada ')+n(x.input)+tx(' · salida ')+n(x.output)+tx(' · caché ')+n(x.cacheRead));ponTexto(k[2],kn(x.input+x.output));
+    ponTexto(k[3],n(x.turns));
+    ponEstilo(sg,'--c',cc);ponSegs(sg,s);ponTexto(sh.lastChild,pc(s)+'%');
+  });
 }
 
 // Comparativa Haiku frente a Opus. Las cifras vienen hechas en datos.js; sin estimación se dice por qué y no se inventa nada.
@@ -929,30 +1035,43 @@ function renderComp(d){
   var c=d.comparativa||null;
   var real=c?Number(c.costeReal||0):0,ok=!!(c&&c.disponible&&c.costeOpusEstimado!=null);
   var est=ok?Number(c.costeOpusEstimado):0,mx=Math.max(real,est);
-  $id('p-comp').classList.toggle('nodata',!ok);
-  $id('cbreal').style.width=(ok?(mx>0?real*100/mx:0):(real>0?100:0)).toFixed(1)+'%';
-  $id('cbopus').style.width=(ok&&mx>0?est*100/mx:0).toFixed(1)+'%';
-  $id('cvreal').textContent=real.toFixed(4)+' USD';
-  $id('cvopus').textContent=ok?est.toFixed(4)+' USD':'—';
+  ponClase($id('p-comp'),'nodata',!ok);
+  ponEstilo($id('cbreal'),'width',(ok?(mx>0?real*100/mx:0):(real>0?100:0)).toFixed(1)+'%');
+  ponEstilo($id('cbopus'),'width',(ok&&mx>0?est*100/mx:0).toFixed(1)+'%');
+  ponTexto($id('cvreal'),real.toFixed(4)+' USD');
+  ponTexto($id('cvopus'),ok?est.toFixed(4)+' USD':'—');
   var ah=ok?Number(c.ahorro||0):0,ap=ok?Number(c.ahorroPct||0):0;
-  $id('cpct').textContent=ok?(ah>=0?'ahorro '+pc(ap)+' %':'sin ahorro'):'sin estimación';
-  $id('cah').innerHTML=ok?(ah>=0?'Ahorro <b>'+ah.toFixed(4)+' USD</b> · <b>'+pc(ap)+' %</b> menos que todo en Opus':'Diferencia <b>'+ah.toFixed(4)+' USD</b> · <b>'+pc(ap)+' %</b>: en tus turnos Haiku no salió más barato'):esc(c&&c.motivo?c.motivo:'sin datos de Opus todavía');
+  ponTexto($id('cpct'),tx(ok?(ah>=0?'ahorro '+pc(ap)+' %':'sin ahorro'):'sin estimación'));
+  ver($id('cahm'),!ok);ver($id('caho'),ok);
+  ponTexto($id('cahm'),tx(c&&c.motivo?c.motivo:'sin datos de Opus todavía'));
+  if(ok){
+    ponTexto($id('cahl'),tx(ah>=0?'Ahorro':'Diferencia'));
+    ponTexto($id('caha'),ah.toFixed(4)+' USD');
+    ponTexto($id('cahp'),pc(ap)+' %');
+    ponTexto($id('cahs'),tx(ah>=0?' menos que todo en Opus':': en tus turnos Haiku no salió más barato'));
+  }
   var ts=c&&c.tokensPorModelo?c.tokensPorModelo:[];
   var tot=ts.reduce(function(a,x){return a+(Number(x.tokens)||0)},0);
   var st=$id('cstack');
-  st.className='stack'+(tot?'':' empty');
-  st.innerHTML=tot?ts.map(function(x){return '<div title="'+esc((FAM[x.familia]||x.familia)+' '+n(x.tokens)+' tokens')+'" style="--c:'+col(x.familia)+';flex-grow:'+(Number(x.tokens)||0)+'"></div>'}).join(''):'';
-  $id('ctk').innerHTML=ts.length?ts.map(function(x){return '<span><i style="--c:'+col(x.familia)+'"></i>'+esc(FAM[x.familia]||x.familia)+' <b>'+kn(x.tokens)+'</b> tokens · '+Number(x.coste||0).toFixed(4)+' USD</span>'}).join(''):'<span>Sin turnos todavía</span>';
+  ponClase(st,'empty',!tot);
+  lista(st,tot?ts:[],function(x){return x.familia},function(){return mk('div')},function(e,x){
+    ponAttr(e,'title',(FAM[x.familia]||x.familia)+' '+n(x.tokens)+' tokens');ponEstilo(e,'--c',col(x.familia));ponEstilo(e,'flex-grow',String(Number(x.tokens)||0));
+  });
+  lista($id('ctk'),ts.length?ts:VACIA,function(x){return x.vacia?'vacia':x.familia},function(x){return x.vacia?mk('span','',tx('Sin turnos todavía')):mk('span','','<i></i><span></span> <b></b><span></span>')},function(e,x){
+    if(x.vacia)return;
+    var k=e.children;
+    ponEstilo(k[0],'--c',col(x.familia));ponTexto(k[1],FAM[x.familia]||x.familia);ponTexto(k[2],kn(x.tokens));ponTexto(k[3],tx(' tokens con caché')+' · '+Number(x.coste||0).toFixed(4)+' USD');
+  });
 }
 
 // Transiciones: los números grandes se deslizan al valor nuevo y un cambio de nivel lanza una onda.
 var nivel=null,tw={};
 function tween(id,to,fmt){
   var el=$id(id),t=tw[id]||(tw[id]={v:to,raf:0});
-  if(t.raf)cancelAnimationFrame(t.raf);
+  if(t.raf){cancelAnimationFrame(t.raf);t.raf=0}
   var from=t.v,t0=performance.now(),dur=650;
-  if(from===to||document.hidden){t.v=to;el.innerHTML=fmt(to);return}
-  (function step(now){var k=Math.min(1,(now-t0)/dur);k=1-Math.pow(1-k,3);t.v=from+(to-from)*k;el.innerHTML=fmt(t.v);if(k<1)t.raf=requestAnimationFrame(step);else{t.v=to;t.raf=0}})(t0);
+  if(from===to||document.hidden){t.v=to;ponTexto(el,fmt(to));return}
+  (function step(now){var k=Math.min(1,(now-t0)/dur);k=1-Math.pow(1-k,3);t.v=from+(to-from)*k;ponTexto(el,fmt(t.v));if(k<1)t.raf=requestAnimationFrame(step);else{t.v=to;t.raf=0}})(t0);
 }
 function onda(lvl){
   var o=document.createElement('div');o.className='shift';
@@ -967,23 +1086,23 @@ function renderCtx(d){
   var p=Math.max(0,Math.min(100,Number(c.percent)||0));
   var lvl=d.alerta?(d.alerta==='critica'?'x':d.alerta==='alta'?'w':''):(p>=CRIT?'x':p>=WARN?'w':'');
   if(lvl!==nivel){if(nivel!==null){onda(lvl);lit(document.querySelectorAll('.pnl'))}nivel=lvl;GLOBO.lvl=lvl}
-  document.body.classList.toggle('lv-w',lvl==='w');
-  document.body.classList.toggle('lv-x',lvl==='x');
+  ponClase(document.body,'lv-w',lvl==='w');
+  ponClase(document.body,'lv-x',lvl==='x');
   var on=Math.round(p*NT/100),ts=document.querySelectorAll('.tick');
-  for(var i=0;i<ts.length;i++)ts[i].setAttribute('class','tick'+(i<on?' on'+(lvl?' '+lvl:''):''));
+  for(var i=0;i<ts.length;i++)ponAttr(ts[i],'class','tick'+(i<on?' on'+(lvl?' '+lvl:''):''));
   var arc=$id('arc'),hex=lvl==='x'?'#ff4d4d':lvl==='w'?'#ffffff':'#7fe7ff';
-  arc.style.strokeDashoffset=(590.6*(1-p/100)).toFixed(1);
-  arc.setAttribute('stroke',hex);arc.style.color=hex;
-  tween('pct',p,function(v){return pc(v)+'<small>%</small>'});
+  ponEstilo(arc,'stroke-dashoffset',(590.6*(1-p/100)).toFixed(1));
+  ponAttr(arc,'stroke',hex);ponEstilo(arc,'color',hex);
+  tween('pctv',p,function(v){return String(pc(v))});
   var st=$id('ctxstate');
-  st.textContent=lvl==='x'?'Crítico':lvl==='w'?'Alto':'Nominal';
-  st.style.color=lvl==='x'?'var(--rd)':lvl==='w'?'var(--wn)':'';
+  ponTexto(st,tx(lvl==='x'?'Crítico':lvl==='w'?'Alto':'Nominal'));
+  ponEstilo(st,'color',lvl==='x'?'var(--rd)':lvl==='w'?'var(--wn)':'');
   var al=$id('al-ctx');
-  al.className='al'+(lvl?' on '+lvl:'');
-  al.textContent=lvl==='x'?'Contexto crítico '+pc(p)+'%':'Contexto alto '+pc(p)+'%';
-  $id('ctxtok').textContent=n(c.tokens);
-  $id('ctxwin').textContent=n(c.window);
-  $id('ctxfree').textContent=n(Math.max(0,(c.window||0)-(c.tokens||0)));
+  ponAttr(al,'class','al'+(lvl?' on '+lvl:''));
+  ponTexto(al,tx(lvl==='x'?'Contexto crítico':'Contexto alto')+' '+pc(p)+'%');
+  ponTexto($id('ctxtok'),n(c.tokens));
+  ponTexto($id('ctxwin'),n(c.window));
+  ponTexto($id('ctxfree'),n(Math.max(0,(c.window||0)-(c.tokens||0))));
 }
 
 // Plan de Claude: N de M · P %, la barra se llena con transición y al 100 % pasa a blanco con brillo cian.
@@ -996,67 +1115,138 @@ function renderPlan(d){
   if(ok&&hechas===tot)pct=100;
   var done=ok&&pct>=100;
   if(box._pct!=null&&box._pct!==pct)lit([box]);box._pct=pct;
-  box.classList.toggle('done',done);
-  txt.className='plt num'+(ok?'':' vacio');
-  txt.innerHTML=ok?'PLAN · <b>'+n(hechas)+' de '+n(tot)+'</b> · <b>'+pct+' %</b>':'PLAN · sin tareas activas';
-  $id('plfill').style.width=pct+'%';
-  bar.setAttribute('aria-valuenow',String(pct));
+  ponClase(box,'done',done);
+  ponClase(txt,'vacio',!ok);
+  ver($id('plv'),!ok);ver($id('pln'),ok);
+  if(ok){ponTexto($id('plnm'),n(hechas)+tx(' de ')+n(tot));ponTexto($id('plpc'),pct+' %')}
+  ponEstilo($id('plfill'),'width',pct+'%');
+  ponAttr(bar,'aria-valuenow',String(pct));
   var ts=ok&&p.tareas?p.tareas:[];
   var cur=ts.filter(function(t){return t.estado==='en curso'})[0];
-  $id('plcur').innerHTML=cur?'<em>En curso</em> · '+esc(cur.titulo):'';
-  $id('plcur').title=cur?cur.titulo:'';
-  lst.classList.toggle('off',!ts.length);
-  $id('plsum').textContent='Tareas ('+ts.length+')';
-  $id('plist').innerHTML=ts.map(function(t){
-    var c=t.estado==='completada'?'c':t.estado==='en curso'?'e':'p';
-    return '<li class="'+c+'" title="'+esc(t.titulo)+'"><i>'+esc(ESTADO[t.estado]||t.estado)+'</i><span>'+esc(t.titulo)+'</span></li>';
-  }).join('');
+  var pcur=$id('plcur');
+  ver(pcur,!!cur);ponAttr(pcur,'title',cur?cur.titulo:'');
+  if(cur)ponTexto($id('plcurt'),cur.titulo);
+  ponClase(lst,'off',!ts.length);
+  ponTexto($id('plsum'),tx('Tareas')+' ('+ts.length+')');
+  lista($id('plist'),ts,function(t,i){return String(i)},function(){return mk('li','','<i></i><span></span>')},function(li,t){
+    ponAttr(li,'class',t.estado==='completada'?'c':t.estado==='en curso'?'e':'p');
+    ponAttr(li,'title',t.titulo);
+    ponTexto(li.firstChild,tx(ESTADO[t.estado]||t.estado));
+    ponTexto(li.lastChild,t.titulo);
+  });
 }
 (function(){var v=null;try{v=localStorage.getItem(PKEY)}catch(e){}if(v==='1')$id('pll').open=true})();
 $id('pll').addEventListener('toggle',function(){try{localStorage.setItem(PKEY,$id('pll').open?'1':'0')}catch(e){}});
 
+// Personalización. Solo actúa cuando config cambia (al abrir la página y si el usuario cambia una opción).
+//   tema: atributo data-tema en <html> (sin valor válido, natural). Un cambio de tema vuelve a teñir el globo.
+//   acento: sustituye a --acc del tema; con el valor por defecto (#7fe7ff) cada tema usa su propio acento.
+//   densidad: densidad con la que se abre; la tecla D la cambia mientras la ventana sigue abierta.
+//   idioma: es o en (etiquetas, fechas y números).
+//   actualizacion: segundos entre lecturas de datos.js (1 a 5).
+//   paneles: los que no están se ocultan y el resto se recoloca sin huecos.
+var TEMAS=['natural','hibrido','mark-ii','mark-l','stark','claro'],ACENTO_DEF='#7fe7ff';
+var PANEL_ID={contexto:'p-ctx',coste:'p-cost',reparto:'p-mod',agentes:'p-agt',historial:'p-hist',grafica:'p-chart',comparativa:'p-comp',plan:'p-plan'};
+var CFG='',CFG_DENS='',ESTATICOS=null;
+// Textos fijos del HTML (y title / aria-label) en español, guardados una vez para poder cambiar de idioma en los dos sentidos.
+function estaticos(){
+  if(ESTATICOS)return ESTATICOS;
+  var l=[],w=document.createTreeWalker(document.body,4),nd;
+  while((nd=w.nextNode())){var p=nd.parentNode&&nd.parentNode.nodeName;if(p==='SCRIPT'||p==='STYLE')continue;if(tr(nd.nodeValue)!==nd.nodeValue)l.push({n:nd,v:nd.nodeValue})}
+  var es=document.querySelectorAll('[title],[aria-label]');
+  for(var i=0;i<es.length;i++)['title','aria-label'].forEach(function(k){var v=es[i].getAttribute(k);if(v&&tr(v)!==v)l.push({e:es[i],k:k,v:v})});
+  ESTATICOS=l;return l;
+}
+function rgbDe(h){
+  h=String(h).slice(1);if(h.length===3)h=h.charAt(0)+h.charAt(0)+h.charAt(1)+h.charAt(1)+h.charAt(2)+h.charAt(2);
+  return parseInt(h.slice(0,2),16)+','+parseInt(h.slice(2,4),16)+','+parseInt(h.slice(4,6),16);
+}
+function aplicaConfig(c){
+  if(!c||typeof c!=='object')return;
+  var k=JSON.stringify(c);
+  if(k===CFG)return;
+  CFG=k;
+  var root=document.documentElement;
+  ponAttr(root,'data-tema',TEMAS.indexOf(c.tema)>=0?c.tema:'natural');
+  if(GLOBO.tinta)GLOBO.tinta();
+  var ac=typeof c.acento==='string'&&c.acento.charAt(0)==='#'&&(c.acento.length===4||c.acento.length===7)?c.acento.toLowerCase():ACENTO_DEF;
+  if(ac!==ACENTO_DEF){root.style.setProperty('--acc',ac);root.style.setProperty('--acc-rgb',rgbDe(ac))}
+  else{root.style.removeProperty('--acc');root.style.removeProperty('--acc-rgb')}
+  var dens=c.densidad==='compacto'?'compacto':'comodo';
+  if(dens!==CFG_DENS){CFG_DENS=dens;setDens(dens==='compacto',false)}
+  var idi=c.idioma==='en'?'en':'es';
+  if(idi!==IDIOMA){
+    IDIOMA=idi;LOC=idi==='en'?'en-US':'es-ES';
+    ponAttr(root,'lang',idi);
+    estaticos().forEach(function(x){var v=tx(x.v);if(x.n){if(x.n.nodeValue!==v)x.n.nodeValue=v}else ponAttr(x.e,x.k,v)});
+    // Las filas ya creadas llevan textos del idioma anterior: se vacían y la pasada de abajo las crea de nuevo.
+    ['cmpr','hrows','rows','ctk','plist'].forEach(function(id){var b=$id(id);while(b.firstChild)b.removeChild(b.firstChild)});
+    CHART='';
+    ponTexto($id('dens-l'),tx(document.body.classList.contains('compact')?'Cómodo':'Compacto'));
+    tick();pintaSenal();
+  }
+  var seg=Number(c.actualizacion);
+  lecturas(seg>=1&&seg<=5?seg*1000:1000);
+  var ps=c.paneles&&c.paneles.length?c.paneles:Object.keys(PANEL_ID),todos=true;
+  for(var p in PANEL_ID){var on=ps.indexOf(p)>=0;if(!on)todos=false;ponClase($id(PANEL_ID[p]),'pn-off',!on)}
+  ponClase(document.body,'pn-sel',!todos);
+}
+
+// Si los datos no cambian (solo el latido), no se toca nada. La firma se guarda al acabar: si algo falla
+// a medias, la lectura siguiente lo vuelve a intentar.
+var FIRMA='';
 function render(d){
   if(!d)return;
   lastData=d;
+  var f=firma(d);
+  if(f===FIRMA)return;
+  aplicaConfig(d.config);
   renderCtx(d);
   renderPlan(d);
-  tween('coste',Number(d.coste||0),function(v){return v.toFixed(4)+'<small>USD</small>'});
-  $id('modelo').textContent=d.modelo||'—';
+  tween('costev',Number(d.coste||0),function(v){return v.toFixed(4)});
+  ponTexto($id('modelo'),d.modelo||'—');
   renderComp(d);
   renderModels(d);
   renderChart(d);
   renderHist(d);
   renderAgents(d);
-  $id('ts').textContent='Último dato: '+hhmm(d.actualizado);
+  ponTexto($id('ts'),tx('Último dato')+': '+hhmm(d.actualizado));
+  FIRMA=f;
 }
 
 function pintaSenal(){
   var r=senal(ST,Date.now());
-  $id('link').innerHTML='<span class="dot'+(r.estado==='ok'?'':r.estado==='espera'?' wait':' off')+'"></span>'+r.texto;
+  ponAttr($id('ldot'),'class','dot'+(r.estado==='ok'?'':r.estado==='espera'?' wait':' off'));
+  ponTexto($id('ltxt'),tx(r.texto));
   var a=$id('al-sig');
-  a.className='al'+(r.alerta?' on':'');
-  a.textContent=r.aviso;
-  $id('beat').textContent='Latido: '+(r.segundos==null?'—':'hace '+r.segundos+' s');
-  document.body.classList.toggle('sig-off',r.alerta);
+  ponAttr(a,'class','al'+(r.alerta?' on':''));
+  ponTexto(a,tx(r.aviso));
+  ponTexto($id('beat'),tx('Latido')+': '+(r.segundos==null?'—':IDIOMA==='en'?r.segundos+' s ago':'hace '+r.segundos+' s'));
+  ponClase(document.body,'sig-off',r.alerta);
 }
 // Un error de sintaxis en datos.js (escritura a medias) no debe ensuciar la consola ni parar nada.
 window.onerror=function(msg,src){if(src&&(String(src).indexOf('datos.js')>=0||String(src).indexOf('estado.js')>=0))return true};
 // Una sola lectura a la vez: si una tarda, no se mezclan respuestas viejas con nuevas.
-var cargando=0;
+// Una lectura colgada más de 5 s se abandona (cuenta como fallida) y sus avisos ya no hacen nada:
+// si no, su onload tardío leería el CONSUMO que la lectura nueva acaba de borrar.
+var cargando=0,actual=null;
 function load(){
   var now=Date.now();
   if(cargando&&now-cargando<5000)return;
+  if(actual){actual.onload=actual.onerror=null;actual.remove();actual=null;alFallar(ST)}
   cargando=now;
   window.CONSUMO=undefined;
   var s=document.createElement('script');
+  actual=s;
   s.src='datos.js?'+now;
   s.onload=function(){
-    s.remove();cargando=0;
+    if(actual!==s)return;
+    actual=null;s.remove();cargando=0;
     var d=window.CONSUMO;
-    if(alCargar(ST,d,Date.now())){try{ponTema(d,true)}catch(err){}try{render(d)}catch(err){}}
+    if(alCargar(ST,d,Date.now())){try{render(d)}catch(err){}}
     pintaSenal();
   };
-  s.onerror=function(){s.remove();cargando=0;alFallar(ST);pintaSenal()};
+  s.onerror=function(){if(actual!==s)return;actual=null;s.remove();cargando=0;alFallar(ST);pintaSenal()};
   document.head.appendChild(s);
 }
 // Interruptor /jarvis: el mod escribe estado.json y su copia estado.js ({"abierto": false} al cerrar).
@@ -1081,7 +1271,10 @@ function loadEstado(){
   s.onerror=function(){s.remove();cargandoEstado=0};
   document.head.appendChild(s);
 }
-function tick(){$id('clock').textContent=new Date().toLocaleTimeString('es-ES')}
+// Lectura de datos.js y estado.js cada PERIODO ms (opción actualizacion).
+var LECTURA=0,PERIODO=0;
+function lecturas(ms){if(LECTURA&&ms===PERIODO)return;PERIODO=ms;if(LECTURA)clearInterval(LECTURA);LECTURA=setInterval(function(){load();loadEstado()},ms)}
+function tick(){ponTexto($id('clock'),new Date().toLocaleTimeString(LOC))}
 var rz;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeout(function(){if(lastData)renderChart(lastData)},120)});
 // Globo holográfico: meridianos y paralelos sobre un eje inclinado, con nodos fijos. Se para con la ventana oculta y con movimiento reducido.
 (function(){
@@ -1128,10 +1321,12 @@ var rz;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeou
   requestAnimationFrame(frame);
 })();
 tick();
-(function(){var t=null;try{t=localStorage.getItem(TKEY)}catch(e){}if(t)try{ponTema({config:{tema:t}},false)}catch(e){}})();
+// Textos fijos en español, antes de pintar nada (para poder cambiar de idioma).
+try{estaticos()}catch(err){}
 // Sin datos.js todavía la página no se queda en blanco: se pinta vacía y espera.
 try{render(VACIO)}catch(err){}
 pintaSenal();load();loadEstado();
-setInterval(function(){tick();load();loadEstado()},1000);
+setInterval(tick,1000);
+lecturas(1000);
 </script>
 </body></html>`
