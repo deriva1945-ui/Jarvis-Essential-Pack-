@@ -1,11 +1,10 @@
 import type { PluginOptions } from 'claude-code'
 
-import type { HudConfig, HudDensidad, HudIdioma, HudPanel, HudTema } from '../types'
+import type { HudConfig, HudIdioma, HudPanel, HudTema } from '../types'
 
 // Opciones de personalización del HUD (userConfig de plugin.json). Los valores por defecto
 // tienen que coincidir con los "default" del manifiesto.
 export const TEMAS: readonly HudTema[] = ['mark-ii', 'mark-l', 'stark', 'hibrido', 'claro', 'natural']
-export const DENSIDADES: readonly HudDensidad[] = ['comodo', 'compacto']
 export const IDIOMAS: readonly HudIdioma[] = ['es', 'en']
 export const PANELES: readonly HudPanel[] = ['contexto', 'coste', 'reparto', 'agentes', 'historial', 'grafica', 'comparativa', 'plan']
 export const ACTUALIZACION_MIN = 1
@@ -14,7 +13,6 @@ export const ACTUALIZACION_MAX = 5
 export const CONFIG_DEFAULT: HudConfig = {
   tema: 'natural',
   acento: '#7fe7ff',
-  densidad: 'comodo',
   idioma: 'es',
   actualizacion: 1,
   paneles: [...PANELES],
@@ -29,11 +27,13 @@ const texto = (v: unknown): string => (typeof v === 'string' ? JSON.stringify(v)
 
 // Lee y valida las opciones. Un valor que falta toma el defecto sin aviso; uno que no vale
 // toma el defecto y deja un aviso (register los escribe en el log al empezar la sesión).
+// La antigua opción densidad (comodo / compacto, hasta la 0.6.0) ya no existe: la densidad la elige la página según el
+// tamaño de la ventana. Si un settings.json viejo la trae, se ignora sin aviso y sin fallar, como cualquier clave desconocida.
 export function leerConfig(options: PluginOptions): { config: HudConfig; avisos: string[] } {
   const avisos: string[] = []
   const c: HudConfig = { ...CONFIG_DEFAULT, paneles: [...CONFIG_DEFAULT.paneles] }
 
-  const elegir = <K extends 'tema' | 'densidad' | 'idioma'>(clave: K, lista: readonly HudConfig[K][]) => {
+  const elegir = <K extends 'tema' | 'idioma'>(clave: K, lista: readonly HudConfig[K][]) => {
     const v = options[clave]
     if (v === undefined) return
     const ok = uno(lista, v)
@@ -41,7 +41,6 @@ export function leerConfig(options: PluginOptions): { config: HudConfig; avisos:
     else avisos.push(`${clave} = ${texto(v)} no es válido (${lista.join(', ')}); se usa ${CONFIG_DEFAULT[clave]}`)
   }
   elegir('tema', TEMAS)
-  elegir('densidad', DENSIDADES)
   elegir('idioma', IDIOMAS)
 
   const acento = options['acento']

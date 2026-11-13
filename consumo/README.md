@@ -4,7 +4,7 @@
 
 **Español** · [English](#en)
 
-Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens. Seis temas de color (por defecto `natural`: grafito cálido con un solo acento, sin neón, con el globo y el anillo 3D), con la barra del plan arriba y una comparativa de Haiku frente a Opus. El comando `/jarvis` abre o cierra el HUD, y las opciones de [Personalización](#es-personalizacion) cambian tema, acento, densidad, idioma, ritmo de lectura y paneles visibles.
+Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens. Seis temas de color (por defecto `natural`: grafito cálido con un solo acento, sin neón, con el globo y el anillo 3D), con la barra del plan arriba y una comparativa de Haiku frente a Opus. El comando `/jarvis` abre o cierra el HUD, y las opciones de [Personalización](#es-personalizacion) cambian tema, acento, idioma, ritmo de lectura y paneles visibles.
 
 ![HUD de consumo](../images/consumo-1920x1080.jpg)
 
@@ -20,7 +20,9 @@ Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y t
 - Si pasan 10 segundos sin latido nuevo **y** van 3 lecturas seguidas sin él, marca "Sin señal". Una lectura fallida suelta no enciende el aviso, y el primer latido nuevo lo apaga.
 - No parpadea: pinta los paneles una vez y después solo cambia los textos y barras que cambian. Si solo llega el latido, no toca nada.
 - Funciona sin conexión: todo va dentro de la página.
-- La tecla `D` (o el botón de la cabecera) cambia entre modo cómodo y compacto mientras la ventana está abierta. Al abrir el HUD manda la opción `densidad`.
+- La densidad se ajusta sola al tamaño de la ventana. Con menos de 420 px de ancho o menos de 900 × 600 px de área pasa a compacta: quita los efectos de fondo, la mitad de las partículas del globo, los últimos turnos y el pie, y junta un poco los márgenes. Con más espacio vuelve el HUD completo. Cambia al redimensionar, sin recargar. No hay tecla ni opción para elegirla.
+- Respeta la preferencia del sistema de reducir el movimiento: el globo y el anillo se quedan quietos, nada se anima y las cifras cambian sin deslizarse. Los datos se leen igual.
+- Accesible: texto de 14 px como mínimo, contraste de 4,5:1 o más en el tema `natural` y foco visible al moverse con el teclado.
 
 Se adapta al tamaño de la ventana (cada panel se ajusta además por dentro según su propio ancho):
 
@@ -132,7 +134,6 @@ Además de `dataDir`, el HUD tiene estas opciones. Todas van a `datos.js` en el 
 | --- | --- | --- | --- |
 | `tema` | `natural`, `mark-ii`, `mark-l`, `stark`, `hibrido`, `claro` | `natural` | Tema de color del HUD (atributo `data-tema` de la página). |
 | `acento` | color hex: `#rgb` o `#rrggbb` | `#7fe7ff` | Color de acento. Con el valor por defecto cada tema usa su propio acento; otro valor sustituye al del tema. |
-| `densidad` | `comodo`, `compacto` | `comodo` | Densidad con la que se abre el HUD. La tecla `D` la cambia mientras la ventana sigue abierta. |
 | `idioma` | `es`, `en` | `es` | Idioma de las etiquetas, la hora y los números del HUD. Los nombres de agentes, modelos y tareas no se traducen. |
 | `actualizacion` | número de segundos, de 1 a 5 | `1` | Cada cuánto la página vuelve a leer `datos.js`. |
 | `paneles` | lista con `contexto`, `coste`, `reparto`, `agentes`, `historial`, `grafica`, `comparativa`, `plan` | todos | Paneles visibles. Si quitas alguno, los demás se recolocan sin huecos (en el orden del HUD). |
@@ -146,13 +147,14 @@ Los temas:
 - `stark`: ámbar y oro sobre carbón.
 - `claro`: fondo claro con acentos en azul, para trabajar de día.
 
-En todos el rojo se reserva para las alertas. En modo compacto los brillos, el desenfoque y el fondo animado se apagan.
+En todos el rojo se reserva para las alertas. En las ventanas pequeñas (densidad compacta) los brillos, el desenfoque y el fondo animado se apagan.
 
 Valores que no valen:
 
 - Si `acento` no es un color hex o `actualizacion` está fuera de 1–5, se usa el valor por defecto y queda un aviso en el log (`consumo: ...`) al empezar la sesión.
 - En `paneles`, los nombres desconocidos se ignoran con un aviso; si no queda ninguno válido se muestran todos.
-- `tema`, `densidad` e `idioma` solo aceptan los valores de la tabla; Claude Code trata cualquier otro como no puesto y aplica el defecto.
+- `tema` e `idioma` solo aceptan los valores de la tabla; Claude Code trata cualquier otro como no puesto y aplica el defecto.
+- La opción `densidad` de versiones anteriores ya no existe. Si sigue en tu configuración, se ignora sin aviso y el HUD carga igual.
 
 Para cambiarlas en un mod instalado:
 
@@ -163,7 +165,7 @@ claude plugin configure consumo@jarvis-essential-pack
 O en una sola línea, por la entrada estándar:
 
 ```
-echo '{"tema": "stark", "acento": "#ff8a00", "densidad": "compacto", "idioma": "en", "actualizacion": 2, "paneles": ["contexto", "coste", "plan"]}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+echo '{"tema": "stark", "acento": "#ff8a00", "idioma": "en", "actualizacion": 2, "paneles": ["contexto", "coste", "plan"]}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
 ```
 
 También aparecen en `/config` dentro de Claude Code. Si cargas el mod con `--plugin-dir`, ponlas en `~/.claude/settings.json`:
@@ -175,7 +177,6 @@ También aparecen en `/config` dentro de Claude Code. Si cargas el mod con `--pl
       "options": {
         "tema": "stark",
         "acento": "#ff8a00",
-        "densidad": "compacto",
         "idioma": "en",
         "actualizacion": 2,
         "paneles": ["contexto", "coste", "plan"]
@@ -206,7 +207,7 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE).
 
 [Español](#es) · **English**
 
-Opens a live HUD window with what the session spends: context, cost and tokens. Six colour themes (by default `natural`: warm graphite with a single accent, no neon, keeps the 3D globe and ring), with the plan bar at the top and a Haiku versus Opus comparison. The `/jarvis` command opens or closes the HUD, and the [Customisation](#en-customisation) options change theme, accent, density, language, refresh rate and visible panels.
+Opens a live HUD window with what the session spends: context, cost and tokens. Six colour themes (by default `natural`: warm graphite with a single accent, no neon, keeps the 3D globe and ring), with the plan bar at the top and a Haiku versus Opus comparison. The `/jarvis` command opens or closes the HUD, and the [Customisation](#en-customisation) options change theme, accent, language, refresh rate and visible panels.
 
 ![consumo HUD](../images/consumo-1920x1080.jpg)
 
@@ -222,7 +223,9 @@ Opens a live HUD window with what the session spends: context, cost and tokens. 
 - After 10 seconds without a new heartbeat **and** 3 reads in a row without one, it shows "Sin señal" (no signal). A single failed read does not trigger it, and the first new heartbeat clears it.
 - No flicker: it draws the panels once and then only changes the text and bars that change. If only the heartbeat arrives, it touches nothing.
 - It works offline: everything is inside the page.
-- The `D` key (or the header button) switches between comfortable and compact mode while the window is open. When the HUD opens, the `densidad` option decides.
+- Density follows the window size. Below 420 px wide or 900 × 600 px of area it turns compact: it drops the background effects, half of the globe particles, the latest turns and the footer, and tightens the margins. With more room the full HUD comes back. It switches as you resize, without reloading. There is no key or option for it.
+- It honours the system setting to reduce motion: the globe and ring stay still, nothing animates and numbers change without sliding. Data is read the same way.
+- Accessible: text is at least 14 px, contrast is 4.5:1 or more in the `natural` theme and focus is visible when moving with the keyboard.
 
 It adapts to the window size (and each panel also adjusts inside to its own width):
 
@@ -334,7 +337,6 @@ Besides `dataDir`, the HUD has these options. All of them go into `datos.js` und
 | --- | --- | --- | --- |
 | `tema` | `natural`, `mark-ii`, `mark-l`, `stark`, `hibrido` (hybrid), `claro` (light) | `natural` | HUD colour theme (the page's `data-tema` attribute). |
 | `acento` | hex colour: `#rgb` or `#rrggbb` | `#7fe7ff` | Accent colour. With the default each theme keeps its own accent; any other value replaces it. |
-| `densidad` | `comodo` (comfortable), `compacto` (compact) | `comodo` | Density the HUD opens with. The `D` key changes it while the window stays open. |
 | `idioma` | `es`, `en` | `es` | Language of the HUD labels, time and numbers. Agent, model and task names are not translated. |
 | `actualizacion` | number of seconds, 1 to 5 | `1` | How often the page re-reads `datos.js`. |
 | `paneles` | list of `contexto`, `coste`, `reparto` (split), `agentes` (agents), `historial` (history), `grafica` (chart), `comparativa` (comparison), `plan` | all | Visible panels. If you hide some, the rest move up with no gaps (in the HUD's own order). |
@@ -348,13 +350,14 @@ The themes:
 - `stark`: amber and gold on charcoal.
 - `claro`: light background with blue accents, for daytime work.
 
-Red is kept for alerts in every theme. In compact mode glows, blur and the animated background are turned off.
+Red is kept for alerts in every theme. In small windows (compact density) glows, blur and the animated background are turned off.
 
 Invalid values:
 
 - If `acento` is not a hex colour or `actualizacion` is outside 1–5, the default is used and a warning (`consumo: ...`) is logged when the session starts.
 - In `paneles`, unknown names are ignored with a warning; if none is valid, every panel is shown.
-- `tema`, `densidad` and `idioma` only take the values in the table; Claude Code treats any other value as unset and applies the default.
+- `tema` and `idioma` only take the values in the table; Claude Code treats any other value as unset and applies the default.
+- The `densidad` option from earlier versions is gone. If it is still in your settings it is ignored without a warning and the HUD loads as usual.
 
 To change them in an installed mod:
 
@@ -365,7 +368,7 @@ claude plugin configure consumo@jarvis-essential-pack
 Or in one line, through standard input:
 
 ```
-echo '{"tema": "stark", "acento": "#ff8a00", "densidad": "compacto", "idioma": "en", "actualizacion": 2, "paneles": ["contexto", "coste", "plan"]}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+echo '{"tema": "stark", "acento": "#ff8a00", "idioma": "en", "actualizacion": 2, "paneles": ["contexto", "coste", "plan"]}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
 ```
 
 They also show up in `/config` inside Claude Code. If you load the mod with `--plugin-dir`, put them in `~/.claude/settings.json`:
@@ -377,7 +380,6 @@ They also show up in `/config` inside Claude Code. If you load the mod with `--p
       "options": {
         "tema": "stark",
         "acento": "#ff8a00",
-        "densidad": "compacto",
         "idioma": "en",
         "actualizacion": 2,
         "paneles": ["contexto", "coste", "plan"]

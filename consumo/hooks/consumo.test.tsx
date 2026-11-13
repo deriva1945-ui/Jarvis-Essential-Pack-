@@ -6,7 +6,7 @@ import { CONFIG_DEFAULT, leerConfig, PANELES, TEMAS as TEMAS_CONFIG } from './co
 import { DOM, firma, lista, ponAttr, ponEstilo, ponSegs, ponTexto } from './dom'
 import { EN, IDIOMA_JS, traducir } from './idioma'
 import { observe } from './ledger'
-import { PAGE } from './page'
+import { densidadDe, PAGE } from './page'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
 import { DATA_DIR_DEFAULT, expandir, fileUrl, unir } from './rutas'
 import { alCargar, alFallar, LOGICA, nuevoEstado, senal, valido } from './senal'
@@ -16,8 +16,8 @@ const PRUEBA = { options: { dataDir: '/prueba/consumo' } }
 
 const ok = { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
 
-test('the page has the key sections, the size breakpoints and the density toggle', () => {
-  for (const id of ['p-plan', 'plfill', 'pll', 'p-ctx', 'p-cost', 'p-mod', 'p-chart', 'p-hist', 'p-agt', 'dens']) {
+test('the page has the key sections and the size breakpoints', () => {
+  for (const id of ['p-plan', 'plfill', 'pll', 'p-ctx', 'p-cost', 'p-mod', 'p-chart', 'p-hist', 'p-agt']) {
     expect(PAGE).toContain(`id="${id}"`)
   }
   expect(PAGE).toContain('Reparto por modelo')
@@ -97,7 +97,7 @@ test('the default theme is natural', () => {
   expect(PAGE).toContain('<html lang="es" data-tema="natural">')
 })
 
-test('themes keep red for alerts only and drop effects in compact mode', () => {
+test('themes keep red for alerts only and drop effects in compact density', () => {
   for (const t of TEMAS) {
     const b = bloqueTema(t)
     const crit = /--crit:(#[0-9a-f]{6})/.exec(b)?.[1] ?? ''
@@ -107,7 +107,7 @@ test('themes keep red for alerts only and drop effects in compact mode', () => {
       expect(b).not.toContain(`${v}:${crit}`)
     }
   }
-  expect(PAGE).toContain('body.compact{--glow:0;--cristal:none}')
+  expect(PAGE).toContain('html[data-densidad="compacto"] body{--glow:0;--cristal:none}')
   expect(PAGE).toContain('@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px)))')
   expect(PAGE).toContain('@media (prefers-reduced-motion:reduce)')
 })
@@ -676,8 +676,8 @@ test('(f) plan: with no tasks the plan block is null and the page shows "sin tar
   expect(resumen(PLAN0)).toBeNull()
   // Una tarea creada y luego borrada deja el plan vacío otra vez.
   expect(resumen(actualizar(crear(PLAN0, '1', 'a'), '1', { status: 'deleted' }))).toBeNull()
-  expect(PAGE).toContain('PLAN · sin tareas activas')
-  expect(PAGE).toContain('COMPLETADO')
+  expect(PAGE).toContain('Plan · sin tareas activas')
+  expect(PAGE).toContain('Completado')
   expect(PAGE).toContain('plan:null')
 })
 
@@ -766,7 +766,7 @@ test('(i) comparativa: with no Opus data there is no estimate and the page says 
   expect(PAGE).toContain('id="p-comp"')
   expect(PAGE).toContain('Comparativa · Haiku frente a Opus')
   expect(PAGE).toContain('sin datos de Opus todavía')
-  expect(PAGE).toContain('Estimación según tus turnos reales; el caché y la mezcla de entrada y salida afectan.')
+  expect(PAGE).toContain('Estimación con tus turnos reales; varía con la caché y con la proporción de entrada y salida.')
   expect(PAGE).toContain('comparativa:null')
 })
 
@@ -1034,7 +1034,6 @@ test('config: with no options datos.js carries the defaults and nothing is logge
   expect(config).toEqual({
     tema: 'natural',
     acento: '#7fe7ff',
-    densidad: 'comodo',
     idioma: 'es',
     actualizacion: 1,
     paneles: ['contexto', 'coste', 'reparto', 'agentes', 'historial', 'grafica', 'comparativa', 'plan'],
@@ -1045,10 +1044,10 @@ test('config: with no options datos.js carries the defaults and nothing is logge
 
 test(
   'config: valid values reach datos.js (hex in lower case, panels in the HUD order)',
-  { options: { dataDir: '/prueba/consumo', tema: 'stark', acento: '#FF0080', densidad: 'compacto', idioma: 'en', actualizacion: 3, paneles: ['plan', 'coste'] } },
+  { options: { dataDir: '/prueba/consumo', tema: 'stark', acento: '#FF0080', idioma: 'en', actualizacion: 3, paneles: ['plan', 'coste'] } },
   async ($, on) => {
     const { config, logs } = await arrancar($, on)
-    expect(config).toEqual({ tema: 'stark', acento: '#ff0080', densidad: 'compacto', idioma: 'en', actualizacion: 3, paneles: ['coste', 'plan'] })
+    expect(config).toEqual({ tema: 'stark', acento: '#ff0080', idioma: 'en', actualizacion: 3, paneles: ['coste', 'plan'] })
     expect(logs).toHaveLength(0)
   },
 )
@@ -1064,11 +1063,29 @@ test(
   },
 )
 
+test(
+  'config: an old settings.json with densidad still loads, without warnings, and densidad does not reach datos.js',
+  { options: { dataDir: '/prueba/consumo', densidad: 'compacto', tema: 'natural', idioma: 'en' } },
+  async ($, on) => {
+    const { config, logs } = await arrancar($, on)
+    expect(config).toEqual({ ...CONFIG_DEFAULT, idioma: 'en' })
+    expect('densidad' in (config as object)).toBe(false)
+    expect(logs).toHaveLength(0)
+    // leerConfig tampoco se queja con un valor raro de la opción antigua.
+    for (const v of ['compacto', 'comodo', 'enorme', 3, null, ['x']]) {
+      const r = leerConfig({ densidad: v } as never)
+      expect(r.config).toEqual(CONFIG_DEFAULT)
+      expect(r.avisos).toHaveLength(0)
+    }
+    expect('densidad' in CONFIG_DEFAULT).toBe(false)
+  },
+)
+
 test('config: leerConfig rejects bad values one by one and keeps the good ones', () => {
-  const bad = leerConfig({ tema: 'iron', densidad: 'enorme', idioma: 'fr', acento: '#12', actualizacion: 0, paneles: ['foo'] })
+  const bad = leerConfig({ tema: 'iron', idioma: 'fr', acento: '#12', actualizacion: 0, paneles: ['foo'] })
   expect(bad.config).toEqual(CONFIG_DEFAULT)
-  expect(bad.avisos).toHaveLength(7)
-  for (const k of ['tema', 'densidad', 'idioma', 'acento', 'actualizacion', 'foo']) expect(bad.avisos.some(a => a.includes(k))).toBe(true)
+  expect(bad.avisos).toHaveLength(6)
+  for (const k of ['tema', 'idioma', 'acento', 'actualizacion', 'foo']) expect(bad.avisos.some(a => a.includes(k))).toBe(true)
 
   expect(leerConfig({ actualizacion: 5.5 }).config.actualizacion).toBe(1)
   expect(leerConfig({ actualizacion: 5 }).config.actualizacion).toBe(5)
@@ -1082,7 +1099,7 @@ test('config: leerConfig rejects bad values one by one and keeps the good ones',
   expect(leerConfig({}).avisos).toHaveLength(0)
 })
 
-test('config: the page applies config (data-tema on <html>, accent, density, language, refresh and panels)', () => {
+test('config: the page applies config (data-tema on <html>, accent, language, refresh and panels)', () => {
   expect(PAGE).toContain('aplicaConfig(d.config);')
   expect(PAGE).toContain("ponAttr(root,'data-tema',TEMAS.indexOf(c.tema)>=0?c.tema:'natural');")
   // Un cambio de tema vuelve a teñir el globo.
@@ -1093,7 +1110,8 @@ test('config: the page applies config (data-tema on <html>, accent, density, lan
   const ids = /var PANEL_ID=(\{[^}]*\})/.exec(PAGE)?.[1] ?? '{}'
   expect(Object.keys(JSON.parse(ids.replace(/'/g, '"').replace(/(\w+):/g, '"$1":')))).toEqual([...PANELES])
   expect(PAGE).toContain("root.style.setProperty('--acc',ac)")
-  expect(PAGE).toContain("setDens(dens==='compacto',false)")
+  // La densidad ya no es una opción: aplicaConfig no la mira.
+  expect(PAGE).not.toContain('c.densidad')
   expect(PAGE).toContain('lecturas(seg>=1&&seg<=5?seg*1000:1000)')
   expect(PAGE).toContain("ponClase(document.body,'pn-sel',!todos)")
   expect(PAGE).toContain('.pnl.pn-off{display:none!important}')
@@ -1193,4 +1211,82 @@ test('natural: summary band layout that leaves the panel selection (pn-sel) alon
   expect(PAGE).toContain(`grid-template-areas:"head head head" "ctx cost comp" "mod agt agt" "plan plan plan" "hist hist hist" "chart chart chart" "foot foot foot"`)
   // Las reglas de distribución de natural no tocan la rejilla cuando hay paneles ocultos.
   for (const l of reglasNatural()) if (l.includes('grid-template-areas')) expect(l).toContain(':not(.pn-sel) .wrap')
+})
+
+// ---------- Densidad automática y movimiento reducido ----------
+
+const cssDe = (): string => PAGE.slice(PAGE.indexOf('<style>'), PAGE.indexOf('</style>'))
+const C = 'html[data-densidad="compacto"]'
+
+test('densidad: the page marks data-densidad on <html> by itself from the window size', () => {
+  // Script en <head>, antes de pintar: el umbral (420 px de ancho o 900 x 600 de área) y la marca inicial.
+  const head = PAGE.slice(0, PAGE.indexOf('<style>'))
+  expect(head).toContain('var densidadDe=(' + String(densidadDe) + ');')
+  expect(head).toContain("document.documentElement.setAttribute('data-densidad',densidadDe(window.innerWidth,window.innerHeight));")
+  // El umbral, probado con la misma función que va en la página.
+  const casos: [number, number, string][] = [
+    [320, 480, 'compacto'], [375, 667, 'compacto'], [419, 2000, 'compacto'], [420, 860, 'compacto'], [800, 600, 'compacto'],
+    [900, 600, 'comodo'], [768, 1024, 'comodo'], [1024, 768, 'comodo'], [1280, 720, 'comodo'], [1920, 1080, 'comodo'], [3840, 2160, 'comodo'],
+    [1920, 250, 'compacto'],
+  ]
+  for (const [w, h, d] of casos) {
+    if (densidadDe(w, h) !== d) throw new Error(`${w}x${h}: ${densidadDe(w, h)} (esperado ${d})`)
+  }
+  // Al cambiar de tamaño se vuelve a mirar, sin recargar ni rehacer paneles: solo cambia el atributo.
+  expect(PAGE).toContain("var rz;window.addEventListener('resize',function(){ponDensidad();")
+  const fn = PAGE.slice(PAGE.indexOf('function ponDensidad(){'), PAGE.indexOf('function compacto()'))
+  expect(fn).toContain("root.setAttribute('data-densidad',d);")
+  expect(fn).not.toContain('innerHTML')
+  expect(fn).not.toContain('location')
+  expect(fn).not.toContain('lista(')
+  // En compacto: sin capas de efecto, sin últimos turnos ni pie, y la mitad de las partículas del globo.
+  const css = cssDe()
+  expect(css).toContain(`${C} #p-hist,${C} footer{display:none}`)
+  expect(css).toContain(`${C} .neb,${C} .floor,${C} .scan,${C} .shift,${C} .gring svg .g2,${C} .reactor:before{display:none}`)
+  expect(css).toContain(`${C} body{--glow:0;--cristal:none}`)
+  expect(PAGE).toContain('nodes.forEach(function(nd,i){if(mitad&&i%2)return;')
+  // Las rejillas compactas no dejan hueco para turnos ni pie.
+  for (const l of css.split('\n')) if (l.includes(C) && l.includes('grid-template-areas')) expect(/"[^"]*(hist|foot)[^"]*"/.test(l)).toBe(false)
+  // El globo, el anillo principal y el núcleo siguen en compacto.
+  for (const l of css.split('\n')) {
+    if (!l.includes(C)) continue
+    for (const sel of ['#globe', '.gring{', '.gring svg{', '.reactor{', '.rc']) expect(l.includes(`${C} ${sel}`) && l.includes('display:none')).toBe(false)
+  }
+})
+
+test('densidad: there is no manual compact mode (no key, no button, no class, no stored preference)', () => {
+  expect(PAGE).not.toContain('id="dens"')
+  expect(PAGE).not.toContain('setDens')
+  expect(PAGE).not.toContain('body.compact')
+  expect(PAGE).not.toContain("classList.toggle('compact'")
+  expect(PAGE).not.toContain('consumo.densidad')
+  expect(PAGE).not.toContain("e.key==='d'")
+  expect(PAGE).not.toContain('tecla D')
+  // La única tecla que quedaba era la D: la página ya no escucha el teclado.
+  expect(PAGE).not.toContain("addEventListener('keydown'")
+  for (const [es] of EN) expect(es.includes('densidad') || es === 'Compacto' || es === 'Cómodo').toBe(false)
+})
+
+test('movimiento reducido: every animation stops, the globe stays still and numbers jump to their value', () => {
+  const css = cssDe()
+  expect(css).toContain('@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;')
+  expect(PAGE).toContain("var MOV=window.matchMedia?window.matchMedia('(prefers-reduced-motion: reduce)'):null;")
+  expect(PAGE).toContain('if(document.hidden||quieto())return;')
+  expect(PAGE).toContain('if(from===to||document.hidden||quieto()){t.v=to;ponTexto(el,fmt(to));return}')
+  expect(PAGE).toContain('if(quieto()||compacto())return;')
+  // La lectura de datos no depende del movimiento: el render sigue igual.
+  const render = PAGE.slice(PAGE.indexOf('function render(d){'), PAGE.indexOf('function pintaSenal(){'))
+  expect(render).not.toContain('quieto')
+})
+
+test('accesibilidad: visible focus on controls and the natural labels are not forced to capitals', () => {
+  const css = cssDe()
+  expect(css).toContain(':focus-visible{outline:2px solid var(--acc);outline-offset:3px')
+  expect(css).toContain('.pll summary:focus-visible{outline:2px solid var(--acc)')
+  expect(css).not.toMatch(/outline:none/)
+  // Textos de la página sin prefijos de consola.
+  const html = PAGE.slice(PAGE.indexOf('<body>'), PAGE.indexOf('<script>', PAGE.indexOf('<body>')))
+  expect(/SYS\s*\/\//.test(html)).toBe(false)
+  expect(html).toContain('Plan · sin tareas activas')
+  expect(css).toContain('html[data-tema="natural"] .plt{font-size:var(--fv);letter-spacing:0;text-transform:none}')
 })

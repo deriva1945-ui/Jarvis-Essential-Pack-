@@ -175,7 +175,7 @@ type Ctx = Parameters<Hook<'tool.call'>>[0]
 // Valor de la opción dataDir (userConfig). register() lo fija al cargar el módulo; un cambio
 // en la configuración recarga el módulo con el valor nuevo.
 let dataDirOption = DATA_DIR_DEFAULT
-// Tema, acento, densidad, idioma, actualización y paneles (userConfig), validados en register().
+// Tema, acento, idioma, actualización y paneles (userConfig), validados en register().
 let hudConfig: HudConfig = CONFIG_DEFAULT
 // Valores que no valían y cayeron al defecto; se escriben en el log al empezar la sesión.
 let configAvisos: string[] = []

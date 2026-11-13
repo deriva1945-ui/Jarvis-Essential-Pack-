@@ -1,7 +1,7 @@
 {
   "name": "consumo",
-  "version": "0.6.0",
-  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus y comando /jarvis para abrirlo o cerrarlo. Seis temas (natural por defecto: grafito cálido, sin neón, con el globo 3D), sin parpadeo, adaptable a cualquier ventana y configurable (tema, acento, densidad, idioma, actualización y paneles).",
+  "version": "0.7.0",
+  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus y comando /jarvis para abrirlo o cerrarlo. Seis temas (natural por defecto: grafito cálido, sin neón, con el globo 3D), sin parpadeo, con densidad automática según el tamaño de la ventana y configurable (tema, acento, idioma, actualización y paneles).",
   "author": {
     "name": "deriva1945-ui"
   },
@@ -31,16 +31,6 @@
       "title": "Color de acento / Accent colour",
       "description": "Color de acento en hex (#rgb o #rrggbb). Un valor que no sea hex usa el defecto y deja un aviso en el log. Por defecto: #7fe7ff. / Accent colour in hex (#rgb or #rrggbb). A non-hex value falls back to the default and logs a warning. Default: #7fe7ff.",
       "default": "#7fe7ff"
-    },
-    "densidad": {
-      "type": "string",
-      "title": "Densidad / Density",
-      "description": "Espaciado del HUD: comodo o compacto. Por defecto: comodo. / HUD spacing: comodo (comfortable) or compacto (compact). Default: comodo.",
-      "options": [
-        "comodo",
-        "compacto"
-      ],
-      "default": "comodo"
     },
     "idioma": {
       "type": "string",
