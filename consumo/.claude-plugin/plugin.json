@@ -1,7 +1,7 @@
 {
   "name": "consumo",
-  "version": "0.9.0",
-  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus, histórico entre sesiones (hoy, semana, total y últimas sesiones) y comando /jarvis para abrirlo o cerrarlo. Seis temas (natural por defecto: grafito cálido, sin neón, con el globo 3D), sin parpadeo, con densidad automática según el tamaño de la ventana, nueve disposiciones y configurable (tema, acento, idioma, actualización, paneles, disposición, orden, tamaño de cada panel, escala y tamaño de la ventana).",
+  "version": "0.10.0",
+  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus, histórico entre sesiones (hoy, semana, total y últimas sesiones) y comando /jarvis para abrirlo o cerrarlo. Seis temas (natural por defecto: grafito cálido, sin neón, con el globo 3D), costes en euros o dólares (botón en la cabecera), sin parpadeo, con densidad automática según el tamaño de la ventana, nueve disposiciones y configurable (tema, acento, idioma, actualización, paneles, moneda, tipo de cambio, disposición, orden, tamaño de cada panel, escala y tamaño de la ventana).",
   "author": {
     "name": "deriva1945-ui"
   },
@@ -63,6 +63,22 @@
         "comparativa",
         "plan"
       ]
+    },
+    "moneda": {
+      "type": "string",
+      "title": "Moneda / Currency",
+      "description": "Moneda inicial en la que el HUD muestra el coste: EUR (euros, convertidos con tipoCambio) o USD (dólares, tal como los da Claude Code). El botón de moneda de la cabecera la cambia al vuelo y recuerda la elección en ese navegador. Por defecto: EUR. / Starting currency the HUD shows the cost in: EUR (euros, converted with tipoCambio) or USD (dollars, as Claude Code reports them). The currency button in the header switches it on the fly and remembers the choice in that browser. Default: EUR.",
+      "options": [
+        "EUR",
+        "USD"
+      ],
+      "default": "EUR"
+    },
+    "tipoCambio": {
+      "type": "number",
+      "title": "Tipo de cambio (€ por $) / Exchange rate (€ per $)",
+      "description": "Euros que vale 1 dólar, para mostrar el coste en EUR (0.92 = 1 USD son 0,92 €). Es un valor de referencia fijo: el plugin no lo consulta en internet y el tipo de cambio real varía, así que actualízalo tú cuando quieras. Por defecto: 0.92. / Euros per 1 US dollar, used to show the cost in EUR (0.92 = 1 USD is €0.92). It is a fixed reference value: the plugin does not look it up online and the real rate changes, so update it yourself. Default: 0.92.",
+      "default": 0.92
     },
     "historico": {
       "type": "boolean",

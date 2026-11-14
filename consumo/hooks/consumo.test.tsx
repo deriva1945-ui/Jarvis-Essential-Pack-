@@ -6,6 +6,7 @@ import { CONFIG_DEFAULT, leerConfig, PANELES, TEMAS as TEMAS_CONFIG } from './co
 import { DOM, firma, lista, ponAttr, ponEstilo, ponSegs, ponTexto } from './dom'
 import { EN, IDIOMA_JS, traducir } from './idioma'
 import { observe } from './ledger'
+import { convertirMoneda, formatoMoneda, MONEDA_JS, otraMoneda, simboloMoneda } from './moneda'
 import { densidadDe, PAGE } from './page'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
 import { DATA_DIR_DEFAULT, expandir, fileUrl, unir } from './rutas'
@@ -1037,6 +1038,8 @@ test('config: with no options datos.js carries the defaults and nothing is logge
     idioma: 'es',
     actualizacion: 1,
     paneles: ['contexto', 'coste', 'reparto', 'agentes', 'historial', 'grafica', 'comparativa', 'plan'],
+    moneda: 'EUR',
+    tipoCambio: 0.92,
   })
   expect(config).toEqual(CONFIG_DEFAULT)
   expect(logs).toHaveLength(0)
@@ -1047,7 +1050,7 @@ test(
   { options: { dataDir: '/prueba/consumo', tema: 'stark', acento: '#FF0080', idioma: 'en', actualizacion: 3, paneles: ['plan', 'coste'] } },
   async ($, on) => {
     const { config, logs } = await arrancar($, on)
-    expect(config).toEqual({ tema: 'stark', acento: '#ff0080', idioma: 'en', actualizacion: 3, paneles: ['coste', 'plan'] })
+    expect(config).toEqual({ tema: 'stark', acento: '#ff0080', idioma: 'en', actualizacion: 3, paneles: ['coste', 'plan'], moneda: 'EUR', tipoCambio: 0.92 })
     expect(logs).toHaveLength(0)
   },
 )
@@ -1289,4 +1292,179 @@ test('accesibilidad: visible focus on controls and the natural labels are not fo
   expect(/SYS\s*\/\//.test(html)).toBe(false)
   expect(html).toContain('Plan · sin tareas activas')
   expect(css).toContain('html[data-tema="natural"] .plt{font-size:var(--fv);letter-spacing:0;text-transform:none}')
+})
+
+// ---------- Moneda ----------
+
+const NB = String.fromCharCode(160)
+const eur = (txt: string) => txt.split(' ').join(NB)
+
+test('moneda: 1 USD at 0.92 is 0,92 €, USD is not converted and a bad rate leaves dollars', () => {
+  expect(convertirMoneda(1, 'EUR', 0.92)).toBe(0.92)
+  expect(formatoMoneda(convertirMoneda(1, 'EUR', 0.92), 'EUR', 'es-ES')).toBe(eur('0,92 €'))
+  expect(convertirMoneda(1, 'USD', 0.92)).toBe(1)
+  expect(convertirMoneda(2.5, 'USD', 0.5)).toBe(2.5)
+  for (const t of [0, -1, NaN, Infinity]) expect(convertirMoneda(3, 'EUR', t)).toBe(3)
+  expect(convertirMoneda(10, 'EUR', 0.5)).toBe(5)
+})
+
+test('moneda: currency format by language, € after the number in Spanish, 4 decimals below 1 and 2 from 1', () => {
+  expect(formatoMoneda(1234.56, 'EUR', 'es-ES')).toBe(eur('1.234,56 €'))
+  expect(formatoMoneda(1234.56, 'EUR', 'en-US')).toBe('€1,234.56')
+  expect(formatoMoneda(0, 'EUR', 'es-ES')).toBe(eur('0,00 €'))
+  // Menos de 1: 4 decimales, o 2 si ya es exacto con 2.
+  expect(formatoMoneda(0.12345, 'EUR', 'es-ES')).toBe(eur('0,1235 €'))
+  expect(formatoMoneda(0.0042, 'EUR', 'en-US')).toBe('€0.0042')
+  expect(formatoMoneda(0.1, 'EUR', 'es-ES')).toBe(eur('0,10 €'))
+  expect(formatoMoneda(-0.0123, 'EUR', 'es-ES')).toBe(eur('-0,0123 €'))
+  // Nunca 3 decimales: 0.103 sale con 4.
+  expect(formatoMoneda(0.103, 'EUR', 'es-ES')).toBe(eur('0,1030 €'))
+  expect(formatoMoneda(0.92, 'EUR', 'en-US')).toBe('€0.92')
+  // Desde 1: 2 decimales.
+  expect(formatoMoneda(12.3456, 'EUR', 'es-ES')).toBe(eur('12,35 €'))
+  expect(formatoMoneda(1, 'EUR', 'en-US')).toBe('€1.00')
+  // Con USD, dólares con el formato del idioma.
+  expect(formatoMoneda(0.25, 'USD', 'en-US')).toBe('$0.25')
+  expect(formatoMoneda(1234.5, 'USD', 'es-ES')).toBe(eur('1.234,50 US$'))
+})
+
+test('moneda: the page converts once, in dinero(), and every cost on the HUD goes through it', () => {
+  // Las funciones de moneda.ts van tal cual en la página (dentro de un template literal).
+  expect(PAGE).toContain(MONEDA_JS)
+  for (const c of ['`', '$' + '{', String.fromCharCode(92)]) expect(MONEDA_JS.includes(c)).toBe(false)
+  const js = PAGE.slice(PAGE.indexOf('<script>', PAGE.indexOf('<body>')))
+  // Un solo sitio convierte: aMoneda() (convertirMoneda solo aparece en su definición y ahí).
+  expect(js.split('convertirMoneda(').length - 1).toBe(2)
+  expect(js).toContain('function aMoneda(usd){return convertirMoneda(usd,MONEDA,TIPO)}')
+  expect(js).toContain('function dinero(usd){return importe(aMoneda(usd))}')
+  expect(js).toContain('function importe(v){return formatoMoneda(v,MONEDA,LOC)}')
+  expect(js).not.toMatch(/dinero\(aMoneda|aMoneda\(aMoneda|dinero\(dinero|aMoneda\(ctop/)
+  // Cifra principal, último turno, historial, comparativa, leyenda de la comparativa, tooltip y eje de la gráfica y acumulado.
+  for (const k of [
+    "tween('costev',Number(d.coste||0),dinero);",
+    "(tx('Último turno')+' ≈ '+dinero(last.coste))",
+    "ponTexto(k[4],t.coste!=null?dinero(t.coste):'—');",
+    "ponTexto($id('cvreal'),dinero(real));",
+    "ponTexto($id('cvopus'),ok?dinero(est):'—');",
+    "ponTexto($id('caha'),dinero(ah));",
+    "' · '+dinero(x.coste||0)",
+    "(t.coste!=null?' · '+dinero(t.coste):'')",
+    'importe(ctop*i/4)',
+    // Acumulado entre sesiones (hoy, semana, total y cada sesión).
+    "ponTexto($id(p[0]),dinero(c.coste||0));",
+    "ponTexto(k[2],dinero(x.coste||0));",
+    // Leyenda de la gráfica y cabecera de la tabla con el símbolo de la moneda activa.
+    "tx('Coste por turno')+' ('+simbolo()+')</span>'",
+    "ponTexto($id('hmon'),simbolo());",
+  ]) expect(js).toContain(k)
+  // Ni cifras sin formato ni la etiqueta USD fija, en el script ni en el HTML.
+  expect(js).not.toContain('toFixed(4)')
+  expect(js).not.toContain("' USD'")
+  expect(js).not.toContain('function usd(')
+  expect(PAGE).not.toContain('<small>USD</small>')
+  expect(PAGE).not.toContain('0.0000 USD')
+  expect(PAGE).not.toContain('>USD<')
+  expect(PAGE).not.toContain("'USD por turno'")
+  expect(EN.some(p => p[0].includes('USD') || p[1].includes('USD'))).toBe(false)
+  expect(EN).toContainEqual(['Coste por turno', 'Cost per turn'])
+})
+
+test('moneda: the header button exists, switches the active currency and the cost is converted only once', () => {
+  // El botón está en la cabecera, es un <button> (teclado y foco), con texto y aria-label que se traducen.
+  const head = PAGE.slice(PAGE.indexOf('<header>'), PAGE.indexOf('</header>'))
+  expect(head).toContain('<button type="button" class="mon" id="monbtn"')
+  expect(head).toContain('<span id="monv">€</span>')
+  expect(head).toContain('aria-label="Moneda: euros. Cambiar a dólares"')
+  expect(EN).toContainEqual(['Moneda: euros. Cambiar a dólares', 'Currency: euros. Switch to dollars'])
+  expect(EN).toContainEqual(['Moneda: dólares. Cambiar a euros', 'Currency: dollars. Switch to euros'])
+  expect(EN).toContainEqual(['Moneda', 'Currency'])
+  // Legible (texto de --fv, que nunca baja de 16 px) y con foco visible.
+  expect(PAGE).toContain('.mon{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:var(--fv);')
+  expect(PAGE).toContain('.mon:focus-visible{outline:2px solid var(--acc);outline-offset:3px}')
+  expect(PAGE).toContain('--fv:clamp(16px,')
+  // El clic cambia la moneda activa, la guarda con try/catch y vuelve a pintar con los datos que ya hay (en dólares).
+  const js = PAGE.slice(PAGE.indexOf('<script>', PAGE.indexOf('<body>')))
+  expect(js).toContain("$id('monbtn').addEventListener('click',cambiaMoneda);")
+  expect(js).toContain('MONEDA=MONEDA_ELEGIDA=otraMoneda(MONEDA);')
+  expect(js).toContain('try{localStorage.setItem(MKEY,MONEDA)}catch(e){}')
+  expect(js).toContain("try{v=localStorage.getItem(MKEY)}catch(e){}if(v==='EUR'||v==='USD'){MONEDA_ELEGIDA=v;MONEDA=v}")
+  expect(js).toContain("CHART='';FIRMA='';\n  if(lastData)render(lastData);")
+  // La opción moneda es solo la inicial: si el botón eligió una, manda la del botón.
+  expect(js).toContain("var mon=MONEDA_ELEGIDA||(c.moneda==='USD'?'USD':'EUR');")
+  expect(js).toContain("if(mon!==MONEDA||tc!==TIPO){MONEDA=mon;TIPO=tc;CHART=''}")
+
+  // La página compone dinero() como formato(conversión(usd)) con la moneda activa, y el botón solo cambia MONEDA con
+  // otraMoneda(): el mismo estado, aquí con las funciones de moneda.ts que van en la página.
+  expect(js).toContain('function simbolo(){return simboloMoneda(MONEDA)}')
+  for (const loc of ['es-ES', 'en-US']) {
+    let MONEDA = 'EUR'
+    const dinero = (usd: number) => formatoMoneda(convertirMoneda(usd, MONEDA, 0.92), MONEDA, loc)
+    const cambia = () => (MONEDA = otraMoneda(MONEDA))
+    const un = dinero(1), mil = dinero(1234.56 / 0.92)
+    expect(simboloMoneda(MONEDA)).toBe('€')
+    expect(cambia()).toBe('USD')
+    expect(simboloMoneda(MONEDA)).toBe('US$')
+    const enUsd = dinero(1)
+    expect(cambia()).toBe('EUR')
+    // Al volver a euros sale lo mismo que al principio: una sola conversión, nunca sobre una cifra ya convertida.
+    expect(dinero(1)).toBe(un)
+    if (loc === 'es-ES') {
+      expect(un).toBe(eur('0,92 €'))
+      expect(mil).toBe(eur('1.234,56 €'))
+      expect(enUsd).toBe(eur('1,00 US$'))
+    } else {
+      expect(un).toBe('€0.92')
+      expect(mil).toBe('€1,234.56')
+      expect(enUsd).toBe('$1.00')
+    }
+    // Convertir dos veces daría 0,85 €: no es lo que sale.
+    expect(un).not.toBe(formatoMoneda(convertirMoneda(convertirMoneda(1, 'EUR', 0.92), 'EUR', 0.92), 'EUR', loc))
+  }
+})
+
+test(
+  'moneda: the cost is stored in dollars in datos.js; only the page converts it',
+  { options: { dataDir: '/prueba/consumo', moneda: 'EUR', tipoCambio: 0.5 } },
+  async ($, on) => {
+    mock.clock(on, { now: 1_000 })
+    const writes: { path: string; text: string }[] = []
+    on('fs.write', (_, e) => {
+      writes.push(e)
+      return { value: undefined }
+    })
+    on('process.run', () => ok)
+    on('session.start', (_, e) => ({ cwd: e.cwd }))
+    on('session.model', () => ({ value: 'claude-opus-5-5' }))
+    let usd = 0.5
+    on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 10, window: 200000, percent: 0 }, rateLimits: [], cost: { usd } } }))
+    on('turn.complete', () => ({ text: '' }))
+    await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+    usd = 0.75
+    await $.turn.complete({
+      answer: '', durationMs: 1, isAborted: false, reason: 'answer', turnId: 't1',
+      usage: { model: 'claude-opus-5-5', input_tokens: 10, output_tokens: 10, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+    })
+    const w = writes.filter(x => x.path.endsWith('datos.js')).at(-1)
+    const d = JSON.parse((w?.text ?? '').replace(/^window\.CONSUMO = /, '').replace(/;$/, ''))
+    expect(d.config.moneda).toBe('EUR')
+    expect(d.config.tipoCambio).toBe(0.5)
+    // En dólares, sin convertir: 0.75 acumulado y 0.25 el turno (no 0.375 ni 0.125).
+    expect(d.coste).toBe(0.75)
+    expect(d.historial[0].coste).toBe(0.25)
+    expect(d.comparativa.costeReal).toBe(0.25)
+  },
+)
+
+test('config: moneda and tipoCambio are validated, with a warning for bad values', () => {
+  expect(CONFIG_DEFAULT.moneda).toBe('EUR')
+  expect(CONFIG_DEFAULT.tipoCambio).toBe(0.92)
+  expect(leerConfig({ moneda: 'usd' }).config.moneda).toBe('USD')
+  expect(leerConfig({ moneda: 'EUR', tipoCambio: 0.86 }).config).toEqual({ ...CONFIG_DEFAULT, tipoCambio: 0.86 })
+  expect(leerConfig({ tipoCambio: '0,9' }).config.tipoCambio).toBe(0.9)
+  const bad = leerConfig({ moneda: 'GBP', tipoCambio: -1 })
+  expect(bad.config).toEqual(CONFIG_DEFAULT)
+  expect(bad.avisos).toHaveLength(2)
+  expect(bad.avisos.some(a => a.includes('moneda') && a.includes('EUR'))).toBe(true)
+  expect(bad.avisos.some(a => a.includes('tipoCambio') && a.includes('0.92'))).toBe(true)
+  expect(leerConfig({ tipoCambio: 0 }).avisos).toHaveLength(1)
 })

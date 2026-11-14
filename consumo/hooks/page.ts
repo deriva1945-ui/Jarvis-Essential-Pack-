@@ -21,7 +21,12 @@
 // Movimiento reducido (prefers-reduced-motion): sin animaciones ni transiciones; el globo y el anillo se quedan quietos y
 //   las cifras cambian sin deslizarse. Los datos se leen y se pintan igual.
 // Opciones del usuario (userConfig): llegan en datos.js como config y las aplica aplicaConfig(): tema, acento,
-// idioma (es / en), actualizacion (segundos entre lecturas) y paneles visibles.
+// idioma (es / en), actualizacion (segundos entre lecturas), paneles visibles, moneda (EUR / USD) y tipoCambio.
+// Moneda: el coste llega en dólares en datos.js y se queda así; la página lo convierte solo al mostrarlo, con dinero()
+// (convertirMoneda y formatoMoneda de moneda.ts), en todas las cifras de coste: panel Coste, último turno, comparativa,
+// acumulado, gráfica, tablas y tooltips. Formato de moneda del idioma (es-ES 1.234,56 €; en €1,234.56), 4 decimales por debajo de 1.
+// Botón de moneda en la cabecera (€ / US$): cambia la moneda activa al vuelo y vuelve a pintar los costes. La opción moneda
+// es solo el valor inicial; la elección del botón se recuerda en este navegador (localStorage, consumo.moneda).
 // Temas (atributo data-tema en <html>, lo pone aplicaConfig con config.tema): natural (por defecto), hibrido (blanco-cian con anillo
 // ámbar), mark-ii, mark-l, stark y claro. El HTML sale con data-tema="natural".
 // Natural: grafito cálido sin neón, paneles opacos con filo de 1 px, cifras de tabla en monoespaciada y su propia distribución
@@ -32,6 +37,7 @@
 import { COLOCAR_JS, DISPOSICION_CSS } from './disposicion'
 import { DOM } from './dom'
 import { IDIOMA_JS } from './idioma'
+import { MONEDA_JS } from './moneda'
 import { LOGICA } from './senal'
 
 // Densidad automática: compacto con menos de 420 px de ancho o menos de 900 x 600 px de área útil; si no, cómodo.
@@ -199,6 +205,11 @@ h1 .brand{color:var(--sub)}
 .hstat{margin-left:auto;display:flex;gap:clamp(12px,1.4vw,26px);align-items:center;flex-wrap:wrap}
 .hstat>div{text-align:right}
 .hstat .v{color:var(--txt);font-size:var(--fv);white-space:nowrap}
+/* Botón de moneda (cabecera): texto de 14 px o más (--fv), foco visible con :focus-visible. */
+.mon{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:var(--fv);line-height:1.2;color:var(--txt);background:var(--panel);border:1px solid var(--borde,var(--edge));border-radius:8px;padding:2px 10px;min-height:32px;cursor:pointer;white-space:nowrap}
+.mon:hover{border-color:var(--borde-2,var(--edge-on))}
+.mon:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+.mon i{font-style:normal;color:var(--sub);font-size:var(--fk)}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ce);box-shadow:0 0 8px var(--ce);margin-right:8px;vertical-align:1px;animation:pulse 1.6s ease-in-out infinite}
 .dot.wait{background:var(--wh);box-shadow:0 0 8px var(--wh)}
 .dot.off{background:var(--rd);box-shadow:0 0 8px var(--rd);animation:blink 1s steps(2,start) infinite}
@@ -397,7 +408,7 @@ td.al-l{white-space:normal;overflow-wrap:anywhere}
 td.h-hora{white-space:nowrap}
 html[lang="en"] .w-hora{width:7.8em}
 th .sh{display:none}
-.w-hora{width:6.2em}.w-mdl{width:6.5em}.w-tok{width:6em}.w-usd{width:5.8em}.w-trn{width:6.4em}.w-share{width:11em}
+.w-hora{width:6.2em}.w-mdl{width:6.5em}.w-tok{width:6em}.w-usd{width:7.2em}.w-trn{width:6.4em}.w-share{width:11em}
 tbody tr:hover td{background:rgba(var(--acc-rgb),.05)}
 td .ftag{color:var(--c);letter-spacing:.06em}
 td.dimc{color:var(--sub)}
@@ -507,7 +518,7 @@ footer .line{flex:1;align-self:center;height:1px;background:linear-gradient(90de
   .share .seg,th .lg{display:none}
   th .sh{display:inline}
   th,td{padding-left:5px;padding-right:5px}
-  .w-mdl{width:6.4em}.w-tok{width:6.2em}.w-usd{width:6.2em}.w-share{width:4em}
+  .w-mdl{width:6.4em}.w-tok{width:6.2em}.w-usd{width:6.8em}.w-share{width:4em}
   .share .sv{min-width:0}
   .pll li i{width:6.8em}
 }
@@ -779,6 +790,7 @@ body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-se
   <div class="hstat">
     <div><div class="k">Señal</div><div class="v" id="link"><span class="dot wait" id="ldot"></span><span id="ltxt">Esperando</span></div></div>
     <div class="opt"><div class="k">Turnos</div><div class="v num" id="hturns">0</div></div>
+    <div><div class="k">Moneda</div><div class="v"><button type="button" class="mon" id="monbtn" title="Cambiar a dólares" aria-label="Moneda: euros. Cambiar a dólares"><span id="monv">€</span><i aria-hidden="true">⇄</i></button></div></div>
     <div><div class="k">Reloj</div><div class="v num" id="clock">--:--:--</div></div>
   </div>
 </header>
@@ -825,7 +837,7 @@ body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-se
 
   <section class="pnl" id="p-cost"><div class="in">
     <div class="ph"><span class="t">Coste</span></div>
-    <div class="cost num" id="coste"><span id="costev">0.0000</span><small>USD</small></div>
+    <div class="cost num" id="coste"><span id="costev">0,00 €</span></div>
     <div class="sub" id="clast">Sin turnos todavía</div>
     <div class="k">Modelo de la sesión</div>
     <div class="mdl" id="modelo">—</div>
@@ -834,7 +846,7 @@ body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-se
   <section class="pnl" id="p-comp"><div class="in">
     <div class="ph"><span class="t">Comparativa · Haiku frente a Opus</span><span class="r num" id="cpct">sin estimación</span></div>
     <div class="cpb">
-      <span class="k" title="Suma del coste de los turnos contados; el panel Coste incluye además lo gastado antes de abrir el HUD">Real en turnos</span><span class="v num" id="cvreal">0.0000 USD</span><div class="cbar real"><i id="cbreal"></i></div>
+      <span class="k" title="Suma del coste de los turnos contados; el panel Coste incluye además lo gastado antes de abrir el HUD">Real en turnos</span><span class="v num" id="cvreal">0,00 €</span><div class="cbar real"><i id="cbreal"></i></div>
       <span class="k opus">Si todo fuera Opus</span><span class="v num" id="cvopus">—</span><div class="cbar opus"><i id="cbopus"></i></div>
     </div>
     <div class="cah num" id="cah"><span id="cahm">sin datos de Opus todavía</span><span id="caho" hidden><span id="cahl">Ahorro</span> <b id="caha"></b> · <b id="cahp"></b><span id="cahs"></span></span></div>
@@ -853,9 +865,9 @@ body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-se
     <div class="ph"><span class="t">Acumulado</span><span class="r num" id="acdesde">sin datos todavía</span></div>
     <div class="acb">
       <div class="kv">
-        <span class="k">Hoy</span><span class="v num"><b id="achoy">0.0000 USD</b><i id="achoyt">0 turnos</i><i class="tk" id="achoyk"></i></span>
-        <span class="k">Esta semana</span><span class="v num"><b id="acsem">0.0000 USD</b><i id="acsemt">0 turnos</i><i class="tk" id="acsemk"></i></span>
-        <span class="k">Total</span><span class="v num"><b id="actot">0.0000 USD</b><i id="actott">0 turnos</i><i class="tk" id="actotk"></i></span>
+        <span class="k">Hoy</span><span class="v num"><b id="achoy">0,00 €</b><i id="achoyt">0 turnos</i><i class="tk" id="achoyk"></i></span>
+        <span class="k">Esta semana</span><span class="v num"><b id="acsem">0,00 €</b><i id="acsemt">0 turnos</i><i class="tk" id="acsemk"></i></span>
+        <span class="k">Total</span><span class="v num"><b id="actot">0,00 €</b><i id="actott">0 turnos</i><i class="tk" id="actotk"></i></span>
       </div>
       <div class="acs"><div class="k">Últimas sesiones</div><ol class="acl" id="acses"><li class="vacia">Sin sesiones guardadas todavía</li></ol></div>
     </div>
@@ -871,7 +883,7 @@ body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-se
     <div class="ph"><span class="t">Últimos turnos</span><span class="r num" id="hcount">0</span></div>
     <div class="tblw">
       <table id="hist">
-        <thead><tr><th class="al-l h-hora w-hora">Hora</th><th class="al-l">Agente</th><th class="al-l w-mdl">Modelo</th><th class="w-tok">Tokens</th><th class="w-usd">USD</th></tr></thead>
+        <thead><tr><th class="al-l h-hora w-hora">Hora</th><th class="al-l">Agente</th><th class="al-l w-mdl">Modelo</th><th class="w-tok">Tokens</th><th class="w-usd">Coste (<span id="hmon">€</span>)</th></tr></thead>
         <tbody id="hrows"><tr><td colspan="5" class="empty-row">Sin turnos todavía</td></tr></tbody>
       </table>
     </div>
@@ -913,6 +925,16 @@ var IDIOMA='es',LOC='es-ES';
 ` + IDIOMA_JS + `
 /*FIN IDIOMA*/
 function tr(s){return traducir(s,EN)}
+// Moneda (opciones moneda y tipoCambio y botón de la cabecera). El coste llega en dólares; dinero() es el único sitio que
+// lo convierte para mostrarlo y lee la moneda activa (MONEDA). importe() solo da formato a una cifra ya convertida (eje).
+/*DINERO*/
+var MONEDA='EUR',TIPO=0.92;
+` + MONEDA_JS + `
+function aMoneda(usd){return convertirMoneda(usd,MONEDA,TIPO)}
+function importe(v){return formatoMoneda(v,MONEDA,LOC)}
+function dinero(usd){return importe(aMoneda(usd))}
+function simbolo(){return simboloMoneda(MONEDA)}
+/*FIN DINERO*/
 function tx(s){return IDIOMA==='en'?tr(s):String(s)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function n(x){return Number(x||0).toLocaleString(LOC)}
@@ -1021,10 +1043,11 @@ function renderChart(d){
   if(key===CHART)return;
   CHART=key;
   var hasC=hs.some(function(t){return t.coste!=null});
-  var L=60,R=hasC?62:12,T=10,B=26;
+  var L=60,R=hasC?86:12,T=10,B=26;
   var iw=W-L-R,ih=H-T-B;
   var mx=hs.reduce(function(a,t){return Math.max(a,t.entrada+t.salida)},0);
-  var cm=hs.reduce(function(a,t){return Math.max(a,t.coste||0)},0);
+  // Coste en la moneda activa (una conversión por turno); el eje se marca con importe(), ya convertido.
+  var cm=hs.reduce(function(a,t){return Math.max(a,t.coste!=null?aMoneda(t.coste):0)},0);
   function nice(v){if(v<=0)return 1;var p=Math.pow(10,Math.floor(Math.log(v)/Math.LN10)),f=v/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p}
   var top=mx>0?nice(mx):1000,ctop=cm>0?nice(cm):0;
   var s='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">';
@@ -1033,7 +1056,7 @@ function renderChart(d){
     s+='<line x1="'+L+'" x2="'+(L+iw)+'" y1="'+y+'" y2="'+y+'" stroke="'+(i?'rgba(127,231,255,.12)':'rgba(127,231,255,.45)')+'" stroke-width="1" '+(i?'stroke-dasharray="2 4"':'')+'/>';
     if(i%2===0){
       s+='<text x="'+(L-8)+'" y="'+(y+5)+'" text-anchor="end">'+kn(top*i/4)+'</text>';
-      if(ctop)s+='<text x="'+(L+iw+8)+'" y="'+(y+5)+'" style="fill:#eaffff">'+(ctop*i/4).toFixed(ctop<0.1?3:2)+'</text>';
+      if(ctop)s+='<text x="'+(L+iw+8)+'" y="'+(y+5)+'" style="fill:#eaffff">'+importe(ctop*i/4)+'</text>';
     }
   }
   if(!hs.length){
@@ -1046,11 +1069,11 @@ function renderChart(d){
     var x=L+slot*j+(slot-bw)/2;
     var hi=ih*t.entrada/top,ho=ih*t.salida/top;
     var y0=T+ih;
-    s+='<g><title>'+esc(hhmm(t.hora)+' · '+t.agente+' · '+t.modelo+tx(' · entrada ')+n(t.entrada)+tx(' · salida ')+n(t.salida)+(t.coste!=null?' · '+Number(t.coste).toFixed(4)+' USD':''))+'</title>'+
+    s+='<g><title>'+esc(hhmm(t.hora)+' · '+t.agente+' · '+t.modelo+tx(' · entrada ')+n(t.entrada)+tx(' · salida ')+n(t.salida)+(t.coste!=null?' · '+dinero(t.coste):''))+'</title>'+
       '<rect class="bar" x="'+x.toFixed(1)+'" y="'+(y0-hi).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,hi).toFixed(1)+'" fill="'+c+'" fill-opacity=".38" stroke="'+c+'" stroke-opacity=".7" stroke-width="1"/>'+
       '<rect class="bar" x="'+x.toFixed(1)+'" y="'+(y0-hi-ho).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,ho).toFixed(1)+'" fill="'+c+'" style="filter:drop-shadow(0 0 3px '+c+')"/></g>';
     if(j%every===0||j===hs.length-1)s+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+(j+1)+'</text>';
-    if(ctop&&t.coste!=null)pts.push((x+bw/2).toFixed(1)+','+(T+ih-ih*t.coste/ctop).toFixed(1));
+    if(ctop&&t.coste!=null)pts.push((x+bw/2).toFixed(1)+','+(T+ih-ih*aMoneda(t.coste)/ctop).toFixed(1));
   });
   if(pts.length>1)s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="#f4feff" stroke-width="1.8" style="filter:drop-shadow(0 0 3px rgba(127,231,255,.7))"/>';
   pts.forEach(function(p){var q=p.split(',');s+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="2.6" fill="#070b10" stroke="#f4feff" stroke-width="1.4"/>'});
@@ -1060,7 +1083,7 @@ function renderChart(d){
   var fams={};hs.forEach(function(t){fams[t.familia||fam(t.modelo)]=1});
   var lg=Object.keys(fams).map(function(f){return '<span><i style="--c:'+col(f)+'"></i>'+FAM[f]+'</span>'}).join('');
   lg+='<span>'+tx('tono claro: entrada; intenso: salida')+'</span>';
-  if(ctop)lg+='<span><i class="ln" style="--c:var(--txt)"></i>'+tx('USD por turno')+'</span>';
+  if(ctop)lg+='<span><i class="ln" style="--c:var(--txt)"></i>'+tx('Coste por turno')+' ('+simbolo()+')</span>';
   $id('clegend').innerHTML=lg;
 }
 
@@ -1079,11 +1102,11 @@ function renderHist(d){
     ponAttr(k[1],'title',t.agente);ponTexto(k[1],t.agente);
     ponAttr(k[2],'title',t.modelo);ponEstilo(k[2],'--c',c);ponTexto(k[2].firstChild,FAM[f]||f);
     ponTexto(k[3],kn(t.entrada+t.salida));
-    ponTexto(k[4],t.coste!=null?Number(t.coste).toFixed(4):'—');
+    ponTexto(k[4],t.coste!=null?dinero(t.coste):'—');
   });
   if(hs.length)firstRender=false;
   var last=d.historial&&d.historial[d.historial.length-1];
-  ponTexto($id('clast'),last&&last.coste!=null?(tx('Último turno')+' ≈ '+Number(last.coste).toFixed(4)+' USD'):tx(last?'Último turno sin coste':'Sin turnos todavía'));
+  ponTexto($id('clast'),last&&last.coste!=null?(tx('Último turno')+' ≈ '+dinero(last.coste)):tx(last?'Último turno sin coste':'Sin turnos todavía'));
 }
 
 function filaAgente(){
@@ -1106,8 +1129,8 @@ function renderAgents(d){
   });
 }
 
-// Acumulado entre sesiones (historico.json). Las cifras vienen hechas en datos.js; sin bloque (historico = false) el panel no se ve.
-function usd(x){x=Number(x||0);return x.toFixed(x>=100?2:4)+' USD'}
+// Acumulado entre sesiones (historico.json). Las cifras vienen hechas en datos.js, en dólares, y se muestran con dinero() en la
+// moneda activa; sin bloque (historico = false) el panel no se ve.
 function nTurnos(x){return n(x)+tx(x===1?' turno':' turnos')}
 function dur(ms){var m=Math.round(Number(ms||0)/60000);if(m<1)return '< 1 min';if(m<60)return m+' min';var h=Math.floor(m/60),r=m%60;return h+' h'+(r?' '+(r<10?'0':'')+r+' min':'')}
 function fecha(t){var d=new Date(t);return d.toLocaleDateString(LOC,{day:'numeric',month:'short'})+' · '+d.toLocaleTimeString(LOC,{hour:'2-digit',minute:'2-digit'})}
@@ -1122,7 +1145,7 @@ function renderAcum(d){
   ponTexto($id('acdesde'),a.desde?tx('desde ')+new Date(a.desde).toLocaleDateString(LOC,{day:'numeric',month:'short',year:'numeric'})+' · '+n(ses)+tx(ses===1?' sesión':' sesiones'):tx('sin datos todavía'));
   [['achoy','hoy'],['acsem','semana'],['actot','total']].forEach(function(p){
     var c=a[p[1]]||{};
-    ponTexto($id(p[0]),usd(c.coste));
+    ponTexto($id(p[0]),dinero(c.coste||0));
     ponTexto($id(p[0]+'t'),nTurnos(c.turnos||0));
     ponTexto($id(p[0]+'k'),'· '+kn((c.entrada||0)+(c.salida||0))+' tokens');
     ponAttr($id(p[0]).parentNode,'title',tx('entrada ')+n(c.entrada)+tx(' · salida ')+n(c.salida)+tx(' · caché ')+n(c.cache));
@@ -1135,7 +1158,7 @@ function renderAcum(d){
     ver(k[0].lastChild,!!x.actual);
     ponAttr(k[0],'title',(x.modelo||'')+' · '+nTurnos(x.turnos||0));
     ponTexto(k[1],dur(x.duracion));
-    ponTexto(k[2],usd(x.coste));
+    ponTexto(k[2],dinero(x.coste||0));
   });
 }
 
@@ -1147,15 +1170,15 @@ function renderComp(d){
   ponClase($id('p-comp'),'nodata',!ok);
   ponEstilo($id('cbreal'),'width',(ok?(mx>0?real*100/mx:0):(real>0?100:0)).toFixed(1)+'%');
   ponEstilo($id('cbopus'),'width',(ok&&mx>0?est*100/mx:0).toFixed(1)+'%');
-  ponTexto($id('cvreal'),real.toFixed(4)+' USD');
-  ponTexto($id('cvopus'),ok?est.toFixed(4)+' USD':'—');
+  ponTexto($id('cvreal'),dinero(real));
+  ponTexto($id('cvopus'),ok?dinero(est):'—');
   var ah=ok?Number(c.ahorro||0):0,ap=ok?Number(c.ahorroPct||0):0;
   ponTexto($id('cpct'),tx(ok?(ah>=0?'ahorro '+pc(ap)+' %':'sin ahorro'):'sin estimación'));
   ver($id('cahm'),!ok);ver($id('caho'),ok);
   ponTexto($id('cahm'),tx(c&&c.motivo?c.motivo:'sin datos de Opus todavía'));
   if(ok){
     ponTexto($id('cahl'),tx(ah>=0?'Ahorro':'Diferencia'));
-    ponTexto($id('caha'),ah.toFixed(4)+' USD');
+    ponTexto($id('caha'),dinero(ah));
     ponTexto($id('cahp'),pc(ap)+' %');
     ponTexto($id('cahs'),tx(ah>=0?' menos que todo en Opus':': en tus turnos Haiku no salió más barato'));
   }
@@ -1169,7 +1192,7 @@ function renderComp(d){
   lista($id('ctk'),ts.length?ts:VACIA,function(x){return x.vacia?'vacia':x.familia},function(x){return x.vacia?mk('span','',tx('Sin turnos todavía')):mk('span','','<i></i><span></span> <b></b><span></span>')},function(e,x){
     if(x.vacia)return;
     var k=e.children;
-    ponEstilo(k[0],'--c',col(x.familia));ponTexto(k[1],FAM[x.familia]||x.familia);ponTexto(k[2],kn(x.tokens));ponTexto(k[3],tx(' tokens con caché')+' · '+Number(x.coste||0).toFixed(4)+' USD');
+    ponEstilo(k[0],'--c',col(x.familia));ponTexto(k[1],FAM[x.familia]||x.familia);ponTexto(k[2],kn(x.tokens));ponTexto(k[3],tx(' tokens con caché')+' · '+dinero(x.coste||0));
   });
 }
 
@@ -1254,6 +1277,7 @@ $id('pll').addEventListener('toggle',function(){try{localStorage.setItem(PKEY,$i
 //   idioma: es o en (etiquetas, fechas y números).
 //   actualizacion: segundos entre lecturas de datos.js (1 a 5).
 //   paneles: los que no están se ocultan y el resto se recoloca sin huecos.
+//   moneda y tipoCambio: moneda es solo la inicial (EUR por defecto); si el botón ya eligió una, manda la del botón.
 var TEMAS=['natural','hibrido','mark-ii','mark-l','stark','claro'],ACENTO_DEF='#7fe7ff';
 var PANEL_ID={contexto:'p-ctx',coste:'p-cost',reparto:'p-mod',agentes:'p-agt',historial:'p-hist',grafica:'p-chart',comparativa:'p-comp',plan:'p-plan'};
 var CFG='',ESTATICOS=null;
@@ -1300,7 +1324,29 @@ function aplicaConfig(c){
   // Las disposiciones con nombre se rellenan solas sin huecos: la rejilla de pn-sel es solo para auto.
   if(VISTA.disposicion!=='auto')todos=true;
   ponClase(document.body,'pn-sel',!todos);
+  var tc=Number(c.tipoCambio);if(!(tc>0&&isFinite(tc)))tc=0.92;
+  var mon=MONEDA_ELEGIDA||(c.moneda==='USD'?'USD':'EUR');
+  if(mon!==MONEDA||tc!==TIPO){MONEDA=mon;TIPO=tc;CHART=''}
+  ponMoneda();
 }
+// Botón de moneda: cambia la moneda activa, la recuerda (try/catch: sin almacenamiento sigue funcionando) y vuelve a pintar
+// todos los costes con los datos que ya hay (lastData, en dólares): cada cifra se convierte una sola vez, en dinero().
+var MKEY='consumo.moneda',MONEDA_ELEGIDA=null;
+(function(){var v=null;try{v=localStorage.getItem(MKEY)}catch(e){}if(v==='EUR'||v==='USD'){MONEDA_ELEGIDA=v;MONEDA=v}})();
+function ponMoneda(){
+  var b=$id('monbtn'),eur=MONEDA!=='USD';
+  ponTexto($id('monv'),simbolo());ponTexto($id('hmon'),simbolo());
+  ponAttr(b,'title',tx(eur?'Cambiar a dólares':'Cambiar a euros'));
+  ponAttr(b,'aria-label',tx(eur?'Moneda: euros. Cambiar a dólares':'Moneda: dólares. Cambiar a euros'));
+}
+function cambiaMoneda(){
+  MONEDA=MONEDA_ELEGIDA=otraMoneda(MONEDA);
+  try{localStorage.setItem(MKEY,MONEDA)}catch(e){}
+  ponMoneda();
+  CHART='';FIRMA='';
+  if(lastData)render(lastData);
+}
+$id('monbtn').addEventListener('click',cambiaMoneda);
 
 // Colocación (opciones disposicion, orden, tamanos, escala y ocultos): llega en datos.js como vista, ya validada.
 // Solo pone atributos (data-disposicion, data-t1, data-pocos y data-foco en <html>; data-puesto, data-zona, data-area y
@@ -1364,7 +1410,7 @@ function render(d){
   ponLugar();
   renderCtx(d);
   renderPlan(d);
-  tween('costev',Number(d.coste||0),function(v){return v.toFixed(4)});
+  tween('costev',Number(d.coste||0),dinero);
   ponTexto($id('modelo'),d.modelo||'—');
   renderComp(d);
   renderModels(d);

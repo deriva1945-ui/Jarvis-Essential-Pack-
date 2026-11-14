@@ -4,7 +4,7 @@
 
 **Español** · [English](#en)
 
-Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens. Seis temas de color (por defecto `natural`: grafito cálido con un solo acento, sin neón, con el globo y el anillo 3D), con la barra del plan arriba y una comparativa de Haiku frente a Opus. El comando `/jarvis` abre o cierra el HUD, y las opciones de [Personalización](#es-personalizacion) cambian tema, acento, idioma, ritmo de lectura y paneles visibles.
+Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens. Seis temas de color (por defecto `natural`: grafito cálido con un solo acento, sin neón, con el globo y el anillo 3D), con la barra del plan arriba y una comparativa de Haiku frente a Opus. El comando `/jarvis` abre o cierra el HUD, y las opciones de [Personalización](#es-personalizacion) cambian tema, acento, idioma, ritmo de lectura, paneles visibles y moneda (euros por defecto; un botón de la cabecera pasa a dólares y vuelve).
 
 ![HUD de consumo](../images/consumo-1920x1080.jpg)
 
@@ -14,7 +14,7 @@ Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y t
 - Arriba, una barra de progreso del plan de Claude (las tareas que crea y actualiza), con la lista plegable.
 - Contexto usado y su porcentaje, coste acumulado y tokens por agente y por modelo.
 - Reparto del trabajo entre modelos, gráfica de tokens por turno y los últimos 20 turnos.
-- **Comparativa Haiku frente a Opus:** lo que costó la sesión y lo que habría costado si el trabajo enviado a Haiku hubiera ido a Opus, con el coste por token de tus propios turnos. Muestra el ahorro en USD y en %. Necesita más de 1000 tokens de cada modelo; si no, pone "sin datos de Opus todavía" (o de Haiku) y no estima nada.
+- **Comparativa Haiku frente a Opus:** lo que costó la sesión y lo que habría costado si el trabajo enviado a Haiku hubiera ido a Opus, con el coste por token de tus propios turnos. Muestra el ahorro en la moneda del HUD (euros por defecto) y en %. Necesita más de 1000 tokens de cada modelo; si no, pone "sin datos de Opus todavía" (o de Haiku) y no estima nada.
 - **Acumulado entre sesiones:** guarda el consumo en `historico.json` y muestra el total desde el primer uso, el de hoy, el de esta semana y las últimas sesiones con su coste y su duración. Cerrar Claude Code no lo borra (ver [Histórico entre sesiones](#es-historico)).
 - **Comando `/jarvis`:** abre el HUD si está cerrado y lo cierra si está abierto.
 - Avisa cuando el contexto pasa del **70 %** y del **85 %**: por encima del 85 % el HUD entero pasa a rojo de alerta.
@@ -53,7 +53,7 @@ Se adapta al tamaño de la ventana (cada panel se ajusta además por dentro seg�
 
 - **Real:** la suma del coste de los turnos de la sesión.
 - **Todo en Opus:** el coste real, cambiando lo que costó Haiku por sus tokens al precio por token que ha tenido Opus en tus turnos.
-- **Ahorro:** la diferencia, en USD y en %.
+- **Ahorro:** la diferencia, en la moneda del HUD y en %.
 - Debajo, los tokens y el coste de cada modelo (Fable, Haiku, Opus…).
 - Es una estimación: el caché y la mezcla de entrada y salida cambian el precio real por token. Un turno sin coste conocido no cuenta para el precio por token.
 
@@ -156,6 +156,8 @@ Además de `dataDir`, el HUD tiene estas opciones. Todas salvo `historico` y `re
 | `idioma` | `es`, `en` | `es` | Idioma de las etiquetas, la hora y los números del HUD. Los nombres de agentes, modelos y tareas no se traducen. |
 | `actualizacion` | número de segundos, de 1 a 5 | `1` | Cada cuánto la página vuelve a leer `datos.js`. |
 | `paneles` | lista con `contexto`, `coste`, `reparto`, `agentes`, `historial`, `grafica`, `comparativa`, `plan` | todos | Paneles visibles. Si quitas alguno, los demás se recolocan sin huecos (en el orden del HUD). |
+| `moneda` | `EUR`, `USD` | `EUR` | Moneda inicial de todos los costes (panel Coste, último turno, comparativa, acumulado, gráfica, tablas y tooltips). El botón de moneda de la cabecera la cambia al vuelo; ver [Moneda y tipo de cambio](#es-moneda). Con `USD` se ven los dólares tal como los da Claude Code, sin convertir. |
+| `tipoCambio` | número mayor que 0: euros por 1 dólar | `0.92` | Tipo de cambio para pasar a euros: coste en € = coste en $ × `tipoCambio` (con `0.92`, 1 USD son 0,92 €). Solo se usa cuando la moneda activa es `EUR`. |
 | `historico` | `true`, `false` | `true` | Guarda el consumo entre sesiones en `historico.json` y muestra el bloque Acumulado. Con `false` no se lee ni se escribe nada. No va en `config` de `datos.js`: lo usa solo el mod. |
 | `retencionDias` | número entero de días, de 1 a 3650 | `365` | Días que el histórico guarda uno a uno; los anteriores se suman en un total. No va en `config` de `datos.js`. |
 
@@ -176,6 +178,20 @@ Valores que no valen:
 - En `paneles`, los nombres desconocidos se ignoran con un aviso; si no queda ninguno válido se muestran todos.
 - `tema` e `idioma` solo aceptan los valores de la tabla; Claude Code trata cualquier otro como no puesto y aplica el defecto.
 - La opción `densidad` de versiones anteriores ya no existe. Si sigue en tu configuración, se ignora sin aviso y el HUD carga igual.
+- Si `moneda` no es `EUR` ni `USD`, o `tipoCambio` no es un número mayor que 0, se usa el defecto y queda un aviso en el log.
+
+<a id="es-moneda"></a>
+### Moneda y tipo de cambio
+
+Claude Code da el coste de la sesión en dólares. consumo lo guarda siempre en dólares (también en `datos.js` y en `historico.json`) y la página lo convierte solo al mostrarlo, una vez por cifra, con una sola función (`dinero()`). Con la moneda en `EUR` (el defecto) cada importe se multiplica por `tipoCambio` y se escribe con el formato de moneda del idioma: en español `1.234,56 €` (el símbolo detrás), en inglés `€1,234.56`. Por debajo de 1 € se ven 4 decimales (`0,1234 €`), o 2 si ya es exacto (`0,92 €`); desde 1 €, 2 decimales. Las cabeceras, la leyenda de la gráfica y los tooltips llevan el símbolo de la moneda activa (`€` o `US$`).
+
+**Botón de moneda.** En la cabecera, junto al reloj, el botón `€ ⇄` cambia entre euros y dólares (`US$`) al momento, sin recargar: todas las cifras de coste se vuelven a pintar con los mismos datos. La opción `moneda` es solo el valor inicial; la elección del botón se recuerda en ese navegador (si el navegador no deja guardar, el botón funciona igual y al abrir de nuevo vuelve a `moneda`). Se usa con ratón o con teclado (Tab y Enter o Espacio), con el foco visible.
+
+`tipoCambio` vale `0.92` por defecto (1 USD = 0,92 €), pero es solo un **valor de referencia**: el plugin no lo consulta en internet y el tipo de cambio real varía cada día. Actualízalo tú cuando quieras que las cifras en euros se acerquen al cambio del momento:
+
+```sh
+echo '{"moneda": "EUR", "tipoCambio": 0.86}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
 
 Para cambiarlas en un mod instalado:
 
@@ -306,7 +322,7 @@ Opens a live HUD window with what the session spends: context, cost and tokens. 
 - At the top, a progress bar for Claude's plan (the tasks it creates and updates), with a collapsible list.
 - Context used and its percentage, total cost, and tokens per agent and per model.
 - How work is split between models, a tokens-per-turn chart, and the last 20 turns.
-- **Haiku versus Opus comparison:** what the session cost and what it would have cost if the work sent to Haiku had gone to Opus, using the cost per token of your own turns. It shows the saving in USD and %. It needs more than 1000 tokens from each model; otherwise it shows "sin datos de Opus todavía" (no Opus data yet, or Haiku) and estimates nothing.
+- **Haiku versus Opus comparison:** what the session cost and what it would have cost if the work sent to Haiku had gone to Opus, using the cost per token of your own turns. It shows the saving in the HUD currency (euros by default) and %. It needs more than 1000 tokens from each model; otherwise it shows "sin datos de Opus todavía" (no Opus data yet, or Haiku) and estimates nothing.
 - **Accumulated across sessions:** saves usage in `historico.json` and shows the total since first use, today, this week and the latest sessions with their cost and length. Closing Claude Code does not erase it (see [History across sessions](#en-history)).
 - **`/jarvis` command:** opens the HUD when it is closed and closes it when it is open.
 - It warns when context goes over **70 %** and **85 %**: above 85 % the whole HUD turns alert red.
@@ -345,7 +361,7 @@ It adapts to the window size (and each panel also adjusts inside to its own widt
 
 - **Real (Real):** the sum of the session's turn costs.
 - **All on Opus (Todo en Opus):** the real cost, with what Haiku cost replaced by its tokens at the per-token price Opus had in your turns.
-- **Saving (Ahorro):** the difference, in USD and %.
+- **Saving (Ahorro):** the difference, in the HUD currency and %.
 - Below, the tokens and cost of each model (Fable, Haiku, Opus…).
 - It is an estimate: cache and the mix of input and output change the real price per token. A turn with no known cost does not count toward the price per token.
 
@@ -448,6 +464,8 @@ Besides `dataDir`, the HUD has these options. All but `historico` and `retencion
 | `idioma` | `es`, `en` | `es` | Language of the HUD labels, time and numbers. Agent, model and task names are not translated. |
 | `actualizacion` | number of seconds, 1 to 5 | `1` | How often the page re-reads `datos.js`. |
 | `paneles` | list of `contexto`, `coste`, `reparto` (split), `agentes` (agents), `historial` (history), `grafica` (chart), `comparativa` (comparison), `plan` | all | Visible panels. If you hide some, the rest move up with no gaps (in the HUD's own order). |
+| `moneda` | `EUR`, `USD` | `EUR` | Starting currency for every cost on the HUD (Cost panel, last turn, comparison, accumulated, chart, tables and tooltips). The currency button in the header switches it on the fly; see [Currency and exchange rate](#en-currency). With `USD` you see the dollars exactly as Claude Code reports them, unconverted. |
+| `tipoCambio` | number above 0: euros per 1 dollar | `0.92` | Exchange rate to euros: cost in € = cost in $ × `tipoCambio` (with `0.92`, 1 USD is €0.92). Only used while the active currency is `EUR`. |
 | `historico` | `true`, `false` | `true` | Saves usage across sessions in `historico.json` and shows the Accumulated block. With `false` nothing is read or written. Not part of `config` in `datos.js`: only the mod uses it. |
 | `retencionDias` | whole number of days, 1 to 3650 | `365` | Days the history keeps one by one; older days are added into one total. Not part of `config` in `datos.js`. |
 
@@ -468,6 +486,20 @@ Invalid values:
 - In `paneles`, unknown names are ignored with a warning; if none is valid, every panel is shown.
 - `tema` and `idioma` only take the values in the table; Claude Code treats any other value as unset and applies the default.
 - The `densidad` option from earlier versions is gone. If it is still in your settings it is ignored without a warning and the HUD loads as usual.
+- If `moneda` is not `EUR` or `USD`, or `tipoCambio` is not a number above 0, the default is used and a warning is logged.
+
+<a id="en-currency"></a>
+### Currency and exchange rate
+
+Claude Code reports the session cost in dollars. consumo always stores it in dollars (also in `datos.js` and `historico.json`) and the page converts it only when showing it, once per figure, in a single function (`dinero()`). With the currency on `EUR` (the default) each amount is multiplied by `tipoCambio` and written in the language's currency format: Spanish `1.234,56 €` (symbol after), English `€1,234.56`. Below €1 you see 4 decimals (`€0.1234`), or 2 when that is already exact (`€0.92`); from €1, 2 decimals. Headers, the chart legend and tooltips carry the active currency symbol (`€` or `US$`).
+
+**Currency button.** In the header, next to the clock, the `€ ⇄` button switches between euros and dollars (`US$`) instantly, without reloading: every cost figure is redrawn from the same data. The `moneda` option is only the starting value; the button's choice is remembered in that browser (if the browser blocks storage the button still works and the next time the HUD opens it goes back to `moneda`). It works with the mouse or the keyboard (Tab, then Enter or Space), with a visible focus ring.
+
+`tipoCambio` defaults to `0.92` (1 USD = €0.92), but it is only a **reference value**: the plugin does not look it up online and the real rate changes every day. Update it yourself when you want the euro figures closer to the current rate:
+
+```sh
+echo '{"moneda": "EUR", "tipoCambio": 0.86}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
 
 To change them in an installed mod:
 
