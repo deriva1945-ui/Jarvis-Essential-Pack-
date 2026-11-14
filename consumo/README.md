@@ -4,7 +4,7 @@
 
 **Español** · [English](#en)
 
-Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens. Siete temas de color (por defecto `monocromo`: blanco, grises y negro, sin color de acento, con el globo y el anillo 3D en grises; los demás, como `natural`, se eligen con la opción `tema`), con la barra del plan arriba y una comparativa de Haiku frente a Opus. El comando `/jarvis` abre o cierra el HUD, y las opciones de [Personalización](#es-personalizacion) cambian tema, acento, idioma, ritmo de lectura, paneles visibles y moneda (euros por defecto).
+Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens. Siete temas de color (por defecto `monocromo`: blanco, grises y negro, sin color de acento, con el globo y el anillo 3D en grises; los demás, como `natural`, se eligen con la opción `tema`), con la barra del plan arriba y una comparativa de Haiku frente a Opus. El comando `/jarvis` abre o cierra el HUD, y las opciones de [Personalización](#es-personalizacion) cambian tema, acento, idioma, ritmo de lectura, paneles visibles, moneda (euros por defecto; un botón de la cabecera pasa a dólares y vuelve) y la disposición de los paneles (nueve disposiciones).
 
 ![HUD de consumo](../images/consumo-1920x1080.jpg)
 
@@ -156,8 +156,8 @@ Además de `dataDir`, el HUD tiene estas opciones. Todas salvo `historico` y `re
 | `idioma` | `es`, `en` | `es` | Idioma de las etiquetas, la hora y los números del HUD. Los nombres de agentes, modelos y tareas no se traducen. |
 | `actualizacion` | número de segundos, de 1 a 5 | `1` | Cada cuánto la página vuelve a leer `datos.js`. |
 | `paneles` | lista con `contexto`, `coste`, `reparto`, `agentes`, `historial`, `grafica`, `comparativa`, `plan` | todos | Paneles visibles. Si quitas alguno, los demás se recolocan sin huecos (en el orden del HUD). |
-| `moneda` | `EUR`, `USD` | `EUR` | Moneda en la que se muestran todos los costes (panel Coste, último turno, comparativa, gráfica y tablas). Con `USD` se ven los dólares tal como los da Claude Code, sin convertir. |
-| `tipoCambio` | número mayor que 0: euros por 1 dólar | `0.92` | Tipo de cambio para pasar a euros: coste en € = coste en $ × `tipoCambio` (con `0.92`, 1 USD son 0,92 €). Solo se usa con `moneda` = `EUR`. |
+| `moneda` | `EUR`, `USD` | `EUR` | Moneda inicial de todos los costes (panel Coste, último turno, comparativa, acumulado, gráfica, tablas y tooltips). El botón de moneda de la cabecera la cambia al vuelo; ver [Moneda y tipo de cambio](#es-moneda). Con `USD` se ven los dólares tal como los da Claude Code, sin convertir. |
+| `tipoCambio` | número mayor que 0: euros por 1 dólar | `0.92` | Tipo de cambio para pasar a euros: coste en € = coste en $ × `tipoCambio` (con `0.92`, 1 USD son 0,92 €). Solo se usa cuando la moneda activa es `EUR`. |
 | `historico` | `true`, `false` | `true` | Guarda el consumo entre sesiones en `historico.json` y muestra el bloque Acumulado. Con `false` no se lee ni se escribe nada. No va en `config` de `datos.js`: lo usa solo el mod. |
 | `retencionDias` | número entero de días, de 1 a 3650 | `365` | Días que el histórico guarda uno a uno; los anteriores se suman en un total. No va en `config` de `datos.js`. |
 
@@ -181,18 +181,18 @@ Valores que no valen:
 - La opción `densidad` de versiones anteriores ya no existe. Si sigue en tu configuración, se ignora sin aviso y el HUD carga igual.
 - Si `moneda` no es `EUR` ni `USD`, o `tipoCambio` no es un número mayor que 0, se usa el defecto y queda un aviso en el log.
 
+<a id="es-moneda"></a>
 ### Moneda y tipo de cambio
 
-Claude Code da el coste de la sesión en dólares. consumo lo guarda siempre en dólares (también en `datos.js`) y la página lo convierte solo al mostrarlo, una vez por cifra. Con `moneda` = `EUR` (el defecto) cada importe se multiplica por `tipoCambio` y se escribe con el formato de moneda del idioma: en español `1.234,56 €` (el símbolo detrás), en inglés `€1,234.56`. Por debajo de 1 € se ven hasta 4 decimales (`0,1234 €`); desde 1 €, 2 decimales.
+Claude Code da el coste de la sesión en dólares. consumo lo guarda siempre en dólares (también en `datos.js` y en `historico.json`) y la página lo convierte solo al mostrarlo, una vez por cifra, con una sola función (`dinero()`). Con la moneda en `EUR` (el defecto) cada importe se multiplica por `tipoCambio` y se escribe con el formato de moneda del idioma: en español `1.234,56 €` (el símbolo detrás), en inglés `€1,234.56`. Por debajo de 1 € se ven 4 decimales (`0,1234 €`), o 2 si ya es exacto (`0,92 €`); desde 1 €, 2 decimales. Las cabeceras, la leyenda de la gráfica y los tooltips llevan el símbolo de la moneda activa (`€` o `US$`).
 
-`tipoCambio` vale `0.92` por defecto, pero es solo un **valor de referencia**: el plugin no lo consulta en internet y el tipo de cambio real varía cada día. Actualízalo tú cuando quieras que las cifras en euros se acerquen al cambio del momento:
+**Botón de moneda.** En la cabecera, junto al reloj, el botón `€ ⇄` cambia entre euros y dólares (`US$`) al momento, sin recargar: todas las cifras de coste se vuelven a pintar con los mismos datos. La opción `moneda` es solo el valor inicial; la elección del botón se recuerda en ese navegador (si el navegador no deja guardar, el botón funciona igual y al abrir de nuevo vuelve a `moneda`). Se usa con ratón o con teclado (Tab y Enter o Espacio), con el foco visible.
+
+`tipoCambio` vale `0.92` por defecto (1 USD = 0,92 €), pero es solo un **valor de referencia**: el plugin no lo consulta en internet y el tipo de cambio real varía cada día. Actualízalo tú cuando quieras que las cifras en euros se acerquen al cambio del momento:
 
 ```sh
-claude plugin configure consumo@jarvis-essential-pack
 echo '{"moneda": "EUR", "tipoCambio": 0.86}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
 ```
-
-Para volver a dólares, pon `"moneda": "USD"`. Como el resto de opciones, el HUD aplica el cambio en cuanto `datos.js` lleva la configuración nueva; no hace falta recalcular nada, porque lo guardado sigue en dólares.
 
 Para cambiarlas en un mod instalado:
 
@@ -224,6 +224,72 @@ También aparecen en `/config` dentro de Claude Code. Si cargas el mod con `--pl
 }
 ```
 
+## Disposición, orden y tamaño de la ventana
+
+Seis opciones más deciden dónde va cada panel. Las cinco primeras van a `datos.js` en el campo `vista` (ya validadas) y la página las aplica sin recargar: solo cambia atributos (`data-disposicion` en `<html>`, `data-puesto`, `data-zona` y `data-tam` en cada panel) y CSS. El orden de los paneles en el HTML no cambia, la lectura de datos sigue igual (sin parpadeo) y el tema, el acento, el idioma, la densidad automática, el movimiento reducido y el globo 3D funcionan con todas las disposiciones.
+
+| Opción | Valores | Por defecto | Qué cambia |
+| --- | --- | --- | --- |
+| `disposicion` | `auto`, `columna`, `franja`, `tres-columnas`, `nucleo-central`, `barra-lateral`, `barra-inferior`, `mosaico`, `foco` | `auto` | Cómo se colocan los paneles (ver la lista de abajo). |
+| `orden` | lista con `contexto`, `coste`, `comparativa`, `reparto`, `agentes`, `plan`, `historico`, `historial`, `grafica` | ese mismo orden | Orden en que se muestran. Los que no nombres van detrás, en el orden por defecto. Los primeros ocupan los puestos destacados de la disposición (el centro en `nucleo-central`, la barra en `barra-lateral` o `barra-inferior`, los dos grandes en `foco`). `historico` es el bloque Acumulado (también vale `acumulado`) e `historial`, los últimos turnos. |
+| `tamanos` | lista de `panel:tamaño`, con tamaño `pequeno`, `normal` o `grande` (p. ej. `["contexto:grande", "historico:pequeno"]`) | todos en `normal` | Cuántas columnas ocupa cada panel. En `mosaico` también cambia el alto (pequeño: media baldosa; grande: el doble de ancho y de alto); en `columna` y en la lista de `foco`, grande es más alto. El tamaño del primer puesto cambia el ancho del centro en `nucleo-central`, de la barra en `barra-lateral` y de los dos grandes en `foco`. En `auto` no se aplica. |
+| `escala` | número de 0.8 a 1.4 | `1` | Multiplica el tamaño del texto y el espaciado. El texto nunca baja de 14 px, ni con 0.8. |
+| `ocultos` | lista con los mismos nombres que `orden` | ninguno | Paneles que no se muestran. Se suma a `paneles`. El resto se recoloca sin huecos en cualquier disposición. |
+| `ventana` | `auto`, `pequena` (420 x 860), `mediana` (900 x 700), `grande` (1280 x 800), `completa` (maximizada) | `auto` | Tamaño de la ventana de Edge (o Chrome) al abrir el HUD. No va en `datos.js`: el mod lo añade a la línea del navegador. |
+
+Las disposiciones (todas sin desplazamiento horizontal de 320 px a 4K; por debajo de 560 px de ancho todas quedan en una columna):
+
+- `auto`: la de siempre, que cambia sola con el tamaño de la ventana (en el tema natural, la franja de resumen).
+- `columna`: todo en una columna centrada. `pequeno` pone dos paneles por fila.
+- `franja`: resumen arriba (los tres primeros puestos en una fila) y el detalle debajo, en dos o tres columnas.
+- `tres-columnas`: tres columnas iguales (dos entre 560 y 1199 px).
+- `nucleo-central`: el globo (primer puesto) al centro, con los puestos 2 a 5 a los lados; el resto debajo. Desde 900 px.
+- `barra-lateral`: columna estrecha a la izquierda con los tres primeros puestos (el contexto arriba) y el resto a la derecha. Desde 900 px.
+- `barra-inferior`: el resumen (tres primeros puestos) en una fila al pie que se queda fija al desplazar, desde 900 x 700 px y si ninguno de ellos es `grande`.
+- `mosaico`: baldosas del mismo tamaño (tres por fila desde 1200 px, dos por debajo).
+- `foco`: contexto y coste grandes (dos primeros puestos); el resto en una lista plegable con el botón «Más paneles». Abierta o cerrada se recuerda en ese navegador.
+
+Valores que no valen: `escala` fuera de 0.8–1.4 usa 1; en `orden`, `tamanos` y `ocultos` los nombres o entradas desconocidos se ignoran; `ocultos` con todos los paneles los muestra todos. En todos los casos queda un aviso en el log (`consumo: ...`) al empezar la sesión. `disposicion` y `ventana` solo aceptan los valores de la tabla: Claude Code trata cualquier otro como no puesto y aplica `auto`; si el valor llega por otra vía (un `settings.json` editado a mano), el mod también usa `auto` y deja el aviso.
+
+Para cambiarlas en un mod instalado, igual que las demás:
+
+```
+claude plugin configure consumo@jarvis-essential-pack
+```
+
+```
+echo '{"disposicion": "nucleo-central", "orden": ["contexto", "coste"], "tamanos": ["contexto:grande", "historico:pequeno"], "escala": 1.1, "ocultos": ["plan"], "ventana": "mediana"}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
+
+Con `--plugin-dir`, en `~/.claude/settings.json` (en `tamanos` también vale un objeto):
+
+```json
+{
+  "pluginConfigs": {
+    "consumo": {
+      "options": {
+        "disposicion": "barra-lateral",
+        "orden": ["contexto", "coste", "comparativa", "grafica"],
+        "tamanos": { "contexto": "grande", "historico": "pequeno" },
+        "escala": 1.2,
+        "ocultos": ["historial"],
+        "ventana": "grande"
+      }
+    }
+  }
+}
+```
+
+### Tamaño fijo de la ventana
+
+Con `ventana` distinta de `auto`, el mod abre el HUD con `cmd /c start "" msedge --app=file:///.../index.html --window-size=900,700` (o `--start-maximized` con `completa`). Chromium escribe el tamaño como `ancho,alto`, con coma. Si prefieres abrirlo a mano con otro tamaño, usa la misma línea con tus números:
+
+```
+msedge --app=file:///C:/Users/<tú>/CLAUDE/consumo/index.html --window-size=1600,900
+```
+
+Edge solo hace caso a `--window-size` cuando crea la ventana: si ya hay una ventana de ese HUD abierta, o Edge recuerda el tamaño de la última vez, puede quedarse con ese. No se ha probado en Windows.
+
 ## Qué no hace / límites
 
 - Abrir la ventana solo funciona en Windows: usa `cmd /c start` con Edge o Chrome. En otros sistemas los datos se escriben igual en la carpeta de datos y puedes abrir `index.html` a mano.
@@ -247,7 +313,7 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE).
 
 [Español](#es) · **English**
 
-Opens a live HUD window with what the session spends: context, cost and tokens. Seven colour themes (by default `monocromo`: white, greys and black with no accent colour, 3D globe and ring in greys; the others, such as `natural`, are picked with the `tema` option), with the plan bar at the top and a Haiku versus Opus comparison. The `/jarvis` command opens or closes the HUD, and the [Customisation](#en-customisation) options change theme, accent, language, refresh rate, visible panels and currency (euros by default).
+Opens a live HUD window with what the session spends: context, cost and tokens. Seven colour themes (by default `monocromo`: white, greys and black with no accent colour, 3D globe and ring in greys; the others, such as `natural`, are picked with the `tema` option), with the plan bar at the top and a Haiku versus Opus comparison. The `/jarvis` command opens or closes the HUD, and the [Customisation](#en-customisation) options change theme, accent, language, refresh rate, visible panels, currency (euros by default; a header button switches to dollars and back) and the panel layout (nine layouts).
 
 ![consumo HUD](../images/consumo-1920x1080.jpg)
 
@@ -399,8 +465,8 @@ Besides `dataDir`, the HUD has these options. All but `historico` and `retencion
 | `idioma` | `es`, `en` | `es` | Language of the HUD labels, time and numbers. Agent, model and task names are not translated. |
 | `actualizacion` | number of seconds, 1 to 5 | `1` | How often the page re-reads `datos.js`. |
 | `paneles` | list of `contexto`, `coste`, `reparto` (split), `agentes` (agents), `historial` (history), `grafica` (chart), `comparativa` (comparison), `plan` | all | Visible panels. If you hide some, the rest move up with no gaps (in the HUD's own order). |
-| `moneda` | `EUR`, `USD` | `EUR` | Currency for every cost on the HUD (Cost panel, last turn, comparison, chart and tables). With `USD` you see the dollars exactly as Claude Code reports them, unconverted. |
-| `tipoCambio` | number above 0: euros per 1 dollar | `0.92` | Exchange rate to euros: cost in € = cost in $ × `tipoCambio` (with `0.92`, 1 USD is €0.92). Only used when `moneda` is `EUR`. |
+| `moneda` | `EUR`, `USD` | `EUR` | Starting currency for every cost on the HUD (Cost panel, last turn, comparison, accumulated, chart, tables and tooltips). The currency button in the header switches it on the fly; see [Currency and exchange rate](#en-currency). With `USD` you see the dollars exactly as Claude Code reports them, unconverted. |
+| `tipoCambio` | number above 0: euros per 1 dollar | `0.92` | Exchange rate to euros: cost in € = cost in $ × `tipoCambio` (with `0.92`, 1 USD is €0.92). Only used while the active currency is `EUR`. |
 | `historico` | `true`, `false` | `true` | Saves usage across sessions in `historico.json` and shows the Accumulated block. With `false` nothing is read or written. Not part of `config` in `datos.js`: only the mod uses it. |
 | `retencionDias` | whole number of days, 1 to 3650 | `365` | Days the history keeps one by one; older days are added into one total. Not part of `config` in `datos.js`. |
 
@@ -424,18 +490,18 @@ Invalid values:
 - The `densidad` option from earlier versions is gone. If it is still in your settings it is ignored without a warning and the HUD loads as usual.
 - If `moneda` is not `EUR` or `USD`, or `tipoCambio` is not a number above 0, the default is used and a warning is logged.
 
+<a id="en-currency"></a>
 ### Currency and exchange rate
 
-Claude Code reports the session cost in dollars. consumo always stores it in dollars (also in `datos.js`) and the page converts it only when showing it, once per figure. With `moneda` set to `EUR` (the default) every amount is multiplied by `tipoCambio` and written in the currency format of the HUD language: in Spanish `1.234,56 €` (symbol after the number), in English `€1,234.56`. Below €1 you see up to 4 decimals (`€0.1234`); from €1 up, 2 decimals.
+Claude Code reports the session cost in dollars. consumo always stores it in dollars (also in `datos.js` and `historico.json`) and the page converts it only when showing it, once per figure, in a single function (`dinero()`). With the currency on `EUR` (the default) each amount is multiplied by `tipoCambio` and written in the language's currency format: Spanish `1.234,56 €` (symbol after), English `€1,234.56`. Below €1 you see 4 decimals (`€0.1234`), or 2 when that is already exact (`€0.92`); from €1, 2 decimals. Headers, the chart legend and tooltips carry the active currency symbol (`€` or `US$`).
 
-`tipoCambio` defaults to `0.92`, but it is only a **reference value**: the plugin does not look it up online and the real exchange rate changes every day. Update it yourself whenever you want the euro figures to match the current rate:
+**Currency button.** In the header, next to the clock, the `€ ⇄` button switches between euros and dollars (`US$`) instantly, without reloading: every cost figure is redrawn from the same data. The `moneda` option is only the starting value; the button's choice is remembered in that browser (if the browser blocks storage the button still works and the next time the HUD opens it goes back to `moneda`). It works with the mouse or the keyboard (Tab, then Enter or Space), with a visible focus ring.
+
+`tipoCambio` defaults to `0.92` (1 USD = €0.92), but it is only a **reference value**: the plugin does not look it up online and the real rate changes every day. Update it yourself when you want the euro figures closer to the current rate:
 
 ```sh
-claude plugin configure consumo@jarvis-essential-pack
 echo '{"moneda": "EUR", "tipoCambio": 0.86}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
 ```
-
-To go back to dollars, set `"moneda": "USD"`. Like the other options, the HUD applies it as soon as `datos.js` carries the new config; nothing is recalculated, because the stored figures stay in dollars.
 
 To change them in an installed mod:
 
@@ -466,6 +532,72 @@ They also show up in `/config` inside Claude Code. If you load the mod with `--p
   }
 }
 ```
+
+## Layout, order and window size
+
+Six more options decide where each panel goes. The first five go into `datos.js` under the `vista` field (already validated) and the page applies them without reloading: it only changes attributes (`data-disposicion` on `<html>`, `data-puesto`, `data-zona` and `data-tam` on each panel) and CSS. The panels' order in the HTML never changes, data reading stays the same (no flicker), and the theme, accent, language, automatic density, reduced motion and the 3D globe work with every layout.
+
+| Option | Values | Default | What it changes |
+| --- | --- | --- | --- |
+| `disposicion` | `auto`, `columna`, `franja`, `tres-columnas`, `nucleo-central`, `barra-lateral`, `barra-inferior`, `mosaico`, `foco` | `auto` | How the panels are laid out (see the list below). |
+| `orden` | list with `contexto`, `coste`, `comparativa`, `reparto`, `agentes`, `plan`, `historico`, `historial`, `grafica` | that same order | Display order. Panels you leave out follow in the default order. The first ones take the layout's featured spots (the centre in `nucleo-central`, the bar in `barra-lateral` or `barra-inferior`, the two large ones in `foco`). `historico` is the Accumulated block (`acumulado` also works) and `historial` the latest turns. |
+| `tamanos` | list of `panel:size`, with size `pequeno` (small), `normal` or `grande` (large), e.g. `["contexto:grande", "historico:pequeno"]` | all `normal` | How many columns each panel takes. In `mosaico` it also changes the height (small: half a tile; large: twice as wide and tall); in `columna` and in the `foco` list, large is taller. The size of the first spot changes the width of the centre in `nucleo-central`, of the bar in `barra-lateral` and of the two large panels in `foco`. Not applied in `auto`. |
+| `escala` | number from 0.8 to 1.4 | `1` | Multiplies text size and spacing. Text never goes below 14 px, not even at 0.8. |
+| `ocultos` | list with the same names as `orden` | none | Panels that are not shown. It adds to `paneles`. The rest are rearranged without gaps in any layout. |
+| `ventana` | `auto`, `pequena` (420 x 860), `mediana` (900 x 700), `grande` (1280 x 800), `completa` (maximised) | `auto` | Size of the Edge (or Chrome) window when the HUD opens. Not in `datos.js`: the mod adds it to the browser command line. |
+
+The layouts (all without horizontal scrolling from 320 px to 4K; below 560 px wide they all become one column):
+
+- `auto`: the usual one, which changes by itself with the window size (in the natural theme, the summary band).
+- `columna`: everything in one centred column. `pequeno` puts two panels per row.
+- `franja`: summary on top (the first three spots in one row) and the detail below, in two or three columns.
+- `tres-columnas`: three equal columns (two between 560 and 1199 px).
+- `nucleo-central`: the globe (first spot) in the centre, with spots 2 to 5 on both sides; the rest below. From 900 px.
+- `barra-lateral`: narrow left column with the first three spots (the context on top) and the rest on the right. From 900 px.
+- `barra-inferior`: the summary (first three spots) in a bottom row that stays fixed while scrolling, from 900 x 700 px and if none of them is `grande`.
+- `mosaico`: tiles of the same size (three per row from 1200 px, two below).
+- `foco`: context and cost large (first two spots); the rest in a folding list behind the “More panels” button. Open or closed is remembered in that browser.
+
+Invalid values: `escala` outside 0.8–1.4 uses 1; in `orden`, `tamanos` and `ocultos` unknown names or entries are ignored; `ocultos` with every panel shows them all. Each case logs a warning (`consumo: ...`) when the session starts. `disposicion` and `ventana` only accept the values in the table: Claude Code treats anything else as unset and applies `auto`; if the value arrives another way (a hand-edited `settings.json`), the mod also uses `auto` and logs the warning.
+
+To change them in an installed mod, like the others:
+
+```
+claude plugin configure consumo@jarvis-essential-pack
+```
+
+```
+echo '{"disposicion": "nucleo-central", "orden": ["contexto", "coste"], "tamanos": ["contexto:grande", "historico:pequeno"], "escala": 1.1, "ocultos": ["plan"], "ventana": "mediana"}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
+
+With `--plugin-dir`, in `~/.claude/settings.json` (`tamanos` also accepts an object):
+
+```json
+{
+  "pluginConfigs": {
+    "consumo": {
+      "options": {
+        "disposicion": "barra-lateral",
+        "orden": ["contexto", "coste", "comparativa", "grafica"],
+        "tamanos": { "contexto": "grande", "historico": "pequeno" },
+        "escala": 1.2,
+        "ocultos": ["historial"],
+        "ventana": "grande"
+      }
+    }
+  }
+}
+```
+
+### Fixed window size
+
+With `ventana` other than `auto`, the mod opens the HUD with `cmd /c start "" msedge --app=file:///.../index.html --window-size=900,700` (or `--start-maximized` with `completa`). Chromium writes the size as `width,height`, with a comma. If you would rather open it by hand at another size, use the same line with your numbers:
+
+```
+msedge --app=file:///C:/Users/<you>/CLAUDE/consumo/index.html --window-size=1600,900
+```
+
+Edge only honours `--window-size` when it creates the window: if a window of this HUD is already open, or Edge remembers the size from last time, it may keep that one. Not tested on Windows.
 
 ## What it does not do / limits
 

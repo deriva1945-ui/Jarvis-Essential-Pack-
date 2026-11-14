@@ -1,7 +1,7 @@
 {
   "name": "consumo",
-  "version": "0.8.0",
-  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus, histórico entre sesiones (hoy, semana, total y últimas sesiones) y comando /jarvis para abrirlo o cerrarlo. Siete temas (monocromo por defecto: blanco, grises y negro, sin acento, con el globo 3D en grises; también natural, grafito cálido sin neón), costes en euros o dólares, sin parpadeo, con densidad automática según el tamaño de la ventana y configurable (tema, acento, idioma, actualización, paneles, moneda e histórico).",
+  "version": "0.10.0",
+  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus, histórico entre sesiones (hoy, semana, total y últimas sesiones) y comando /jarvis para abrirlo o cerrarlo. Siete temas (monocromo por defecto: blanco, grises y negro, sin acento, con el globo 3D en grises; también natural, grafito cálido sin neón), costes en euros o dólares (botón en la cabecera), sin parpadeo, con densidad automática según el tamaño de la ventana, nueve disposiciones y configurable (tema, acento, idioma, actualización, paneles, histórico, moneda, tipo de cambio, disposición, orden, tamaño de cada panel, escala y tamaño de la ventana).",
   "author": {
     "name": "deriva1945-ui"
   },
@@ -65,6 +65,22 @@
         "plan"
       ]
     },
+    "moneda": {
+      "type": "string",
+      "title": "Moneda / Currency",
+      "description": "Moneda inicial en la que el HUD muestra el coste: EUR (euros, convertidos con tipoCambio) o USD (dólares, tal como los da Claude Code). El botón de moneda de la cabecera la cambia al vuelo y recuerda la elección en ese navegador. Por defecto: EUR. / Starting currency the HUD shows the cost in: EUR (euros, converted with tipoCambio) or USD (dollars, as Claude Code reports them). The currency button in the header switches it on the fly and remembers the choice in that browser. Default: EUR.",
+      "options": [
+        "EUR",
+        "USD"
+      ],
+      "default": "EUR"
+    },
+    "tipoCambio": {
+      "type": "number",
+      "title": "Tipo de cambio (€ por $) / Exchange rate (€ per $)",
+      "description": "Euros que vale 1 dólar, para mostrar el coste en EUR (0.92 = 1 USD son 0,92 €). Es un valor de referencia fijo: el plugin no lo consulta en internet y el tipo de cambio real varía, así que actualízalo tú cuando quieras. Por defecto: 0.92. / Euros per 1 US dollar, used to show the cost in EUR (0.92 = 1 USD is €0.92). It is a fixed reference value: the plugin does not look it up online and the real rate changes, so update it yourself. Default: 0.92.",
+      "default": 0.92
+    },
     "historico": {
       "type": "boolean",
       "title": "Histórico entre sesiones / History across sessions",
@@ -77,21 +93,72 @@
       "description": "Días que el histórico guarda uno a uno, de 1 a 3650. Los más antiguos se suman en un total y siguen contando en el acumulado. Por defecto: 365. / Days the history keeps one by one, 1 to 3650. Older days are added into one total and still count in the accumulated figures. Default: 365.",
       "default": 365
     },
-    "moneda": {
+    "disposicion": {
       "type": "string",
-      "title": "Moneda / Currency",
-      "description": "Moneda en la que el HUD muestra el coste: EUR (euros, convertidos con tipoCambio) o USD (dólares, tal como los da Claude Code). Por defecto: EUR. / Currency the HUD shows the cost in: EUR (euros, converted with tipoCambio) or USD (dollars, as Claude Code reports them). Default: EUR.",
+      "title": "Disposición / Layout",
+      "description": "Cómo se colocan los paneles: auto (según el tamaño de la ventana), columna (todo en una columna), franja (resumen arriba y el detalle debajo), tres-columnas, nucleo-central (el globo al centro con paneles a los lados), barra-lateral (columna estrecha a la izquierda con el contexto arriba), barra-inferior (el resumen en una fila fija al pie), mosaico (baldosas iguales) o foco (contexto y coste grandes, el resto en una lista plegable). Por defecto: auto. / How the panels are laid out: auto (by window size), columna (one column), franja (summary band on top, detail below), tres-columnas (three columns), nucleo-central (globe in the centre with panels on both sides), barra-lateral (narrow left column with the context on top), barra-inferior (summary in a fixed bottom row), mosaico (equal tiles) or foco (context and cost large, the rest in a folding list). Default: auto.",
       "options": [
-        "EUR",
-        "USD"
+        "auto",
+        "columna",
+        "franja",
+        "tres-columnas",
+        "nucleo-central",
+        "barra-lateral",
+        "barra-inferior",
+        "mosaico",
+        "foco"
       ],
-      "default": "EUR"
+      "default": "auto"
     },
-    "tipoCambio": {
+    "orden": {
+      "type": "string",
+      "multiple": true,
+      "title": "Orden de los paneles / Panel order",
+      "description": "Orden en que se muestran los paneles: contexto, coste, comparativa, reparto, agentes, plan, historico (Acumulado), historial (últimos turnos), grafica. Los que no nombres van detrás en este orden; los primeros ocupan los puestos destacados de la disposición. Los nombres desconocidos se ignoran con un aviso. Por defecto: el de la lista. / Order in which the panels are shown: contexto (context), coste (cost), comparativa (Haiku vs Opus), reparto (split by model), agentes (agents), plan, historico (accumulated), historial (latest turns), grafica (chart). Panels you leave out follow in this order; the first ones take the layout's featured spots. Unknown names are ignored with a warning. Default: the order listed.",
+      "default": [
+        "contexto",
+        "coste",
+        "comparativa",
+        "reparto",
+        "agentes",
+        "plan",
+        "historico",
+        "historial",
+        "grafica"
+      ]
+    },
+    "tamanos": {
+      "type": "string",
+      "multiple": true,
+      "title": "Tamaño de cada panel / Panel sizes",
+      "description": "Tamaño de los paneles que quieras cambiar, como panel:tamaño (por ejemplo contexto:grande o historico:pequeno), con tamaño pequeno, normal o grande. Cambia cuántas columnas ocupa el panel (en mosaico, también su alto); en auto no se aplica. Las entradas que no valen se ignoran con un aviso. Por defecto: todos en normal. / Size of the panels you want to change, as panel:size (for example contexto:grande or historico:pequeno), with size pequeno (small), normal or grande (large). It changes how many columns the panel takes (in mosaico, its height too); not applied in auto. Invalid entries are ignored with a warning. Default: all normal.",
+      "default": []
+    },
+    "escala": {
       "type": "number",
-      "title": "Tipo de cambio (€ por $) / Exchange rate (€ per $)",
-      "description": "Euros que vale 1 dólar, para mostrar el coste en EUR (0.92 = 1 USD son 0,92 €). Es un valor de referencia fijo: el plugin no lo consulta en internet y el tipo de cambio real varía, así que actualízalo tú cuando quieras. Por defecto: 0.92. / Euros per 1 US dollar, used to show the cost in EUR (0.92 = 1 USD is €0.92). It is a fixed reference value: the plugin does not look it up online and the real rate changes, so update it yourself. Default: 0.92.",
-      "default": 0.92
+      "title": "Escala / Scale",
+      "description": "Multiplica el tamaño del texto y el espaciado, de 0.8 a 1.4; el texto nunca baja de 14 px. Fuera de ese rango se usa el defecto y se deja un aviso en el log. Por defecto: 1. / Multiplies the text size and spacing, 0.8 to 1.4; text never goes below 14 px. Out of range falls back to the default and logs a warning. Default: 1.",
+      "default": 1
+    },
+    "ocultos": {
+      "type": "string",
+      "multiple": true,
+      "title": "Paneles ocultos / Hidden panels",
+      "description": "Paneles que no se muestran (mismos nombres que orden); el resto se recoloca sin huecos en cualquier disposición. Se suma a la opción paneles. Por defecto: ninguno. / Panels that are not shown (same names as orden); the rest are rearranged without gaps in any layout. It adds to the paneles option. Default: none.",
+      "default": []
+    },
+    "ventana": {
+      "type": "string",
+      "title": "Tamaño de la ventana / Window size",
+      "description": "Tamaño de la ventana de Edge (o Chrome) al abrir el HUD: auto (la que elija el navegador), pequena (420 x 860), mediana (900 x 700), grande (1280 x 800) o completa (maximizada). Se pasa como --window-size o --start-maximized. Un valor que no se reconoce usa auto con un aviso. Por defecto: auto. / Size of the Edge (or Chrome) window when the HUD opens: auto (the browser's choice), pequena (420 x 860), mediana (900 x 700), grande (1280 x 800) or completa (maximised). Passed as --window-size or --start-maximized. An unknown value falls back to auto with a warning. Default: auto.",
+      "options": [
+        "auto",
+        "pequena",
+        "mediana",
+        "grande",
+        "completa"
+      ],
+      "default": "auto"
     }
   },
   "types": "./types/index.d.ts"

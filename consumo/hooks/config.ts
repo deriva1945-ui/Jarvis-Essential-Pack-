@@ -17,6 +17,7 @@ export const CONFIG_DEFAULT: HudConfig = {
   idioma: 'es',
   actualizacion: 1,
   paneles: [...PANELES],
+  // Moneda inicial del HUD (el botón de la cabecera la cambia al vuelo).
   moneda: 'EUR',
   // Euros por dólar: valor de referencia, no se consulta en ningún sitio. El usuario lo actualiza.
   tipoCambio: 0.92,

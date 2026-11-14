@@ -30,5 +30,20 @@ export function formatoMoneda(valor: number, moneda: string, locale: string): st
   }
 }
 
+// Símbolo de la moneda para cabeceras, leyendas y la etiqueta del botón: € o US$ (USD solo con moneda = USD).
+export function simboloMoneda(moneda: string): string {
+  return moneda === 'USD' ? 'US$' : '€'
+}
+
+// La otra moneda: lo que hace el botón de la cabecera (EUR pasa a USD y USD a EUR).
+export function otraMoneda(moneda: string): 'EUR' | 'USD' {
+  return moneda === 'USD' ? 'EUR' : 'USD'
+}
+
 // El bloque que se pega en la página.
-export const MONEDA_JS = ['var convertirMoneda=(' + String(convertirMoneda) + ');', 'var formatoMoneda=(' + String(formatoMoneda) + ');'].join('\n')
+export const MONEDA_JS = [
+  'var convertirMoneda=(' + String(convertirMoneda) + ');',
+  'var formatoMoneda=(' + String(formatoMoneda) + ');',
+  'var simboloMoneda=(' + String(simboloMoneda) + ');',
+  'var otraMoneda=(' + String(otraMoneda) + ');',
+].join('\n')
