@@ -5,6 +5,31 @@ Format based on Keep a Changelog. Versions follow SemVer.
 
 Cada versión del pack agrupa las versiones de los mods que cambian. · Each pack version groups the mod versions that change.
 
+## [0.5.0] - 2026-11-14
+
+Pack `jarvis-essential-pack` 0.5.0: consumo 0.10.0 con las disposiciones y el botón de moneda, repaso interno del código de los otros cuatro mods (portero 0.2.1, resumen-sesion 0.2.1, jarvis-banda 0.3.1 y mods-estado 0.4.1) e imágenes al día. · consumo 0.10.0 with layouts and the currency button, an internal code tidy-up of the other four mods (portero 0.2.1, resumen-sesion 0.2.1, jarvis-banda 0.3.1 and mods-estado 0.4.1) and up-to-date images.
+
+### consumo 0.10.0
+
+Agrupa las versiones 0.9.0 (disposiciones) y 0.10.0 (botón de moneda) del HUD. · Groups HUD versions 0.9.0 (layouts) and 0.10.0 (currency button).
+
+- **ES:** **Nueve disposiciones** de los paneles con la opción `disposicion`: `auto` (la de siempre, por defecto), `columna`, `franja`, `tres-columnas`, `nucleo-central`, `barra-lateral`, `barra-inferior`, `mosaico` y `foco`. Nuevas opciones `orden`, `tamanos` (`panel:pequeno|normal|grande`), `escala` (0.8 a 1.4), `ocultos` y `ventana` (tamaño de la ventana de Edge o Chrome: `auto`, `pequena`, `mediana`, `grande` o `completa`). La página solo cambia atributos y CSS: no rehace paneles ni parpadea. Un valor no válido usa el defecto y deja un aviso en el log.
+- **ES:** **Botón de moneda** en la cabecera (`€` / `US$`): cambia todos los costes entre euros y dólares al momento, sin recargar. La opción `moneda` es solo la inicial; la elección se recuerda en ese navegador (`localStorage`) y, si no se puede guardar, el botón funciona igual. Con euros no queda ninguna etiqueta `USD` en el HUD: leyenda de la gráfica y cabecera de la tabla llevan el símbolo de la moneda activa.
+- **ES:** Se mantienen el histórico entre sesiones, los euros por defecto (`tipoCambio` 0.92 de referencia), el tema `monocromo` por defecto, la densidad automática, el movimiento reducido, la señal corregida y el HUD sin parpadeo.
+- **EN:** **Nine panel layouts** with the `disposicion` option: `auto` (the usual one, by default), `columna`, `franja`, `tres-columnas`, `nucleo-central`, `barra-lateral`, `barra-inferior`, `mosaico` and `foco`. New options `orden`, `tamanos` (`panel:pequeno|normal|grande`), `escala` (0.8 to 1.4), `ocultos` and `ventana` (Edge or Chrome window size: `auto`, `pequena`, `mediana`, `grande` or `completa`). The page only changes attributes and CSS: no panel is rebuilt and nothing flickers. An invalid value uses the default and logs a warning.
+- **EN:** **Currency button** in the header (`€` / `US$`): switches every cost between euros and dollars at once, without reloading. The `moneda` option is only the starting value; the choice is remembered in that browser (`localStorage`) and the button still works if it cannot be saved. In euros no `USD` label is left on the HUD: the chart legend and the table header carry the symbol of the active currency.
+- **EN:** History across sessions, euros by default (`tipoCambio` 0.92 as reference), the `monocromo` default theme, automatic density, reduced motion, the fixed signal and the flicker-free HUD all stay.
+
+### portero 0.2.1, resumen-sesion 0.2.1, jarvis-banda 0.3.1 y mods-estado 0.4.1
+
+- **ES:** Repaso interno del código, sin cambios de comportamiento, textos ni opciones: helpers repetidos unificados, código y exports sin uso fuera, nombres de parámetros coherentes.
+- **EN:** Internal code tidy-up with no change in behaviour, text or options: repeated helpers merged, unused code and exports removed, consistent parameter names.
+
+### Imágenes · Images
+
+- **ES:** HUD (1920 × 1080, 900 × 600, 420 × 860, crítico, plan completo y comparativas) con el botón de moneda y el bloque Acumulado; las cuatro capturas de la banda con el modelo y el contexto en la línea; `/mods` y `/resumen` con su formato actual. Todas en blanco, grises y negro, con texto de 4,5:1 o más y menos de 500 KB. Los ejemplos de terminal y de banda son HTML y lo indican.
+- **EN:** HUD (1920 × 1080, 900 × 600, 420 × 860, critical, plan complete and comparisons) with the currency button and the Accumulated block; the four band images with the model and context on the line; `/mods` and `/resumen` in their current format. All in white, greys and black, with 4.5:1 text or more and under 500 KB. The terminal and band examples are HTML and say so.
+
 ## [0.4.0] - 2026-11-14
 
 Pack `jarvis-essential-pack` 0.4.0: portero 0.2.0, resumen-sesion 0.2.0, consumo 0.8.0, jarvis-banda 0.3.0 y mods-estado 0.4.0, todo en estética monocroma. · portero 0.2.0, resumen-sesion 0.2.0, consumo 0.8.0, jarvis-banda 0.3.0 and mods-estado 0.4.0, all in a monochrome look.
@@ -177,6 +202,8 @@ Primera publicación del pack `jarvis-essential-pack`. · First release of the `
 - **ES:** Comando `/mods`: ejecuta `claude plugin list`, marca los mods del pack y mira la copia local del pack (carpeta fija entonces; configurable desde 0.3.0).
 - **EN:** `/mods` command: runs `claude plugin list`, marks the pack mods and checks the local copy of the pack (fixed folder then; configurable since 0.3.0).
 
+[0.5.0]: https://github.com/deriva1945-ui/portero-claude/tree/publicar-pack
+[0.4.0]: https://github.com/deriva1945-ui/portero-claude/commit/20b15f8
 [0.3.0]: https://github.com/deriva1945-ui/portero-claude/tree/main
 [0.2.0]: https://github.com/deriva1945-ui/portero-claude/commit/8d12284
 [0.1.0]: https://github.com/deriva1945-ui/portero-claude/commit/1bff027
