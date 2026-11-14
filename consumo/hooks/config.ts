@@ -1,11 +1,12 @@
 import type { PluginOptions } from 'claude-code'
 
-import type { HudConfig, HudIdioma, HudPanel, HudTema } from '../types'
+import type { HudConfig, HudIdioma, HudMoneda, HudPanel, HudTema } from '../types'
 
 // Opciones de personalización del HUD (userConfig de plugin.json). Los valores por defecto
 // tienen que coincidir con los "default" del manifiesto.
-export const TEMAS: readonly HudTema[] = ['mark-ii', 'mark-l', 'stark', 'hibrido', 'claro', 'natural']
+export const TEMAS: readonly HudTema[] = ['mark-ii', 'mark-l', 'stark', 'hibrido', 'claro', 'natural', 'monocromo']
 export const IDIOMAS: readonly HudIdioma[] = ['es', 'en']
+export const MONEDAS: readonly HudMoneda[] = ['EUR', 'USD']
 export const PANELES: readonly HudPanel[] = ['contexto', 'coste', 'reparto', 'agentes', 'historial', 'grafica', 'comparativa', 'plan']
 export const ACTUALIZACION_MIN = 1
 export const ACTUALIZACION_MAX = 5
@@ -16,6 +17,9 @@ export const CONFIG_DEFAULT: HudConfig = {
   idioma: 'es',
   actualizacion: 1,
   paneles: [...PANELES],
+  moneda: 'EUR',
+  // Euros por dólar: valor de referencia, no se consulta en ningún sitio. El usuario lo actualiza.
+  tipoCambio: 0.92,
 }
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
@@ -57,6 +61,20 @@ export function leerConfig(options: PluginOptions): { config: HudConfig; avisos:
       avisos.push(
         `actualizacion = ${texto(act)} está fuera de ${ACTUALIZACION_MIN}–${ACTUALIZACION_MAX} s; se usa ${CONFIG_DEFAULT.actualizacion}`,
       )
+  }
+
+  // Moneda: USD o EUR (se acepta en minúsculas). tipoCambio: número mayor que 0 (euros por dólar).
+  const mon = options['moneda']
+  if (mon !== undefined) {
+    const ok = typeof mon === 'string' ? MONEDAS.find(x => x === mon.trim().toUpperCase()) : undefined
+    if (ok !== undefined) c.moneda = ok
+    else avisos.push(`moneda = ${texto(mon)} no es válida (${MONEDAS.join(', ')}); se usa ${CONFIG_DEFAULT.moneda}`)
+  }
+  const tc = options['tipoCambio']
+  if (tc !== undefined) {
+    const n = typeof tc === 'number' ? tc : typeof tc === 'string' && tc.trim() !== '' ? Number(tc.trim().replace(',', '.')) : NaN
+    if (Number.isFinite(n) && n > 0) c.tipoCambio = n
+    else avisos.push(`tipoCambio = ${texto(tc)} no es un número mayor que 0; se usa ${CONFIG_DEFAULT.tipoCambio}`)
   }
 
   const pan = options['paneles']

@@ -19,9 +19,12 @@
 // Movimiento reducido (prefers-reduced-motion): sin animaciones ni transiciones; el globo y el anillo se quedan quietos y
 //   las cifras cambian sin deslizarse. Los datos se leen y se pintan igual.
 // Opciones del usuario (userConfig): llegan en datos.js como config y las aplica aplicaConfig(): tema, acento,
-// idioma (es / en), actualizacion (segundos entre lecturas) y paneles visibles.
+// idioma (es / en), actualizacion (segundos entre lecturas), paneles visibles, moneda (EUR / USD) y tipoCambio.
+// Moneda: el coste llega en dólares en datos.js y se queda así; la página lo convierte solo al mostrarlo, con dinero()
+// (convertirMoneda y formatoMoneda de moneda.ts), en todas las cifras de coste: panel Coste, último turno, comparativa,
+// gráfica, tablas y tooltips. Formato de moneda del idioma (es-ES 1.234,56 €; en €1,234.56), hasta 4 decimales por debajo de 1.
 // Temas (atributo data-tema en <html>, lo pone aplicaConfig con config.tema): natural (por defecto), hibrido (blanco-cian con anillo
-// ámbar), mark-ii, mark-l, stark y claro. El HTML sale con data-tema="natural".
+// ámbar), mark-ii, mark-l, stark, claro y monocromo (blanco, grises y negro, sin acento). El HTML sale con data-tema="natural".
 // Natural: grafito cálido sin neón, paneles opacos con filo de 1 px, cifras de tabla en monoespaciada y su propia distribución
 // (franja de resumen: contexto, coste y comparativa en una fila; el detalle debajo). Conserva el globo, el anillo y el núcleo 3D.
 // Cada tema es un bloque de variables CSS (--bg, --panel, --txt, --sub, --acc, --acc2, --warn, --crit, --ok, --modelo-*); rojo solo en alertas.
@@ -29,6 +32,7 @@
 // Fondo: degradado radial, nebulosa difuminada y rejilla de perspectiva que avanza despacio (sin ellas en compacto; quieta con movimiento reducido).
 import { DOM } from './dom'
 import { IDIOMA_JS } from './idioma'
+import { MONEDA_JS } from './moneda'
 import { LOGICA } from './senal'
 
 // Densidad automática: compacto con menos de 420 px de ancho o menos de 900 x 600 px de área útil; si no, cómodo.
@@ -134,6 +138,22 @@ html[data-tema="claro"]{
   --bg0:#f7faff;--bg1:#eef3f9;--bg2:#e1e9f3;--neb2-rgb:120,170,255;--shadow:rgba(20,40,80,.12);
   --glow:.3;--cristal:blur(12px);--globo-filtro:hue-rotate(14deg) saturate(1.6) brightness(.42);--globo-filtro-x:brightness(.8) saturate(1.4);
   color-scheme:light;
+}
+html[data-tema="monocromo"]{
+  /* Monocromo: solo blanco, grises y negro, sin ningún color de acento (la opción acento no se aplica). Paneles opacos
+     sin brillo ni cristal; el globo, el anillo inclinado y el núcleo siguen en 3D, en grises. Los avisos se distinguen por
+     tono y borde: alto con borde discontinuo; crítico invertido (blanco sobre negro), con doble borde y panel más claro. */
+  --bg:#000000;--bg-rgb:0,0,0;--panel:#111111;--txt:#ffffff;--sub:#b5b5b5;
+  --acc:#e6e6e6;--acc-rgb:230,230,230;--acc2:#ffffff;--acc2-rgb:255,255,255;
+  --warn:#cfcfcf;--warn-rgb:207,207,207;--crit:#fafafa;--crit-rgb:250,250,250;--crit-txt:#ffffff;--ok:#dedede;
+  --modelo-opus:#f2f2f2;--modelo-haiku:#a3a3a3;--modelo-fable:#c9c9c9;--modelo-otro:#8a8a8a;
+  --ring1:#ffffff;--ring2:#9a9a9a;--ring-rgb:200,200,200;
+  --glass:#111111;--glass2:#0b0b0b;--thbg:#111111;--track:#262626;--mix:#ffffff;
+  --bg0:#050505;--bg1:#000000;--bg2:#0b0b0b;--neb2-rgb:160,160,160;--shadow:rgba(0,0,0,.6);
+  --glow:0;--cristal:none;--globo-filtro:grayscale(1);--globo-filtro-x:grayscale(1);
+  --globo-rgb:205,205,205;--globo-rgb-w:232,232,232;--globo-rgb-x:255,255,255;
+  --borde:#3a3a3a;--borde-2:#5c5c5c;
+  color-scheme:dark;
 }
 /* Derivados: se calculan con las variables del tema activo. Los nombres cortos (--ce, --wh, --wn, --rd, --f-*) los usa el script. */
 :root{
@@ -364,7 +384,7 @@ td.al-l{white-space:normal;overflow-wrap:anywhere}
 td.h-hora{white-space:nowrap}
 html[lang="en"] .w-hora{width:7.8em}
 th .sh{display:none}
-.w-hora{width:6.2em}.w-mdl{width:6.5em}.w-tok{width:6em}.w-usd{width:5.8em}.w-trn{width:6.4em}.w-share{width:11em}
+.w-hora{width:6.2em}.w-mdl{width:6.5em}.w-tok{width:6em}.w-usd{width:7.2em}.w-trn{width:6.4em}.w-share{width:11em}
 tbody tr:hover td{background:rgba(var(--acc-rgb),.05)}
 td .ftag{color:var(--c);letter-spacing:.06em}
 td.dimc{color:var(--sub)}
@@ -471,7 +491,7 @@ footer .line{flex:1;align-self:center;height:1px;background:linear-gradient(90de
   .share .seg,th .lg{display:none}
   th .sh{display:inline}
   th,td{padding-left:5px;padding-right:5px}
-  .w-mdl{width:6.4em}.w-tok{width:6.2em}.w-usd{width:6.2em}.w-share{width:4em}
+  .w-mdl{width:6.4em}.w-tok{width:6.2em}.w-usd{width:6.8em}.w-share{width:4em}
   .share .sv{min-width:0}
   .pll li i{width:6.8em}
 }
@@ -539,6 +559,18 @@ html[data-tema="claro"] body.lv-x:before{animation-name:alarm-claro}
 @keyframes alarm-claro{0%,100%{opacity:.4}50%{opacity:.8}}
 /* Mark L: reflejo de cristal en el borde superior de cada panel. */
 html[data-tema="mark-l"] .pnl>.in{background:linear-gradient(180deg,rgba(255,255,255,.045),transparent 38%)}
+/* Monocromo. Sin nebulosa ni escaneo; las filas sin datos en el gris de las etiquetas (sin transparencia, para el contraste).
+   Aviso alto: borde discontinuo. Crítico: alerta invertida, doble borde en el panel de contexto, panel más claro y arco más grueso. */
+html[data-tema="monocromo"] .neb,html[data-tema="monocromo"] .scan{display:none}
+html[data-tema="monocromo"] .cmp .zero,html[data-tema="monocromo"] .cmp .zero b,html[data-tema="monocromo"] #p-comp.nodata .cpb .opus,html[data-tema="monocromo"] #p-comp.nodata #cvopus{opacity:1;color:var(--sub)}
+html[data-tema="monocromo"] .al{box-shadow:none!important}
+html[data-tema="monocromo"] #al-ctx.w{border-style:dashed;background:var(--bg)}
+html[data-tema="monocromo"] #al-ctx.x,html[data-tema="monocromo"] #al-sig{color:var(--bg);background:var(--crit);border:2px solid var(--crit);font-weight:700}
+html[data-tema="monocromo"] body.lv-w #p-ctx{outline:1px dashed var(--warn);outline-offset:3px}
+html[data-tema="monocromo"] body.lv-x #p-ctx{--glass:#1f1f1f;--glass2:#1a1a1a;outline:4px double var(--crit);outline-offset:3px}
+html[data-tema="monocromo"] body.lv-x #ctxstate{font-weight:700;text-decoration:underline}
+html[data-tema="monocromo"] body.lv-x #arc{stroke-width:4}
+html[data-tema="monocromo"] body:before{box-shadow:inset 0 0 110px rgba(var(--crit-rgb),.16)}
 
 /* Natural. Fondo liso, paneles opacos con filo de 1 px, etiquetas en minúscula, sin rejilla, escaneo, nebulosa
    ni esquinas. El 3D se queda: globo en canvas, anillo inclinado que gira (más despacio), marcas y núcleo. */
@@ -766,7 +798,7 @@ body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-se
 
   <section class="pnl" id="p-cost"><div class="in">
     <div class="ph"><span class="t">Coste</span></div>
-    <div class="cost num" id="coste"><span id="costev">0.0000</span><small>USD</small></div>
+    <div class="cost num" id="coste"><span id="costev">0,00 €</span></div>
     <div class="sub" id="clast">Sin turnos todavía</div>
     <div class="k">Modelo de la sesión</div>
     <div class="mdl" id="modelo">—</div>
@@ -775,7 +807,7 @@ body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-se
   <section class="pnl" id="p-comp"><div class="in">
     <div class="ph"><span class="t">Comparativa · Haiku frente a Opus</span><span class="r num" id="cpct">sin estimación</span></div>
     <div class="cpb">
-      <span class="k" title="Suma del coste de los turnos contados; el panel Coste incluye además lo gastado antes de abrir el HUD">Real en turnos</span><span class="v num" id="cvreal">0.0000 USD</span><div class="cbar real"><i id="cbreal"></i></div>
+      <span class="k" title="Suma del coste de los turnos contados; el panel Coste incluye además lo gastado antes de abrir el HUD">Real en turnos</span><span class="v num" id="cvreal">0,00 €</span><div class="cbar real"><i id="cbreal"></i></div>
       <span class="k opus">Si todo fuera Opus</span><span class="v num" id="cvopus">—</span><div class="cbar opus"><i id="cbopus"></i></div>
     </div>
     <div class="cah num" id="cah"><span id="cahm">sin datos de Opus todavía</span><span id="caho" hidden><span id="cahl">Ahorro</span> <b id="caha"></b> · <b id="cahp"></b><span id="cahs"></span></span></div>
@@ -800,7 +832,7 @@ body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-se
     <div class="ph"><span class="t">Últimos turnos</span><span class="r num" id="hcount">0</span></div>
     <div class="tblw">
       <table id="hist">
-        <thead><tr><th class="al-l h-hora w-hora">Hora</th><th class="al-l">Agente</th><th class="al-l w-mdl">Modelo</th><th class="w-tok">Tokens</th><th class="w-usd">USD</th></tr></thead>
+        <thead><tr><th class="al-l h-hora w-hora">Hora</th><th class="al-l">Agente</th><th class="al-l w-mdl">Modelo</th><th class="w-tok">Tokens</th><th class="w-usd">Coste</th></tr></thead>
         <tbody id="hrows"><tr><td colspan="5" class="empty-row">Sin turnos todavía</td></tr></tbody>
       </table>
     </div>
@@ -841,6 +873,15 @@ var IDIOMA='es',LOC='es-ES';
 ` + IDIOMA_JS + `
 /*FIN IDIOMA*/
 function tr(s){return traducir(s,EN)}
+// Moneda (opciones moneda y tipoCambio). El coste llega en dólares; dinero() es el único sitio que lo convierte para mostrarlo.
+// importe() solo da formato a una cifra ya convertida (las marcas del eje de la gráfica).
+var MONEDA='EUR',TIPO=0.92;
+/*MONEDA*/
+` + MONEDA_JS + `
+/*FIN MONEDA*/
+function aMoneda(usd){return convertirMoneda(usd,MONEDA,TIPO)}
+function importe(v){return formatoMoneda(v,MONEDA,LOC)}
+function dinero(usd){return importe(aMoneda(usd))}
 function tx(s){return IDIOMA==='en'?tr(s):String(s)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function n(x){return Number(x||0).toLocaleString(LOC)}
@@ -947,10 +988,11 @@ function renderChart(d){
   if(key===CHART)return;
   CHART=key;
   var hasC=hs.some(function(t){return t.coste!=null});
-  var L=60,R=hasC?62:12,T=10,B=26;
+  var L=60,R=hasC?86:12,T=10,B=26;
   var iw=W-L-R,ih=H-T-B;
   var mx=hs.reduce(function(a,t){return Math.max(a,t.entrada+t.salida)},0);
-  var cm=hs.reduce(function(a,t){return Math.max(a,t.coste||0)},0);
+  // Coste en la moneda del HUD (una conversión por turno); el eje se marca con importe(), ya convertido.
+  var cm=hs.reduce(function(a,t){return Math.max(a,t.coste!=null?aMoneda(t.coste):0)},0);
   function nice(v){if(v<=0)return 1;var p=Math.pow(10,Math.floor(Math.log(v)/Math.LN10)),f=v/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p}
   var top=mx>0?nice(mx):1000,ctop=cm>0?nice(cm):0;
   var s='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">';
@@ -959,7 +1001,7 @@ function renderChart(d){
     s+='<line x1="'+L+'" x2="'+(L+iw)+'" y1="'+y+'" y2="'+y+'" stroke="'+(i?'rgba(127,231,255,.12)':'rgba(127,231,255,.45)')+'" stroke-width="1" '+(i?'stroke-dasharray="2 4"':'')+'/>';
     if(i%2===0){
       s+='<text x="'+(L-8)+'" y="'+(y+5)+'" text-anchor="end">'+kn(top*i/4)+'</text>';
-      if(ctop)s+='<text x="'+(L+iw+8)+'" y="'+(y+5)+'" style="fill:#eaffff">'+(ctop*i/4).toFixed(ctop<0.1?3:2)+'</text>';
+      if(ctop)s+='<text x="'+(L+iw+8)+'" y="'+(y+5)+'" style="fill:#eaffff">'+importe(ctop*i/4)+'</text>';
     }
   }
   if(!hs.length){
@@ -972,11 +1014,11 @@ function renderChart(d){
     var x=L+slot*j+(slot-bw)/2;
     var hi=ih*t.entrada/top,ho=ih*t.salida/top;
     var y0=T+ih;
-    s+='<g><title>'+esc(hhmm(t.hora)+' · '+t.agente+' · '+t.modelo+tx(' · entrada ')+n(t.entrada)+tx(' · salida ')+n(t.salida)+(t.coste!=null?' · '+Number(t.coste).toFixed(4)+' USD':''))+'</title>'+
+    s+='<g><title>'+esc(hhmm(t.hora)+' · '+t.agente+' · '+t.modelo+tx(' · entrada ')+n(t.entrada)+tx(' · salida ')+n(t.salida)+(t.coste!=null?' · '+dinero(t.coste):''))+'</title>'+
       '<rect class="bar" x="'+x.toFixed(1)+'" y="'+(y0-hi).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,hi).toFixed(1)+'" fill="'+c+'" fill-opacity=".38" stroke="'+c+'" stroke-opacity=".7" stroke-width="1"/>'+
       '<rect class="bar" x="'+x.toFixed(1)+'" y="'+(y0-hi-ho).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,ho).toFixed(1)+'" fill="'+c+'" style="filter:drop-shadow(0 0 3px '+c+')"/></g>';
     if(j%every===0||j===hs.length-1)s+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+(j+1)+'</text>';
-    if(ctop&&t.coste!=null)pts.push((x+bw/2).toFixed(1)+','+(T+ih-ih*t.coste/ctop).toFixed(1));
+    if(ctop&&t.coste!=null)pts.push((x+bw/2).toFixed(1)+','+(T+ih-ih*aMoneda(t.coste)/ctop).toFixed(1));
   });
   if(pts.length>1)s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="#f4feff" stroke-width="1.8" style="filter:drop-shadow(0 0 3px rgba(127,231,255,.7))"/>';
   pts.forEach(function(p){var q=p.split(',');s+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="2.6" fill="#070b10" stroke="#f4feff" stroke-width="1.4"/>'});
@@ -986,7 +1028,7 @@ function renderChart(d){
   var fams={};hs.forEach(function(t){fams[t.familia||fam(t.modelo)]=1});
   var lg=Object.keys(fams).map(function(f){return '<span><i style="--c:'+col(f)+'"></i>'+FAM[f]+'</span>'}).join('');
   lg+='<span>'+tx('tono claro: entrada; intenso: salida')+'</span>';
-  if(ctop)lg+='<span><i class="ln" style="--c:var(--txt)"></i>'+tx('USD por turno')+'</span>';
+  if(ctop)lg+='<span><i class="ln" style="--c:var(--txt)"></i>'+tx('Coste por turno')+' ('+MONEDA+')'+'</span>';
   $id('clegend').innerHTML=lg;
 }
 
@@ -1005,11 +1047,11 @@ function renderHist(d){
     ponAttr(k[1],'title',t.agente);ponTexto(k[1],t.agente);
     ponAttr(k[2],'title',t.modelo);ponEstilo(k[2],'--c',c);ponTexto(k[2].firstChild,FAM[f]||f);
     ponTexto(k[3],kn(t.entrada+t.salida));
-    ponTexto(k[4],t.coste!=null?Number(t.coste).toFixed(4):'—');
+    ponTexto(k[4],t.coste!=null?dinero(t.coste):'—');
   });
   if(hs.length)firstRender=false;
   var last=d.historial&&d.historial[d.historial.length-1];
-  ponTexto($id('clast'),last&&last.coste!=null?(tx('Último turno')+' ≈ '+Number(last.coste).toFixed(4)+' USD'):tx(last?'Último turno sin coste':'Sin turnos todavía'));
+  ponTexto($id('clast'),last&&last.coste!=null?(tx('Último turno')+' ≈ '+dinero(last.coste)):tx(last?'Último turno sin coste':'Sin turnos todavía'));
 }
 
 function filaAgente(){
@@ -1040,15 +1082,15 @@ function renderComp(d){
   ponClase($id('p-comp'),'nodata',!ok);
   ponEstilo($id('cbreal'),'width',(ok?(mx>0?real*100/mx:0):(real>0?100:0)).toFixed(1)+'%');
   ponEstilo($id('cbopus'),'width',(ok&&mx>0?est*100/mx:0).toFixed(1)+'%');
-  ponTexto($id('cvreal'),real.toFixed(4)+' USD');
-  ponTexto($id('cvopus'),ok?est.toFixed(4)+' USD':'—');
+  ponTexto($id('cvreal'),dinero(real));
+  ponTexto($id('cvopus'),ok?dinero(est):'—');
   var ah=ok?Number(c.ahorro||0):0,ap=ok?Number(c.ahorroPct||0):0;
   ponTexto($id('cpct'),tx(ok?(ah>=0?'ahorro '+pc(ap)+' %':'sin ahorro'):'sin estimación'));
   ver($id('cahm'),!ok);ver($id('caho'),ok);
   ponTexto($id('cahm'),tx(c&&c.motivo?c.motivo:'sin datos de Opus todavía'));
   if(ok){
     ponTexto($id('cahl'),tx(ah>=0?'Ahorro':'Diferencia'));
-    ponTexto($id('caha'),ah.toFixed(4)+' USD');
+    ponTexto($id('caha'),dinero(ah));
     ponTexto($id('cahp'),pc(ap)+' %');
     ponTexto($id('cahs'),tx(ah>=0?' menos que todo en Opus':': en tus turnos Haiku no salió más barato'));
   }
@@ -1062,7 +1104,7 @@ function renderComp(d){
   lista($id('ctk'),ts.length?ts:VACIA,function(x){return x.vacia?'vacia':x.familia},function(x){return x.vacia?mk('span','',tx('Sin turnos todavía')):mk('span','','<i></i><span></span> <b></b><span></span>')},function(e,x){
     if(x.vacia)return;
     var k=e.children;
-    ponEstilo(k[0],'--c',col(x.familia));ponTexto(k[1],FAM[x.familia]||x.familia);ponTexto(k[2],kn(x.tokens));ponTexto(k[3],tx(' tokens con caché')+' · '+Number(x.coste||0).toFixed(4)+' USD');
+    ponEstilo(k[0],'--c',col(x.familia));ponTexto(k[1],FAM[x.familia]||x.familia);ponTexto(k[2],kn(x.tokens));ponTexto(k[3],tx(' tokens con caché')+' · '+dinero(x.coste||0));
   });
 }
 
@@ -1143,11 +1185,12 @@ $id('pll').addEventListener('toggle',function(){try{localStorage.setItem(PKEY,$i
 
 // Personalización. Solo actúa cuando config cambia (al abrir la página y si el usuario cambia una opción).
 //   tema: atributo data-tema en <html> (sin valor válido, natural). Un cambio de tema vuelve a teñir el globo.
-//   acento: sustituye a --acc del tema; con el valor por defecto (#7fe7ff) cada tema usa su propio acento.
+//   acento: sustituye a --acc del tema; con el valor por defecto (#7fe7ff) cada tema usa su propio acento. Monocromo no lo aplica.
 //   idioma: es o en (etiquetas, fechas y números).
 //   actualizacion: segundos entre lecturas de datos.js (1 a 5).
 //   paneles: los que no están se ocultan y el resto se recoloca sin huecos.
-var TEMAS=['natural','hibrido','mark-ii','mark-l','stark','claro'],ACENTO_DEF='#7fe7ff';
+//   moneda y tipoCambio: EUR (por defecto) o USD; un cambio vuelve a pintar la gráfica con la moneda nueva.
+var TEMAS=['natural','hibrido','mark-ii','mark-l','stark','claro','monocromo'],ACENTO_DEF='#7fe7ff';
 var PANEL_ID={contexto:'p-ctx',coste:'p-cost',reparto:'p-mod',agentes:'p-agt',historial:'p-hist',grafica:'p-chart',comparativa:'p-comp',plan:'p-plan'};
 var CFG='',ESTATICOS=null;
 // Textos fijos del HTML (y title / aria-label) en español, guardados una vez para poder cambiar de idioma en los dos sentidos.
@@ -1172,6 +1215,9 @@ function aplicaConfig(c){
   ponAttr(root,'data-tema',TEMAS.indexOf(c.tema)>=0?c.tema:'natural');
   if(GLOBO.tinta)GLOBO.tinta();
   var ac=typeof c.acento==='string'&&c.acento.charAt(0)==='#'&&(c.acento.length===4||c.acento.length===7)?c.acento.toLowerCase():ACENTO_DEF;
+  if(c.tema==='monocromo')ac=ACENTO_DEF;
+  var mon=c.moneda==='USD'?'USD':'EUR',tc=Number(c.tipoCambio);if(!(tc>0&&isFinite(tc)))tc=0.92;
+  if(mon!==MONEDA||tc!==TIPO){MONEDA=mon;TIPO=tc;CHART=''}
   if(ac!==ACENTO_DEF){root.style.setProperty('--acc',ac);root.style.setProperty('--acc-rgb',rgbDe(ac))}
   else{root.style.removeProperty('--acc');root.style.removeProperty('--acc-rgb')}
   var idi=c.idioma==='en'?'en':'es';
@@ -1202,7 +1248,7 @@ function render(d){
   aplicaConfig(d.config);
   renderCtx(d);
   renderPlan(d);
-  tween('costev',Number(d.coste||0),function(v){return v.toFixed(4)});
+  tween('costev',Number(d.coste||0),dinero);
   ponTexto($id('modelo'),d.modelo||'—');
   renderComp(d);
   renderModels(d);
