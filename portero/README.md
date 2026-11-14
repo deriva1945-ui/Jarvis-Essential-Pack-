@@ -82,6 +82,8 @@ Cada decisión se añade a `decisiones.jsonl` dentro de `dataDir`, una línea JS
 - **`/portero`**: reparto de rutas (cuántas ligeras, pesadas y dudosas, con %), reparto por capa, reglas que más disparan, avisos del clasificador y los últimos casos.
 - **`/portero reglas`**: las reglas activas y desactivadas, los umbrales, el modelo pesado, los límites de contexto y dónde está el registro.
 
+El informe es monocromo, como el HUD de consumo: título en blanco, encabezados en gris y, en el reparto, una barra de texto por fila (`█` la parte llena, en blanco; `░` la vacía, en gris). Las reglas desactivadas salen en gris. Sin colores de acento.
+
 ## Cómo se instala
 
 ```
@@ -187,6 +189,8 @@ Each decision is appended to `decisiones.jsonl` inside `dataDir`, one JSON line 
 
 - **`/portero`**: route split (how many light, heavy and unsure, with %), split by layer, the rules that fire most, classifier warnings and the latest cases.
 - **`/portero reglas`**: active and inactive rules, thresholds, heavy model, context limits and where the log is.
+
+The report is monochrome, like the usage HUD: title in white, headings in grey and, in the split, a text bar per row (`█` the filled part, in white; `░` the empty part, in grey). Inactive rules show in grey. No accent colors.
 
 ## Install
 

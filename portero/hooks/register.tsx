@@ -13,6 +13,7 @@ import {
   recortar,
   type Ruta,
 } from './reglas'
+import { lineasMonocromas, TONO } from './presentacion'
 import { anadir, ARCHIVO, type Entrada, parsear, resumen, serializar } from './registro'
 import { expandir, unir } from './rutas'
 
@@ -202,4 +203,29 @@ export const register: Register = (on, options) => {
     if (isHeavy && !e.fork && !e.model) return next({ ...e, model: cfg.heavyModel })
     return next(e)
   }).catch(($, e, next) => next(e))
+
+  // Dibujo monocromo de la salida de /portero: el texto es el mismo; solo cambian los tonos.
+  on('ui.render', { component: 'CommandOutput', props: { command: 'portero' } }, async ($, e, next) => {
+    if (e.props.isErrored) return next(e)
+    try {
+      const { Box, Text } = $.ui.resolve(e)
+      return (
+        <Box flexDirection="column">
+          {lineasMonocromas(e.props.text).map(l => (
+            <Text wrap="wrap">
+              {l.length === 0
+                ? ' '
+                : l.map(t => (
+                    <Text color={TONO[t.tono]} weight={t.negrita ? 'bold' : undefined}>
+                      {t.texto}
+                    </Text>
+                  ))}
+            </Text>
+          ))}
+        </Box>
+      )
+    } catch {
+      return next(e)
+    }
+  })
 }

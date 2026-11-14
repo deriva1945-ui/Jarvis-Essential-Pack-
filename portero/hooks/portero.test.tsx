@@ -298,3 +298,59 @@ test('agent.spawn: tras una pesada, el subagente sin modelo recibe el modelo pes
   await spawn()
   expect(models).toEqual([undefined, 'opus'])
 })
+
+// ---------------------------------------------------------------- presentación
+
+const GRISES = ['#ffffff', '#d4d4d4', '#a3a3a3', '#737373']
+
+const salida = (text: string, surface: 'terminal' | 'desktop') =>
+  ({
+    plugin: 'portero',
+    surface,
+    component: 'CommandOutput',
+    props: { command: 'portero', args: '', text, isErrored: false },
+  }) as const
+
+test('/portero se dibuja en blanco y grises, con barras de texto en el reparto', OPTS, async ($, on) => {
+  motor(on, { classify: () => 'ligera' })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await enviar($, 'depura el login')
+  await enviar($, 'depura el registro')
+  await enviar($, 'traduce hola')
+  await enviar($, 'hazme un plan')
+  const { text } = await portero($)
+  expect(text).toMatch(/pesada\s+2\s+50%\s+█{10}░{10}$/m)
+  expect(text).toMatch(/ligera\s+2\s+50%\s+█{10}░{10}$/m)
+  expect(text).toMatch(/dudosa\s+0\s+0%\s+░{20}$/m)
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(salida(text ?? '', surface))
+    for (const t of await ui.findAll({ type: 'Text' })) if (t.props.color !== undefined) expect(GRISES).toContain(t.props.color)
+    // El tramo más interior que coincide: el que lleva el tono.
+    const tono = async (re: RegExp) => (await ui.findAll({ type: 'Text', text: re })).at(-1)?.props
+    expect(await tono(/^portero · 4 decisiones registradas$/)).toMatchObject({ color: '#ffffff', weight: 'bold' })
+    expect((await tono(/^Reparto de rutas:$/))?.color).toBe('#a3a3a3')
+    expect((await tono(/^█{10}$/))?.color).toBe('#ffffff')
+    expect((await tono(/^░{10}$/))?.color).toBe('#a3a3a3')
+    expect((await tono(/^Registro:$/))?.color).toBe('#a3a3a3')
+    await ui.unmount()
+  }
+
+  const reglas = await portero($, 'reglas')
+  const ui = await $.ui.mount(salida(reglas.text ?? '', 'terminal'))
+  const tono = async (re: RegExp) => (await ui.findAll({ type: 'Text', text: re })).at(-1)?.props
+  expect((await tono(/^\[x\]$/))?.color).toBe('#ffffff')
+  await ui.unmount()
+})
+
+test('/portero reglas: las reglas desactivadas en gris', { options: { dataDir: '/prueba/portero', ruleCode: false } }, async ($, on) => {
+  motor(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const { text } = await portero($, 'reglas')
+  const ui = await $.ui.mount(salida(text ?? '', 'terminal'))
+  const tono = async (re: RegExp) => (await ui.findAll({ type: 'Text', text: re })).at(-1)?.props
+  expect((await tono(/^\[ \]$/))?.color).toBe('#a3a3a3')
+  expect((await tono(/^ codigo$/))?.color).toBe('#a3a3a3')
+  expect((await tono(/^ longitud$/))?.color).toBe('#ffffff')
+  await ui.unmount()
+})

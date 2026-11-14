@@ -46,6 +46,13 @@ export const anadir = (entradas: readonly Entrada[], e: Entrada, max: number): E
 
 const pct = (n: number, total: number) => (total ? `${Math.round((n * 100) / total)}%` : '0%')
 
+// Barra de texto de una proporción: █ la parte llena y ░ la vacía (blanco y gris al dibujarla).
+export const ANCHO_BARRA = 20
+export const barra = (n: number, total: number, ancho = ANCHO_BARRA): string => {
+  const llenas = total ? Math.min(ancho, Math.max(0, Math.round((n * ancho) / total))) : 0
+  return '█'.repeat(llenas) + '░'.repeat(ancho - llenas)
+}
+
 const contar = <K extends string>(xs: readonly K[]): Array<[K, number]> => {
   const m = new Map<K, number>()
   for (const x of xs) m.set(x, (m.get(x) ?? 0) + 1)
@@ -61,10 +68,12 @@ export function resumen(entradas: readonly Entrada[], carpeta: string, ultimos =
   const lines: string[] = [`portero · ${total} decisiones registradas`, '', 'Reparto de rutas:']
   for (const r of RUTAS) {
     const n = entradas.filter(e => e.ruta === r).length
-    lines.push(`  ${r.padEnd(7)} ${String(n).padStart(5)}  ${pct(n, total).padStart(4)}`)
+    lines.push(`  ${r.padEnd(7)} ${String(n).padStart(5)}  ${pct(n, total).padStart(4)}  ${barra(n, total)}`)
   }
   lines.push('', 'Por capa:')
-  for (const [c, n] of contar(entradas.map(e => e.capa))) lines.push(`  ${c.padEnd(10)} ${String(n).padStart(5)}  ${pct(n, total).padStart(4)}`)
+  for (const [c, n] of contar(entradas.map(e => e.capa))) {
+    lines.push(`  ${c.padEnd(10)} ${String(n).padStart(5)}  ${pct(n, total).padStart(4)}  ${barra(n, total)}`)
+  }
   lines.push('', 'Reglas que más disparan:')
   for (const [m, n] of contar(entradas.map(e => e.motivo)).slice(0, top)) lines.push(`  ${String(n).padStart(5)}  ${m}`)
   const avisos = entradas.filter(e => e.aviso)
