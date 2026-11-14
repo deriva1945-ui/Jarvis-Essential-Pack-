@@ -23,6 +23,8 @@ export const EN: readonly (readonly [string, string])[] = [
   ['Último turno sin coste', 'Last turn without cost'],
   ['Modelo de la sesión', 'Session model'],
   ['Últimas sesiones', 'Latest sessions'],
+  ['Menos paneles', 'Fewer panels'],
+  ['Más paneles', 'More panels'],
   ['sin datos todavía', 'no data yet'],
   ['esta sesión', 'this session'],
   ['Esta semana', 'This week'],

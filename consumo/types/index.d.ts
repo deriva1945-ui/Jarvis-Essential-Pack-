@@ -39,6 +39,33 @@ export type Comparativa = {
   tokensPorModelo: { familia: Familia; tokens: number; coste: number }[]
 }
 export type CtxSnap = { tokens: number; window: number; percent: number }
+
+// Colocación del HUD (opciones disposicion, orden, tamanos, escala, ocultos y ventana; ver disposicion.ts), ya validada.
+// Va en datos.js como "vista"; ventana no, porque solo la usa el mod al abrir Edge.
+export type HudDisposicion =
+  | 'auto'
+  | 'columna'
+  | 'franja'
+  | 'tres-columnas'
+  | 'nucleo-central'
+  | 'barra-lateral'
+  | 'barra-inferior'
+  | 'mosaico'
+  | 'foco'
+// Paneles que se colocan: historico es el bloque Acumulado; historial, los últimos turnos.
+export type HudLugar = 'contexto' | 'coste' | 'comparativa' | 'reparto' | 'agentes' | 'plan' | 'historico' | 'historial' | 'grafica'
+export type HudTamano = 'pequeno' | 'normal' | 'grande'
+export type HudVentana = 'auto' | 'pequena' | 'mediana' | 'grande' | 'completa'
+export type HudVista = {
+  disposicion: HudDisposicion
+  // Los nueve paneles, en el orden en que se muestran.
+  orden: HudLugar[]
+  // Solo los paneles con tamaño pedido; el resto va en normal.
+  tamanos: Partial<Record<HudLugar, HudTamano>>
+  // De 0.8 a 1.4: multiplica texto y espaciado (el texto nunca baja de 14 px).
+  escala: number
+  ocultos: HudLugar[]
+}
 // Libro del coste y de los turnos vistos, en un solo átomo para que update() lo cambie de una vez:
 // last: último valor del contador de coste de la sesión (null si aún no se conoce);
 // base: lo acumulado antes de que el contador volviera a empezar (/clear, reanudar);

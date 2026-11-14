@@ -207,6 +207,72 @@ También aparecen en `/config` dentro de Claude Code. Si cargas el mod con `--pl
 }
 ```
 
+## Disposición, orden y tamaño de la ventana
+
+Seis opciones más deciden dónde va cada panel. Las cinco primeras van a `datos.js` en el campo `vista` (ya validadas) y la página las aplica sin recargar: solo cambia atributos (`data-disposicion` en `<html>`, `data-puesto`, `data-zona` y `data-tam` en cada panel) y CSS. El orden de los paneles en el HTML no cambia, la lectura de datos sigue igual (sin parpadeo) y el tema, el acento, el idioma, la densidad automática, el movimiento reducido y el globo 3D funcionan con todas las disposiciones.
+
+| Opción | Valores | Por defecto | Qué cambia |
+| --- | --- | --- | --- |
+| `disposicion` | `auto`, `columna`, `franja`, `tres-columnas`, `nucleo-central`, `barra-lateral`, `barra-inferior`, `mosaico`, `foco` | `auto` | Cómo se colocan los paneles (ver la lista de abajo). |
+| `orden` | lista con `contexto`, `coste`, `comparativa`, `reparto`, `agentes`, `plan`, `historico`, `historial`, `grafica` | ese mismo orden | Orden en que se muestran. Los que no nombres van detrás, en el orden por defecto. Los primeros ocupan los puestos destacados de la disposición (el centro en `nucleo-central`, la barra en `barra-lateral` o `barra-inferior`, los dos grandes en `foco`). `historico` es el bloque Acumulado (también vale `acumulado`) e `historial`, los últimos turnos. |
+| `tamanos` | lista de `panel:tamaño`, con tamaño `pequeno`, `normal` o `grande` (p. ej. `["contexto:grande", "historico:pequeno"]`) | todos en `normal` | Cuántas columnas ocupa cada panel. En `mosaico` también cambia el alto (pequeño: media baldosa; grande: el doble de ancho y de alto); en `columna` y en la lista de `foco`, grande es más alto. El tamaño del primer puesto cambia el ancho del centro en `nucleo-central`, de la barra en `barra-lateral` y de los dos grandes en `foco`. En `auto` no se aplica. |
+| `escala` | número de 0.8 a 1.4 | `1` | Multiplica el tamaño del texto y el espaciado. El texto nunca baja de 14 px, ni con 0.8. |
+| `ocultos` | lista con los mismos nombres que `orden` | ninguno | Paneles que no se muestran. Se suma a `paneles`. El resto se recoloca sin huecos en cualquier disposición. |
+| `ventana` | `auto`, `pequena` (420 x 860), `mediana` (900 x 700), `grande` (1280 x 800), `completa` (maximizada) | `auto` | Tamaño de la ventana de Edge (o Chrome) al abrir el HUD. No va en `datos.js`: el mod lo añade a la línea del navegador. |
+
+Las disposiciones (todas sin desplazamiento horizontal de 320 px a 4K; por debajo de 560 px de ancho todas quedan en una columna):
+
+- `auto`: la de siempre, que cambia sola con el tamaño de la ventana (en el tema natural, la franja de resumen).
+- `columna`: todo en una columna centrada. `pequeno` pone dos paneles por fila.
+- `franja`: resumen arriba (los tres primeros puestos en una fila) y el detalle debajo, en dos o tres columnas.
+- `tres-columnas`: tres columnas iguales (dos entre 560 y 1199 px).
+- `nucleo-central`: el globo (primer puesto) al centro, con los puestos 2 a 5 a los lados; el resto debajo. Desde 900 px.
+- `barra-lateral`: columna estrecha a la izquierda con los tres primeros puestos (el contexto arriba) y el resto a la derecha. Desde 900 px.
+- `barra-inferior`: el resumen (tres primeros puestos) en una fila al pie que se queda fija al desplazar, desde 900 x 700 px y si ninguno de ellos es `grande`.
+- `mosaico`: baldosas del mismo tamaño (tres por fila desde 1200 px, dos por debajo).
+- `foco`: contexto y coste grandes (dos primeros puestos); el resto en una lista plegable con el botón «Más paneles». Abierta o cerrada se recuerda en ese navegador.
+
+Valores que no valen: `escala` fuera de 0.8–1.4 usa 1; en `orden`, `tamanos` y `ocultos` los nombres o entradas desconocidos se ignoran; `ocultos` con todos los paneles los muestra todos. En todos los casos queda un aviso en el log (`consumo: ...`) al empezar la sesión. `disposicion` y `ventana` solo aceptan los valores de la tabla: Claude Code trata cualquier otro como no puesto y aplica `auto`; si el valor llega por otra vía (un `settings.json` editado a mano), el mod también usa `auto` y deja el aviso.
+
+Para cambiarlas en un mod instalado, igual que las demás:
+
+```
+claude plugin configure consumo@jarvis-essential-pack
+```
+
+```
+echo '{"disposicion": "nucleo-central", "orden": ["contexto", "coste"], "tamanos": ["contexto:grande", "historico:pequeno"], "escala": 1.1, "ocultos": ["plan"], "ventana": "mediana"}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
+
+Con `--plugin-dir`, en `~/.claude/settings.json` (en `tamanos` también vale un objeto):
+
+```json
+{
+  "pluginConfigs": {
+    "consumo": {
+      "options": {
+        "disposicion": "barra-lateral",
+        "orden": ["contexto", "coste", "comparativa", "grafica"],
+        "tamanos": { "contexto": "grande", "historico": "pequeno" },
+        "escala": 1.2,
+        "ocultos": ["historial"],
+        "ventana": "grande"
+      }
+    }
+  }
+}
+```
+
+### Tamaño fijo de la ventana
+
+Con `ventana` distinta de `auto`, el mod abre el HUD con `cmd /c start "" msedge --app=file:///.../index.html --window-size=900,700` (o `--start-maximized` con `completa`). Chromium escribe el tamaño como `ancho,alto`, con coma. Si prefieres abrirlo a mano con otro tamaño, usa la misma línea con tus números:
+
+```
+msedge --app=file:///C:/Users/<tú>/CLAUDE/consumo/index.html --window-size=1600,900
+```
+
+Edge solo hace caso a `--window-size` cuando crea la ventana: si ya hay una ventana de ese HUD abierta, o Edge recuerda el tamaño de la última vez, puede quedarse con ese. No se ha probado en Windows.
+
 ## Qué no hace / límites
 
 - Abrir la ventana solo funciona en Windows: usa `cmd /c start` con Edge o Chrome. En otros sistemas los datos se escriben igual en la carpeta de datos y puedes abrir `index.html` a mano.
@@ -432,6 +498,72 @@ They also show up in `/config` inside Claude Code. If you load the mod with `--p
   }
 }
 ```
+
+## Layout, order and window size
+
+Six more options decide where each panel goes. The first five go into `datos.js` under the `vista` field (already validated) and the page applies them without reloading: it only changes attributes (`data-disposicion` on `<html>`, `data-puesto`, `data-zona` and `data-tam` on each panel) and CSS. The panels' order in the HTML never changes, data reading stays the same (no flicker), and the theme, accent, language, automatic density, reduced motion and the 3D globe work with every layout.
+
+| Option | Values | Default | What it changes |
+| --- | --- | --- | --- |
+| `disposicion` | `auto`, `columna`, `franja`, `tres-columnas`, `nucleo-central`, `barra-lateral`, `barra-inferior`, `mosaico`, `foco` | `auto` | How the panels are laid out (see the list below). |
+| `orden` | list with `contexto`, `coste`, `comparativa`, `reparto`, `agentes`, `plan`, `historico`, `historial`, `grafica` | that same order | Display order. Panels you leave out follow in the default order. The first ones take the layout's featured spots (the centre in `nucleo-central`, the bar in `barra-lateral` or `barra-inferior`, the two large ones in `foco`). `historico` is the Accumulated block (`acumulado` also works) and `historial` the latest turns. |
+| `tamanos` | list of `panel:size`, with size `pequeno` (small), `normal` or `grande` (large), e.g. `["contexto:grande", "historico:pequeno"]` | all `normal` | How many columns each panel takes. In `mosaico` it also changes the height (small: half a tile; large: twice as wide and tall); in `columna` and in the `foco` list, large is taller. The size of the first spot changes the width of the centre in `nucleo-central`, of the bar in `barra-lateral` and of the two large panels in `foco`. Not applied in `auto`. |
+| `escala` | number from 0.8 to 1.4 | `1` | Multiplies text size and spacing. Text never goes below 14 px, not even at 0.8. |
+| `ocultos` | list with the same names as `orden` | none | Panels that are not shown. It adds to `paneles`. The rest are rearranged without gaps in any layout. |
+| `ventana` | `auto`, `pequena` (420 x 860), `mediana` (900 x 700), `grande` (1280 x 800), `completa` (maximised) | `auto` | Size of the Edge (or Chrome) window when the HUD opens. Not in `datos.js`: the mod adds it to the browser command line. |
+
+The layouts (all without horizontal scrolling from 320 px to 4K; below 560 px wide they all become one column):
+
+- `auto`: the usual one, which changes by itself with the window size (in the natural theme, the summary band).
+- `columna`: everything in one centred column. `pequeno` puts two panels per row.
+- `franja`: summary on top (the first three spots in one row) and the detail below, in two or three columns.
+- `tres-columnas`: three equal columns (two between 560 and 1199 px).
+- `nucleo-central`: the globe (first spot) in the centre, with spots 2 to 5 on both sides; the rest below. From 900 px.
+- `barra-lateral`: narrow left column with the first three spots (the context on top) and the rest on the right. From 900 px.
+- `barra-inferior`: the summary (first three spots) in a bottom row that stays fixed while scrolling, from 900 x 700 px and if none of them is `grande`.
+- `mosaico`: tiles of the same size (three per row from 1200 px, two below).
+- `foco`: context and cost large (first two spots); the rest in a folding list behind the “More panels” button. Open or closed is remembered in that browser.
+
+Invalid values: `escala` outside 0.8–1.4 uses 1; in `orden`, `tamanos` and `ocultos` unknown names or entries are ignored; `ocultos` with every panel shows them all. Each case logs a warning (`consumo: ...`) when the session starts. `disposicion` and `ventana` only accept the values in the table: Claude Code treats anything else as unset and applies `auto`; if the value arrives another way (a hand-edited `settings.json`), the mod also uses `auto` and logs the warning.
+
+To change them in an installed mod, like the others:
+
+```
+claude plugin configure consumo@jarvis-essential-pack
+```
+
+```
+echo '{"disposicion": "nucleo-central", "orden": ["contexto", "coste"], "tamanos": ["contexto:grande", "historico:pequeno"], "escala": 1.1, "ocultos": ["plan"], "ventana": "mediana"}' | claude plugin configure consumo@jarvis-essential-pack --values-stdin
+```
+
+With `--plugin-dir`, in `~/.claude/settings.json` (`tamanos` also accepts an object):
+
+```json
+{
+  "pluginConfigs": {
+    "consumo": {
+      "options": {
+        "disposicion": "barra-lateral",
+        "orden": ["contexto", "coste", "comparativa", "grafica"],
+        "tamanos": { "contexto": "grande", "historico": "pequeno" },
+        "escala": 1.2,
+        "ocultos": ["historial"],
+        "ventana": "grande"
+      }
+    }
+  }
+}
+```
+
+### Fixed window size
+
+With `ventana` other than `auto`, the mod opens the HUD with `cmd /c start "" msedge --app=file:///.../index.html --window-size=900,700` (or `--start-maximized` with `completa`). Chromium writes the size as `width,height`, with a comma. If you would rather open it by hand at another size, use the same line with your numbers:
+
+```
+msedge --app=file:///C:/Users/<you>/CLAUDE/consumo/index.html --window-size=1600,900
+```
+
+Edge only honours `--window-size` when it creates the window: if a window of this HUD is already open, or Edge remembers the size from last time, it may keep that one. Not tested on Windows.
 
 ## What it does not do / limits
 

@@ -29,6 +29,7 @@
 // Cada tema es un bloque de variables CSS (--bg, --panel, --txt, --sub, --acc, --acc2, --warn, --crit, --ok, --modelo-*); rojo solo en alertas.
 // Globo holográfico en canvas con un anillo inclinado (CSS 3D) que gira al revés, paneles de cristal y escaneo sutil.
 // Fondo: degradado radial, nebulosa difuminada y rejilla de perspectiva que avanza despacio (sin ellas en compacto; quieta con movimiento reducido).
+import { COLOCAR_JS, DISPOSICION_CSS } from './disposicion'
 import { DOM } from './dom'
 import { IDIOMA_JS } from './idioma'
 import { LOGICA } from './senal'
@@ -48,6 +49,8 @@ export const PAGE = `<!doctype html>
 // Se marca aquí, antes de pintar, y el script del final la vuelve a mirar en cada cambio de tamaño.
 var densidadDe=(` + String(densidadDe) + `);
 document.documentElement.setAttribute('data-densidad',densidadDe(window.innerWidth,window.innerHeight));
+// Disposición: auto hasta que datos.js traiga la opción (vista.disposicion).
+document.documentElement.setAttribute('data-disposicion','auto');
 </script>
 <style>
 /* Temas. Cada tema es un bloque de variables sobre html[data-tema="..."]. El HTML sale con data-tema="natural" (el tema por defecto)
@@ -74,7 +77,7 @@ document.documentElement.setAttribute('data-densidad',densidadDe(window.innerWid
   --sans:'Segoe UI Variable Text','Segoe UI','Inter','Helvetica Neue','Liberation Sans','DejaVu Sans',system-ui,sans-serif;
   --cifra:'Segoe UI Variable Display','Segoe UI','Inter','Helvetica Neue','Liberation Sans',sans-serif;
   --mono:'JetBrains Mono','Cascadia Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace;
-  --gap:clamp(14px,1.15vw,22px);--pad:clamp(16px,1.25vw,24px);
+  --gap:calc(clamp(14px,1.15vw,22px)*var(--escala,1));--pad:calc(clamp(16px,1.25vw,24px)*var(--escala,1));
   color-scheme:dark;
 }
 html[data-tema="hibrido"]{
@@ -146,15 +149,16 @@ html[data-tema="claro"]{
   --bord-on:linear-gradient(135deg,rgba(var(--acc2-rgb),.95),rgba(var(--acc-rgb),.7));
   --wc:linear-gradient(90deg,var(--acc2),var(--acc));
   --sans:Bahnschrift,'Segoe UI','Inter','Liberation Sans','DejaVu Sans',sans-serif;
-  /* Texto: etiquetas >= 14 px, valores >= 16 px; crecen con la ventana. */
-  --fk:clamp(14px,calc(.32vw + .38vh + 5px),22px);
-  --fv:clamp(16px,calc(.42vw + .5vh + 5px),27px);
-  --fbig:clamp(34px,calc(1.6vw + 2.2vh),80px);
-  --gap:clamp(10px,1vw,18px);
-  --pad:clamp(12px,1vw,20px);
+  /* Texto: etiquetas >= 14 px, valores >= 16 px; crecen con la ventana. --escala (opción escala, 0.8 a 1.4, la pone
+     el script en <html>) multiplica texto y espaciado; el mínimo de 14 px no se escala. */
+  --fk:clamp(14px,calc((.32vw + .38vh + 5px)*var(--escala,1)),calc(22px*var(--escala,1)));
+  --fv:clamp(16px,calc((.42vw + .5vh + 5px)*var(--escala,1)),calc(27px*var(--escala,1)));
+  --fbig:clamp(34px,calc((1.6vw + 2.2vh)*var(--escala,1)),calc(80px*var(--escala,1)));
+  --gap:calc(clamp(10px,1vw,18px)*var(--escala,1));
+  --pad:calc(clamp(12px,1vw,20px)*var(--escala,1));
 }
 body.lv-x{--edge:rgba(var(--crit-rgb),.4);--bord:linear-gradient(135deg,rgba(var(--crit-rgb),.55),rgba(var(--crit-rgb),.22) 45%,rgba(var(--crit-rgb),.4))}
-html[data-densidad="compacto"] body{--gap:clamp(8px,.6vw,12px);--pad:clamp(10px,.7vw,14px);--fbig:clamp(30px,calc(1.3vw + 1.8vh),52px)}
+html[data-densidad="compacto"] body{--gap:calc(clamp(8px,.6vw,12px)*var(--escala,1));--pad:calc(clamp(10px,.7vw,14px)*var(--escala,1));--fbig:clamp(30px,calc((1.3vw + 1.8vh)*var(--escala,1)),calc(52px*var(--escala,1)))}
 *{box-sizing:border-box}
 html,body{min-height:100%}
 body{margin:0;background-color:var(--bg);color:var(--txt);font:var(--fv)/1.4 var(--sans);overflow-x:hidden;min-width:0;
@@ -224,7 +228,7 @@ body.lv-x .pnl:before,body.lv-x .pnl:after{border-color:var(--rd)}
 #p-plan{grid-area:plan}
 #p-plan>.in{gap:10px}
 .plh{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;min-width:0}
-.plt{font-size:clamp(18px,calc(.6vw + .7vh + 6px),30px);color:var(--txt);letter-spacing:.08em;white-space:nowrap}
+.plt{font-size:clamp(18px,calc((.6vw + .7vh + 6px)*var(--escala,1)),calc(30px*var(--escala,1)));color:var(--txt);letter-spacing:.08em;white-space:nowrap}
 .plt b{font-weight:normal;color:var(--txt);text-shadow:0 0 10px rgba(var(--acc-rgb),calc(.5*var(--glow)))}
 .plt.vacio{color:var(--sub);font-size:var(--fv)}
 .plok{display:none;font-size:var(--fk);letter-spacing:.12em;text-transform:uppercase;color:var(--bg);background:var(--ok);padding:2px 10px;border-radius:4px;box-shadow:0 0 12px rgba(var(--acc-rgb),calc(.6*var(--glow)))}
@@ -314,12 +318,15 @@ body.lv-x .rc .p small{color:var(--rd)}
 #p-comp .stack{margin:0 0 8px}
 .ctk{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:var(--fk);color:var(--sub);margin-bottom:8px}
 .ctk span{white-space:nowrap}
+/* Con la letra grande (opción escala) la leyenda no cabe en una línea en un panel de ancho medio: se parte. */
+@container (max-width:599px){.ctk span{white-space:normal}}
 .ctk i{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);margin-right:6px;vertical-align:-1px}
 .ctk b{font-weight:normal;color:var(--txt)}
 .cnote{font-size:var(--fk);color:var(--sub);margin-top:auto}
 
 /* Acumulado (histórico entre sesiones): tres cifras (hoy, semana, total) y la lista de las últimas sesiones, sin tablas.
-   Con sitio (panel de 760 px o más) las cifras y la lista van lado a lado. En compacto solo las cifras. */
+   Con sitio (panel de 980 px o más; con menos, la etiqueta pisaba la cifra) las cifras y la lista van lado a lado.
+   En un panel de menos de 420 px los turnos van debajo del coste. En compacto solo las cifras. */
 .acb{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--gap);flex:1;min-height:0}
 .acb>.kv{align-self:start;align-content:start}
 .acb .kv .k{white-space:nowrap}
@@ -338,7 +345,8 @@ body.lv-x .rc .p small{color:var(--rd)}
 .acl li.vacia{display:block}
 .pnl.ac-off{display:none!important}
 html[data-densidad="compacto"] .acs{display:none}
-@container (min-width:760px){.acb{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(18px,2vw,40px)}}
+@container (min-width:980px){.acb{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(18px,2vw,40px)}}
+@container (max-width:419px){.acb .kv .v i:not(.tk){display:block;margin-left:0}}
 @container (max-width:419px){.acl li{grid-template-columns:minmax(0,1fr) auto}.acl li .u{grid-column:1;text-align:left}.acl li .c{grid-row:1 / span 2;grid-column:2;align-self:center}}
 
 /* Barras segmentadas */
@@ -478,7 +486,7 @@ footer .line{flex:1;align-self:center;height:1px;background:linear-gradient(90de
 }
 /* Pantalla completa con poco alto (1000-1199 px, p. ej. 1920x1080): márgenes más justos para que quepa todo. */
 @media (min-width:1600px) and (min-height:1000px) and (max-height:1199px){
-  :root{--gap:10px;--pad:12px}
+  :root{--gap:calc(10px*var(--escala,1));--pad:calc(12px*var(--escala,1))}
   .plt{font-size:clamp(18px,calc(.5vw + .5vh + 6px),26px)}
   .plbar{height:16px}
   header{padding-bottom:6px}
@@ -524,6 +532,22 @@ footer .line{flex:1;align-self:center;height:1px;background:linear-gradient(90de
   .cmp .nm b{white-space:normal}
   .kv{gap:6px 10px}
 }
+/* Escala alta (opción escala por encima de 1.15, atributo data-escala-alta): las tablas pierden antes las columnas que no
+   caben, para que la letra grande no parta los nombres letra a letra ni se salga de la tabla. */
+@container (max-width:899px){
+  html[data-escala-alta="1"] .h-hora,html[data-escala-alta="1"] .a-turnos,html[data-escala-alta="1"] #hist td:first-child,html[data-escala-alta="1"] .share .seg,html[data-escala-alta="1"] th .lg{display:none}
+  html[data-escala-alta="1"] th .sh{display:inline}
+  html[data-escala-alta="1"] #atab th:nth-child(2),html[data-escala-alta="1"] #atab td:nth-child(2),html[data-escala-alta="1"] #hist th:nth-child(3),html[data-escala-alta="1"] #hist td:nth-child(3){display:none}
+}
+/* Con escala alta, el contexto en vertical y los turnos del acumulado debajo en paneles de ancho medio; el reparto
+   por modelo reparte sus columnas en vez de dejarlas fijas. */
+@container (max-width:639px){
+  html[data-escala-alta="1"] .ctxb{flex-direction:column!important;align-items:center!important}
+  html[data-escala-alta="1"] .ctxb>.reactor{width:min(260px,72cqi)!important;max-width:none!important}
+  html[data-escala-alta="1"] .ctxb>.kv{flex:none;width:100%}
+  html[data-escala-alta="1"] .acb .kv .v i:not(.tk){display:block;margin-left:0}
+}
+@container (min-width:460px){html[data-escala-alta="1"] .cmp{grid-template-columns:minmax(0,15em) minmax(4em,1fr) auto auto}}
 /* HUD cerrado con /jarvis: si window.close() no cierra la ventana, queda este aviso encima de todo. */
 .hudoff{display:none;position:fixed;inset:0;z-index:50;align-items:center;justify-content:center;padding:16px;text-align:center;background:var(--bg);color:var(--txt);font:600 clamp(16px,2.4vw,22px)/1.4 system-ui,sans-serif;letter-spacing:.04em}
 body.hud-off .hudoff{display:flex}
@@ -579,7 +603,7 @@ html[data-tema="natural"] header{border-bottom:1px solid var(--borde);padding-bo
 html[data-tema="natural"] header:after{display:none}
 html[data-tema="natural"] .logo{width:12px;height:12px;border:none;border-radius:50%;background:var(--acc);box-shadow:none}
 html[data-tema="natural"] .logo:after{display:none}
-html[data-tema="natural"] h1{font-size:clamp(18px,calc(.5vw + .5vh + 6px),26px);font-weight:600;letter-spacing:-.005em;text-transform:none;text-shadow:none}
+html[data-tema="natural"] h1{font-size:clamp(18px,calc((.5vw + .5vh + 6px)*var(--escala,1)),calc(26px*var(--escala,1)));font-weight:600;letter-spacing:-.005em;text-transform:none;text-shadow:none}
 html[data-tema="natural"] h1 .brand{display:none}
 html[data-tema="natural"] .al{text-transform:none;letter-spacing:0;border-radius:6px;padding:3px 12px;animation:none;box-shadow:none!important}
 html[data-tema="natural"] #al-ctx.w{background:rgba(var(--warn-rgb),.1)}
@@ -735,7 +759,9 @@ html[data-densidad="compacto"] .neb,html[data-densidad="compacto"] .floor,html[d
 .pnl.pn-off{display:none!important}
 body.pn-sel .wrap{height:auto;grid-template-rows:none;grid-template-areas:none;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
 body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel .pnl{grid-area:auto!important}
-body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-sel #p-chart,body.pn-sel #p-hist{grid-column:1/-1}
+/* !important: si no, el grid-area:auto!important de arriba los dejaba en una sola columna. */
+body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-sel #p-chart,body.pn-sel #p-hist{grid-column:1/-1!important}
+` + DISPOSICION_CSS + `
 </style></head>
 <body>
 <div class="hudoff" id="hudoff" role="status">HUD cerrado. Escribe /jarvis para abrirlo.</div>
@@ -862,6 +888,7 @@ body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-se
   </div></section>
 </div>
 
+<button type="button" class="focomas" id="focomas" aria-expanded="false" aria-controls="p-mod p-agt p-plan p-acum p-hist p-chart"><span id="focomasv">Más paneles</span><span class="num" id="focomasn"></span></button>
 <footer><span id="ts">Último dato: —</span><span class="line"></span><span id="beat">Latido: —</span></footer>
 </div>
 <script>
@@ -917,6 +944,8 @@ function ponDensidad(){
   var d=densidadDe(window.innerWidth,window.innerHeight),root=document.documentElement;
   if(root.getAttribute('data-densidad')===d)return false;
   root.setAttribute('data-densidad',d);
+  // En compacto los últimos turnos no se ven: los puestos se recalculan (solo atributos).
+  ponLugar();
   if(GLOBO.dibuja)GLOBO.dibuja();
   if(lastData)renderChart(lastData);
   return true;
@@ -1266,8 +1295,61 @@ function aplicaConfig(c){
   lecturas(seg>=1&&seg<=5?seg*1000:1000);
   var ps=c.paneles&&c.paneles.length?c.paneles:Object.keys(PANEL_ID),todos=true;
   for(var p in PANEL_ID){var on=ps.indexOf(p)>=0;if(!on)todos=false;ponClase($id(PANEL_ID[p]),'pn-off',!on)}
+  // Opción ocultos (vista): en auto, un panel oculto también pasa a la rejilla que se rellena sola.
+  if(VISTA.ocultos.length)todos=false;
+  // Las disposiciones con nombre se rellenan solas sin huecos: la rejilla de pn-sel es solo para auto.
+  if(VISTA.disposicion!=='auto')todos=true;
   ponClase(document.body,'pn-sel',!todos);
 }
+
+// Colocación (opciones disposicion, orden, tamanos, escala y ocultos): llega en datos.js como vista, ya validada.
+// Solo pone atributos (data-disposicion, data-t1, data-pocos y data-foco en <html>; data-puesto, data-zona, data-area y
+// data-tam en cada panel), la clase lg-off de los ocultos y la variable --escala: el CSS hace el resto (disposicion.ts).
+// El orden del DOM no cambia y no se rehace ningún panel.
+/*COLOCAR*/
+` + COLOCAR_JS + `
+/*FIN COLOCAR*/
+var DISPOSICIONES=['auto','columna','franja','tres-columnas','nucleo-central','barra-lateral','barra-inferior','mosaico','foco'];
+var LUGAR_ID={contexto:'p-ctx',coste:'p-cost',comparativa:'p-comp',reparto:'p-mod',agentes:'p-agt',plan:'p-plan',historico:'p-acum',historial:'p-hist',grafica:'p-chart'};
+var VISTA=normalizaVista(null),VISTA_K='',FKEY='consumo.foco.abierto',ELS=null;
+function lugares(){if(!ELS){ELS={};for(var p in LUGAR_ID)ELS[p]=$id(LUGAR_ID[p])}return ELS}
+function aplicaVista(v){
+  var k=JSON.stringify(v||null);
+  if(k===VISTA_K)return;
+  VISTA_K=k;
+  VISTA=normalizaVista(v);
+  var root=document.documentElement,els=lugares();
+  ponAttr(root,'data-disposicion',VISTA.disposicion);
+  ponEstilo(root,'--escala',String(VISTA.escala));
+  ponAttr(root,'data-escala-alta',VISTA.escala>1.15?'1':'0');
+  for(var p in els)ponClase(els[p],'lg-off',VISTA.ocultos.indexOf(p)>=0);
+  if(GLOBO.size)GLOBO.size();
+}
+// Puestos (colocar() y ponPuestos() de disposicion.ts). Fuera quedan, además de los ocultos, los que no se piden en la
+// opción paneles, el acumulado sin histórico y, en compacto, los últimos turnos: la rejilla se rellena sin huecos.
+function ponLugar(){
+  var els=lugares(),fuera={},comp=compacto();
+  for(var p in els)fuera[p]=els[p].classList.contains('pn-off')||els[p].classList.contains('ac-off')||(comp&&p==='historial');
+  var r=colocar(VISTA,fuera);
+  ponPuestos(els,document.documentElement,r,ponAttr);
+  ponFoco(null,r.resto);
+}
+// Foco: el resto de paneles en una lista plegable. Abierta o cerrada se recuerda en este navegador.
+var FOCO_ABIERTO=false,FOCO_N=0;
+function ponFoco(abierto,resto){
+  if(abierto!=null)FOCO_ABIERTO=!!abierto;
+  if(resto!=null)FOCO_N=resto;
+  ponAttr(document.documentElement,'data-foco',FOCO_ABIERTO?'abierto':'cerrado');
+  ponAttr($id('focomas'),'aria-expanded',FOCO_ABIERTO?'true':'false');
+  ponTexto($id('focomasv'),tx(FOCO_ABIERTO?'Menos paneles':'Más paneles'));
+  ponTexto($id('focomasn'),FOCO_N?String(FOCO_N):'');
+}
+(function(){var v=null;try{v=localStorage.getItem(FKEY)}catch(e){}if(v==='1')FOCO_ABIERTO=true})();
+$id('focomas').addEventListener('click',function(){
+  ponFoco(!FOCO_ABIERTO,null);
+  try{localStorage.setItem(FKEY,FOCO_ABIERTO?'1':'0')}catch(e){}
+  if(lastData)renderChart(lastData);
+});
 
 // Si los datos no cambian (solo el latido), no se toca nada. La firma se guarda al acabar: si algo falla
 // a medias, la lectura siguiente lo vuelve a intentar.
@@ -1277,7 +1359,9 @@ function render(d){
   lastData=d;
   var f=firma(d);
   if(f===FIRMA)return;
+  aplicaVista(d.vista);
   aplicaConfig(d.config);
+  ponLugar();
   renderCtx(d);
   renderPlan(d);
   tween('costev',Number(d.coste||0),function(v){return v.toFixed(4)});
@@ -1288,6 +1372,7 @@ function render(d){
   renderHist(d);
   renderAgents(d);
   renderAcum(d);
+  ponLugar();
   ponTexto($id('ts'),tx('Último dato')+': '+hhmm(d.actualizado));
   FIRMA=f;
 }
@@ -1354,6 +1439,8 @@ var LECTURA=0,PERIODO=0;
 function lecturas(ms){if(LECTURA&&ms===PERIODO)return;PERIODO=ms;if(LECTURA)clearInterval(LECTURA);LECTURA=setInterval(function(){load();loadEstado()},ms)}
 function tick(){ponTexto($id('clock'),new Date().toLocaleTimeString(LOC))}
 var rz;window.addEventListener('resize',function(){ponDensidad();clearTimeout(rz);rz=setTimeout(function(){if(lastData)renderChart(lastData)},120)});
+// La gráfica también cambia de tamaño sin que cambie la ventana (otra disposición, la lista de foco, la escala).
+if(window.ResizeObserver)new ResizeObserver(function(){clearTimeout(rz);rz=setTimeout(function(){if(lastData)renderChart(lastData)},120)}).observe($id('chart'));
 // Globo holográfico: meridianos y paralelos sobre un eje inclinado, con nodos fijos (la mitad en compacto).
 // Se para con la ventana oculta y con movimiento reducido (queda dibujado, quieto).
 (function(){

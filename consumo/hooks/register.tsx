@@ -1,9 +1,10 @@
 import { atom, read, update } from 'claude-code'
 import type { Hook, Register, Timer } from 'claude-code'
 
-import type { Acumulado, AgentRow, CompRow, Comparativa, CtxSnap, Familia, HistoricoConfig, Historico, HudConfig, Ledger, ModelRow, PlanState, TurnoHist, TurnRec } from '../types'
+import type { Acumulado, AgentRow, CompRow, Comparativa, CtxSnap, Familia, HistoricoConfig, Historico, HudConfig, HudVentana, HudVista, Ledger, ModelRow, PlanState, TurnoHist, TurnRec } from '../types'
 import { calcular, COMP0, familia, sumar } from './comparativa'
 import { CONFIG_DEFAULT, HISTORICO_DEFAULT, leerConfig, leerHistorico } from './config'
+import { argsVentana, leerVentana, leerVista, VISTA_DEFAULT } from './disposicion'
 import { cerrarSesion, diaDe, nuevo, parsear, recortar, resumir, sumarTurno } from './historico'
 import { observe } from './ledger'
 import type { PlanData } from './plan'
@@ -84,6 +85,8 @@ type Data = {
   config: HudConfig
   // Histórico entre sesiones (historico.json): total, hoy, semana y últimas sesiones. null si está desactivado.
   acumulado: Acumulado | null
+  // Colocación (disposicion, orden, tamanos, escala y ocultos), ya validada. Solo lectura para la página.
+  vista: HudVista
 }
 
 const alerta = (c: CtxSnap | null): Data['alerta'] =>
@@ -174,6 +177,7 @@ const toData = ({ r, m, h, lb, c, t, p, k, a, model, updated }: Snap, now: numbe
   latido: now,
   config: hudConfig,
   acumulado: historicoConfig.activo ? a : null,
+  vista: vistaConfig,
 })
 
 const EMPTY: Snap = { r: {}, m: {}, h: [], lb: {}, c: null, t: LEDGER0, p: PLAN0, k: COMP0, a: null, model: '', updated: 0 }
@@ -192,6 +196,9 @@ let hudConfig: HudConfig = CONFIG_DEFAULT
 let configAvisos: string[] = []
 // Opciones historico y retencionDias (userConfig), validadas en register().
 let historicoConfig: HistoricoConfig = HISTORICO_DEFAULT
+// Opciones disposicion, orden, tamanos, escala y ocultos (van a datos.js) y ventana (tamaño de la ventana de Edge).
+let vistaConfig: HudVista = VISTA_DEFAULT
+let ventanaConfig: HudVentana = 'auto'
 
 // Carpeta donde se escriben index.html, datos.js, estado.json y estado.js. "~" es la carpeta del
 // usuario: USERPROFILE en Windows, HOME en macOS y Linux. Sin ninguna de las dos, la carpeta
@@ -391,7 +398,8 @@ async function abrirHud($: Ctx): Promise<Apertura> {
   const failures: string[] = []
   for (const browser of ['msedge', 'chrome']) {
     try {
-      const run = await $.process.run(['cmd', '/c', 'start', '', browser, `--app=${fileUrl(page)}`])
+      // Opción ventana: --window-size=ancho,alto o --start-maximized detrás de --app (auto no añade nada).
+      const run = await $.process.run(['cmd', '/c', 'start', '', browser, `--app=${fileUrl(page)}`, ...argsVentana(ventanaConfig)])
       if (run.exitCode === 0) return { isOpen: true }
       failures.push(`${browser}: código ${run.exitCode}`)
     } catch (err) {
@@ -409,7 +417,11 @@ export const register: Register = (on, options) => {
   hudConfig = leida.config
   const leidoHist = leerHistorico(options)
   historicoConfig = leidoHist.config
-  configAvisos = [...leida.avisos, ...leidoHist.avisos]
+  const leidaVista = leerVista(options)
+  vistaConfig = leidaVista.vista
+  const leidaVentana = leerVentana(options)
+  ventanaConfig = leidaVentana.ventana
+  configAvisos = [...leida.avisos, ...leidoHist.avisos, ...leidaVista.avisos, ...leidaVentana.avisos]
 
   on('session.start', async ($, e, next) => {
     for (const aviso of configAvisos) {
