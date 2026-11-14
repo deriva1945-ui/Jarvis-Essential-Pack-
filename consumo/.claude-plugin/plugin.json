@@ -1,7 +1,7 @@
 {
   "name": "consumo",
   "version": "0.7.0",
-  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus y comando /jarvis para abrirlo o cerrarlo. Siete temas (natural por defecto: grafito cálido, sin neón, con el globo 3D; también monocromo, en blanco y negro), costes en euros o dólares, sin parpadeo, con densidad automática según el tamaño de la ventana y configurable (tema, acento, idioma, actualización, paneles y moneda).",
+  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus y comando /jarvis para abrirlo o cerrarlo. Siete temas (monocromo por defecto: blanco, grises y negro, sin acento, con el globo 3D en grises; también natural, grafito cálido sin neón), costes en euros o dólares, sin parpadeo, con densidad automática según el tamaño de la ventana y configurable (tema, acento, idioma, actualización, paneles y moneda).",
   "author": {
     "name": "deriva1945-ui"
   },
@@ -15,7 +15,7 @@
     "tema": {
       "type": "string",
       "title": "Tema / Theme",
-      "description": "Tema de color del HUD: natural (grafito cálido, sin neón, con el globo 3D), mark-ii, mark-l, stark, hibrido, claro o monocromo (solo blanco, grises y negro, sin acento). Por defecto: natural. / HUD colour theme: natural (warm graphite, no neon, keeps the 3D globe), mark-ii, mark-l, stark, hibrido (hybrid), claro (light) or monocromo (white, greys and black only, no accent). Default: natural.",
+      "description": "Tema de color del HUD: monocromo (solo blanco, grises y negro, sin acento, con el globo 3D en grises), natural (grafito cálido, sin neón, con el globo 3D), mark-ii, mark-l, stark, hibrido o claro. Por defecto: monocromo. / HUD colour theme: monocromo (white, greys and black only, no accent, 3D globe in greys), natural (warm graphite, no neon, keeps the 3D globe), mark-ii, mark-l, stark, hibrido (hybrid) or claro (light). Default: monocromo.",
       "options": [
         "natural",
         "mark-ii",
@@ -25,7 +25,7 @@
         "claro",
         "monocromo"
       ],
-      "default": "natural"
+      "default": "monocromo"
     },
     "acento": {
       "type": "string",

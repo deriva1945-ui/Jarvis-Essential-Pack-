@@ -12,7 +12,7 @@ export const ACTUALIZACION_MIN = 1
 export const ACTUALIZACION_MAX = 5
 
 export const CONFIG_DEFAULT: HudConfig = {
-  tema: 'natural',
+  tema: 'monocromo',
   acento: '#7fe7ff',
   idioma: 'es',
   actualizacion: 1,
