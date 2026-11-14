@@ -10,6 +10,7 @@ import {
   versionDeManifest,
 } from './lista'
 import { esAbsoluta, esRutaWindows, expandir, MODS_DIR_DEFAULT, padre, unir } from './rutas'
+import { lineasMonocromas, SEPARADOR, TONO } from './presentacion'
 import { type Idioma, idiomaDe, textos } from './textos'
 
 // Los mods del pack jarvis-essential-pack. mods-estado es este mismo mod.
@@ -153,10 +154,12 @@ function elegir(plugins: Instalado[], name: string): Instalado | undefined {
 
 const scopeFlag = (p: Instalado) => (p.scope === 'project' || p.scope === 'local' ? ` --scope ${p.scope}` : '')
 
-// Tabla de columnas alineadas.
+// Tabla de columnas alineadas, con una línea bajo el encabezado.
 function tabla(rows: string[][]): string[] {
   const widths = rows[0]!.map((_, i) => Math.max(...rows.map(r => r[i]!.length)))
-  return rows.map(r => '  ' + r.map((c, i) => (i === r.length - 1 ? c : c.padEnd(widths[i]!))).join('  ').trimEnd())
+  const out = rows.map(r => '  ' + r.map((c, i) => (i === r.length - 1 ? c : c.padEnd(widths[i]!))).join('  ').trimEnd())
+  const ancho = Math.max(...out.map(l => l.length)) - 2
+  return [out[0]!, `  ${SEPARADOR.repeat(ancho)}`, ...out.slice(1)]
 }
 
 async function informe($: Ctx): Promise<string> {
@@ -251,7 +254,7 @@ async function informe($: Ctx): Promise<string> {
   }
 
   lines.push('')
-  if (warnings.length > 0) lines.push(t.warnings, ...warnings.map(w => (w.startsWith(' ') ? w : `- ${w}`)))
+  if (warnings.length > 0) lines.push(t.warnings, ...warnings.map(w => (w.startsWith(' ') ? w : `${t.warnPrefix} ${w}`)))
   else if (list.isOk) lines.push(t.allActive)
 
   const others = plugins.filter(p => !(PACK as readonly string[]).includes(p.name.toLowerCase()))
@@ -351,4 +354,29 @@ export const register: Register = (on, options) => {
     if (s === 'ayuda' || s === 'help' || s === '?') return { text: ayuda() }
     return { text: `${T().unknownSub(sub)} ${T().usage}` }
   }).catch(($, e, next) => (next.called ? next(e) : { text: T().reportFailed }))
+
+  // Dibujo monocromo de la salida de /mods: el texto es el mismo; solo cambian los tonos.
+  on('ui.render', { component: 'CommandOutput', props: { command: 'mods' } }, async ($, e, next) => {
+    if (e.props.isErrored) return next(e)
+    try {
+      const { Box, Text } = $.ui.resolve(e)
+      return (
+        <Box flexDirection="column">
+          {lineasMonocromas(e.props.text).map(l => (
+            <Text wrap="wrap">
+              {l.length === 0
+                ? ' '
+                : l.map(t => (
+                    <Text color={TONO[t.tono]} weight={t.negrita ? 'bold' : undefined}>
+                      {t.texto}
+                    </Text>
+                  ))}
+            </Text>
+          ))}
+        </Box>
+      )
+    } catch {
+      return next(e)
+    }
+  })
 }

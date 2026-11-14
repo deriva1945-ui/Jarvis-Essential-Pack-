@@ -27,6 +27,7 @@ Añade el comando `/mods`: un diagnóstico del pack `jarvis-essential-pack`. Por
 ```
 Pack jarvis-essential-pack:
       Mod             Estado           Instalada  Copia local
+  ─────────────────────────────────────────────────────────
   [x] portero         activo           0.1.0      0.2.0       ≠
   [!] consumo         falló al cargar  0.4.0      0.4.0
   [ ] jarvis-banda    desactivado      0.2.0      —
@@ -42,7 +43,11 @@ Pack jarvis-essential-pack:
 
 Debajo salen los demás plugins instalados, qué carpeta se usó como copia local y desde dónde se cargó mods-estado.
 
+La salida es monocroma, como el HUD de consumo: `[x]` y `[ ]` en blanco, `[!]` en blanco y negrita, `[?]` en gris; los encabezados y el separador de la tabla en gris. No hay colores de acento.
+
 ## Avisos
+
+Cada aviso empieza por `Aviso:`, sin color.
 
 - **Mod roto:** si un mod del pack falló al cargar, dice cuál con el texto del error y sugiere `claude plugin update <mod>@jarvis-essential-pack`, reinstalarlo o mirar `claude --debug`.
 - **Versiones distintas:** si la copia local es más nueva, te da el comando para actualizar la instalada; si es más antigua, te manda a `/mods actualizar`.
@@ -152,6 +157,7 @@ Set the `idioma` option to `en` for English output.
 ```
 Pack jarvis-essential-pack:
       Mod             State           Installed  Local copy
+  ─────────────────────────────────────────────────────────
   [x] portero         active          0.1.0      0.2.0       ≠
   [!] consumo         failed to load  0.4.0      0.4.0
   [ ] jarvis-banda    disabled        0.2.0      —
@@ -167,7 +173,11 @@ Pack jarvis-essential-pack:
 
 Below it come the other installed plugins, the folder used as the local copy and where mods-estado was loaded from.
 
+The output is monochrome, like the usage HUD: `[x]` and `[ ]` in white, `[!]` in bold white, `[?]` in grey; headings and the table separator in grey. There are no accent colors.
+
 ## Warnings
+
+Each warning starts with `Warning:`, with no color.
 
 - **Broken mod:** if a pack mod failed to load, it names it with the error text and suggests `claude plugin update <mod>@jarvis-essential-pack`, reinstalling it or checking `claude --debug`.
 - **Different versions:** if the local copy is newer, it gives you the command to update the installed one; if it is older, it points you to `/mods update`.

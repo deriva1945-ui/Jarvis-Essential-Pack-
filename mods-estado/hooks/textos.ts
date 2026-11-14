@@ -52,6 +52,7 @@ const es = {
 
   // Avisos
   warnings: 'Avisos:',
+  warnPrefix: 'Aviso:',
   allActive: 'Todos los mods del pack están activos.',
   notLoaded: (names: string) =>
     `Del pack no están cargados: ${names}. (Un mod cargado con --plugin-dir no aparece en "claude plugin list".)`,
@@ -144,6 +145,7 @@ const en: Textos = {
   selfRoot: (root, isLocal) => `This mod (mods-estado) is loaded from ${root}${isLocal ? ' (local copy)' : ''}.`,
 
   warnings: 'Warnings:',
+  warnPrefix: 'Warning:',
   allActive: 'Every pack mod is active.',
   notLoaded: names =>
     `Pack mods not loaded: ${names}. (A mod loaded with --plugin-dir does not show in "claude plugin list".)`,

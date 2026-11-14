@@ -394,3 +394,63 @@ test('/mods off answers clearly when the process fails, without throwing', async
   expect(failed.text).toContain('Plugin "consumo" not found')
   expect(failed.text).not.toContain('Hecho.')
 })
+
+// Dibuja la salida de /mods en el transcript, como hace el motor con la fila del comando.
+const salida = (text: string, surface: 'terminal' | 'desktop' = 'terminal') =>
+  ({
+    plugin: 'mods-estado',
+    surface,
+    component: 'CommandOutput',
+    props: { command: 'mods', args: '', text, isErrored: false },
+  }) as const
+
+const GRISES = ['#ffffff', '#d4d4d4', '#a3a3a3', '#737373']
+
+test('/mods se dibuja en blanco y grises: marcas, avisos con prefijo, encabezados y separador', async ($, on) => {
+  const plugins = BASE.map(p =>
+    p.id.startsWith('consumo@') ? { ...p, errors: ['Hooks module ./register.tsx failed to load'] } : p,
+  )
+  cli(on, plugins)
+  on('fs.exists', () => ({ value: false }))
+  await start($)
+  const { text } = await $.command.run(MODS)
+  expect(text).toMatch(/\n  ─+\n/)
+  expect(text).toContain('Aviso: consumo@jarvis-essential-pack falló al cargar')
+  expect(text).not.toMatch(/^- /m)
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount(salida(text ?? '', surface))
+    const textos = await ui.findAll({ type: 'Text' })
+    for (const t of textos) if (t.props.color !== undefined) expect(GRISES).toContain(t.props.color)
+    // El tramo más interior que coincide: el que lleva el tono.
+    const color = async (re: RegExp) => (await ui.findAll({ type: 'Text', text: re })).at(-1)?.props
+    expect((await color(/^\[x\]$/))?.color).toBe('#ffffff')
+    expect((await color(/^\[ \]$/))?.color).toBe('#ffffff')
+    expect(await color(/^\[!\]$/)).toMatchObject({ color: '#ffffff', weight: 'bold' })
+    expect(await color(/^Aviso:$/)).toMatchObject({ color: '#ffffff', weight: 'bold' })
+    expect((await color(/^Pack jarvis-essential-pack:$/))?.color).toBe('#a3a3a3')
+    expect((await color(/^Avisos:$/))?.color).toBe('#a3a3a3')
+    expect((await color(/^\s+─+$/))?.color).toBe('#a3a3a3')
+    expect((await color(/^\s+Mod\s+Estado/))?.color).toBe('#a3a3a3')
+    await ui.unmount()
+  }
+})
+
+test('/mods sin datos marca [?] en gris', async ($, on) => {
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('process.run', () => {
+    throw new Error('spawn ENOENT')
+  })
+  await start($)
+  const { text } = await $.command.run(MODS)
+  const ui = await $.ui.mount(salida(text ?? ''))
+  expect((await ui.findAll({ type: 'Text', text: /^\[\?\]$/ })).at(-1)?.props.color).toBe('#a3a3a3')
+  await ui.unmount()
+})
+
+test('una fila de error de /mods la dibuja el motor', async $ => {
+  const ui = await $.ui.mount({ ...salida('boom'), props: { command: 'mods', args: '', text: 'boom', isErrored: true } })
+  expect(await ui.keepsBeneath()).toBe(true)
+  await ui.unmount()
+})
