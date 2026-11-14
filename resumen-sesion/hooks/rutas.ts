@@ -7,6 +7,9 @@ export const DATA_DIR_DEFAULT = '~/CLAUDE/resumen-sesion'
 // Nombre del archivo con el último resumen guardado.
 export const ARCHIVO = 'ultimo-resumen.md'
 
+// Separador que ya usa la carpeta: "\" si la ruta lo lleva, "/" en otro caso.
+const sepOf = (dir: string) => (dir.includes('\\') ? '\\' : '/')
+
 const sinBarraFinal = (dir: string) => (/^[\\/]+$/.test(dir) ? dir : dir.replace(/[\\/]+$/, ''))
 
 // Ruta absoluta: "/x", "\x", "C:\x" o "C:/x".
@@ -26,9 +29,8 @@ export function expandir(dir: string, home: string | undefined): string | null {
   return base.includes('\\') ? base + rest.replace(/\//g, '\\') : base + rest.replace(/\\/g, '/')
 }
 
-// Une una carpeta y un nombre de archivo con el separador que ya usa la carpeta.
+// Une una carpeta y un nombre de archivo con el separador de la carpeta.
 export const unir = (dir: string, name: string) => {
   const base = sinBarraFinal(dir)
-  if (/[\\/]$/.test(base)) return base + name
-  return base + (base.includes('\\') ? '\\' : '/') + name
+  return /[\\/]$/.test(base) ? base + name : base + sepOf(base) + name
 }

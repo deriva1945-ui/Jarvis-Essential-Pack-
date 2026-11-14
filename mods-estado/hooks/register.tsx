@@ -17,6 +17,9 @@ import { type Idioma, idiomaDe, textos } from './textos'
 const SELF = 'mods-estado'
 const PACK = ['portero', 'resumen-sesion', 'consumo', 'jarvis-banda', SELF] as const
 
+// Si un nombre (ya en minúsculas) es uno de los mods del pack.
+const esDelPack = (name: string) => (PACK as readonly string[]).includes(name)
+
 // Marketplace actual del pack y el nombre que tenía antes.
 const MARKETPLACE = 'jarvis-essential-pack'
 const OLD_MARKETPLACE = 'portero-claude'
@@ -228,7 +231,7 @@ async function informe($: Ctx): Promise<string> {
 
   // Mods del pack que fallaron al cargar, con el texto del error.
   for (const p of plugins) {
-    if (!(PACK as readonly string[]).includes(p.name.toLowerCase()) || p.errors.length === 0) continue
+    if (!esDelPack(p.name.toLowerCase()) || p.errors.length === 0) continue
     for (const err of p.errors) warnings.push(t.broken(p.id, err))
     warnings.push(t.brokenHint(p.id))
     if (p.errors.some(e => /manifest|plugin\.json|hooks|module|módulo/i.test(e))) warnings.push(t.brokenManifestHint)
@@ -257,7 +260,7 @@ async function informe($: Ctx): Promise<string> {
   if (warnings.length > 0) lines.push(t.warnings, ...warnings.map(w => (w.startsWith(' ') ? w : `${t.warnPrefix} ${w}`)))
   else if (list.isOk) lines.push(t.allActive)
 
-  const others = plugins.filter(p => !(PACK as readonly string[]).includes(p.name.toLowerCase()))
+  const others = plugins.filter(p => !esDelPack(p.name.toLowerCase()))
   if (list.isOk) {
     lines.push('', t.others)
     if (others.length === 0) lines.push(`  ${t.noOthers}`)
@@ -275,7 +278,7 @@ async function actualizar($: Ctx): Promise<string> {
   const lines: string[] = [t.updTitle, '']
 
   const list = await leerPlugins($)
-  const installed = list.isOk ? list.plugins.filter(p => p.marketplace === MARKETPLACE && (PACK as readonly string[]).includes(p.name)) : []
+  const installed = list.isOk ? list.plugins.filter(p => p.marketplace === MARKETPLACE && esDelPack(p.name)) : []
   if (installed.length > 0) {
     lines.push(t.updInstalled(MARKETPLACE), `   claude plugin marketplace update ${MARKETPLACE}`)
     for (const p of installed) lines.push(`   claude plugin update ${p.id}${scopeFlag(p)}`)
@@ -290,15 +293,16 @@ async function actualizar($: Ctx): Promise<string> {
     lines.push(t.updLocalUnknown)
   } else {
     const isWin = esRutaWindows(dir)
+    const shell = t.updShell(isWin ? 'PowerShell' : 'bash/zsh')
     const q = (p: string) => `"${p}"`
     if (await existe($, unir(dir, '.git'))) {
-      lines.push(t.updLocalGit(dir), t.updShell(isWin ? 'PowerShell' : 'bash/zsh'), `   git -C ${q(dir)} pull`)
+      lines.push(t.updLocalGit(dir), shell, `   git -C ${q(dir)} pull`)
     } else {
       const repoDir = unir(padre(dir), 'portero-claude')
       const hasRepo = await existe($, unir(repoDir, '.git'))
       lines.push(t.updLocalCopy(dir))
       if (!hasRepo) lines.push(t.updCloneFirst(repoDir))
-      lines.push(t.updShell(isWin ? 'PowerShell' : 'bash/zsh'))
+      lines.push(shell)
       if (!hasRepo) lines.push(`   git clone ${REPO_URL} ${q(repoDir)}`)
       lines.push(`   git -C ${q(repoDir)} pull`)
       for (const n of PACK) {
@@ -325,7 +329,7 @@ async function toggle($: Ctx, sub: 'on' | 'off', rest: string[]): Promise<string
   if (rest.length !== 1) return t.usage
   const given = rest[0]!
   const name = given.toLowerCase()
-  if (!(PACK as readonly string[]).includes(name)) return t.notPack(given, PACK.join(', '))
+  if (!esDelPack(name)) return t.notPack(given, PACK.join(', '))
   const r = await runClaude($, ['plugin', sub === 'on' ? 'enable' : 'disable', name])
   if (!r.isOk) return t.toggleFailed(sub === 'on', name, r.reason)
   return t.done
@@ -343,7 +347,7 @@ export const register: Register = (on, options) => {
       argumentHint: idioma === 'en' ? '[on|off <name> | update | help]' : '[on|off <nombre> | actualizar | ayuda]',
     })
     return next(e)
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   on('command.run', { command: 'mods' }, async ($, e) => {
     const [sub, ...rest] = (e.args ?? '').trim().split(/\s+/).filter(Boolean)
@@ -353,7 +357,7 @@ export const register: Register = (on, options) => {
     if (s === 'actualizar' || s === 'update') return { text: await actualizar($) }
     if (s === 'ayuda' || s === 'help' || s === '?') return { text: ayuda() }
     return { text: `${T().unknownSub(sub)} ${T().usage}` }
-  }).catch(($, e, next) => (next.called ? next(e) : { text: T().reportFailed }))
+  }).catch((_, e, next) => (next.called ? next(e) : { text: T().reportFailed }))
 
   // Dibujo monocromo de la salida de /mods: el texto es el mismo; solo cambian los tonos.
   on('ui.render', { component: 'CommandOutput', props: { command: 'mods' } }, async ($, e, next) => {

@@ -112,17 +112,17 @@ export const register: Register = (on, options) => {
       argumentHint: '[reglas]',
     })
     return next(e)
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   on('command.run', { command: 'portero' }, async ($, e) => {
     const sub = (e.args ?? '').trim().toLowerCase()
-    const dir = await carpeta($)
-    if (sub === 'reglas' || sub === 'rules') return { text: describirReglas(cfg, unir(dir, ARCHIVO)) }
+    const file = await archivo($)
+    if (sub === 'reglas' || sub === 'rules') return { text: describirReglas(cfg, file) }
     if (sub !== '') return { text: USAGE }
-    if (!cfg.logEnabled) return { text: `El registro está desactivado (logEnabled).\n\n${describirReglas(cfg, dir)}` }
+    if (!cfg.logEnabled) return { text: `El registro está desactivado (logEnabled).\n\n${describirReglas(cfg, file)}` }
     cache = null // relee: puede haberlo escrito otra sesión
     const entradas = await leerRegistro($)
-    return { text: resumen(entradas, unir(dir, ARCHIVO)) }
+    return { text: resumen(entradas, file) }
   })
 
   on('prompt.submit', async ($, e, next) => {
@@ -197,12 +197,12 @@ export const register: Register = (on, options) => {
         ? `Pasa al subagente el contexto reciente siguiente y devuelve su resultado sin rehacer el trabajo.\n\nContexto reciente:\n${reciente}`
         : 'Devuelve su resultado sin rehacer el trabajo.')
     return next({ ...base, context: [...(e.context ?? []), nota] })
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
-  on('agent.spawn', ($, e, next) => {
+  on('agent.spawn', (_, e, next) => {
     if (isHeavy && !e.fork && !e.model) return next({ ...e, model: cfg.heavyModel })
     return next(e)
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   // Dibujo monocromo de la salida de /portero: el texto es el mismo; solo cambian los tonos.
   on('ui.render', { component: 'CommandOutput', props: { command: 'portero' } }, async ($, e, next) => {

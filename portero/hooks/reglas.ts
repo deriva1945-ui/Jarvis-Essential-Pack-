@@ -155,7 +155,8 @@ export function clasificarPorReglas(text: string, cfg: Config, hist: Historial =
 }
 
 // Texto de /portero reglas: qué capas hay y cuáles están activas.
-export function describirReglas(cfg: Config, carpeta: string): string {
+// registro: ruta del archivo de decisiones (solo se muestra con el registro activo).
+export function describirReglas(cfg: Config, registro: string): string {
   const on = (b: boolean) => (b ? '[x]' : '[ ]')
   const r = cfg.reglas
   return [
@@ -171,7 +172,7 @@ export function describirReglas(cfg: Config, carpeta: string): string {
     `  [x] fallo            si el clasificador falla → pesada, con aviso en el registro`,
     '',
     `Modelo pesado: ${cfg.heavyModel}. Contexto a subagentes: ${cfg.contextMessages} mensajes, ${cfg.contextChars} caracteres (el doble con dudosa).`,
-    `Registro: ${cfg.logEnabled ? carpeta : 'desactivado (logEnabled)'}`,
+    `Registro: ${cfg.logEnabled ? registro : 'desactivado (logEnabled)'}`,
   ].join('\n')
 }
 

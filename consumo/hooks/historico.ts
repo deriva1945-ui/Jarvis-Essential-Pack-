@@ -11,7 +11,6 @@ export const SESIONES_MAX = 200
 export const IDS_MAX = 1000
 // Sesiones que van a datos.js para la lista del HUD.
 export const SESIONES_HUD = 6
-export const RETENCION_DEFAULT = 365
 
 const r6 = (x: number) => Math.round(x * 1e6) / 1e6
 

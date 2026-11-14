@@ -219,11 +219,11 @@ export function colocar(v: VistaPagina, fuera: Record<string, boolean>): Colocac
   const tam = (p: string) => (v.tamanos[p] === 'pequeno' || v.tamanos[p] === 'grande' ? (v.tamanos[p] as string) : 'normal')
   const vis = v.orden.filter(p => LUG.indexOf(p) >= 0 && !fuera[p] && v.ocultos.indexOf(p) < 0)
   // auto: las áreas de siempre, sin las de los paneles que no se ven por la página (no por el usuario).
-  const areas = AREAS.filter((a, i) => !fuera[LUG[i] as string] || v.ocultos.indexOf(LUG[i] as string) >= 0)
+  const areas = AREAS.filter((_, i) => !fuera[LUG[i] as string] || v.ocultos.indexOf(LUG[i] as string) >= 0)
   const todosAuto = vis.length === areas.length
   const n = DESTACADOS[v.disposicion] || 0
   const pocos = n > 0 && vis.length < n
-  const bs = vis.filter((p, i) => pocos || i >= n)
+  const bs = vis.filter((_, i) => pocos || i >= n)
   const normales = bs.every(p => tam(p) === 'normal')
   const paneles: Record<string, Puesto> = {}
   for (let k = 0; k < LUG.length; k++) {

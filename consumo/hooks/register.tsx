@@ -466,7 +466,7 @@ export const register: Register = (on, options) => {
     }
     latir($)
     return next(e)
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   // /jarvis: si el HUD está cerrado lo abre; si está abierto lo cierra.
   on('command.run', { command: 'jarvis' }, async $ => {
@@ -494,7 +494,7 @@ export const register: Register = (on, options) => {
       }
     }
     return { text: 'HUD abierto. Escribe /jarvis otra vez para cerrarlo.' }
-  }).catch(($, e, next) =>
+  }).catch((_, e, next) =>
     next.called ? next(e) : { text: 'consumo: no se pudo cambiar el estado del HUD con /jarvis.' },
   )
 
@@ -506,7 +506,7 @@ export const register: Register = (on, options) => {
       await update($, tipos, t => ({ ...t, [r.agentId as string]: e.subagentType || 'subagente' }))
     }
     return r
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   on('turn.complete', async ($, e, next) => {
     const key = e.agentId ?? 'main'
@@ -617,7 +617,7 @@ export const register: Register = (on, options) => {
       await conHistorico($, (h, ahora) => cerrarSesion(h, e.sessionId, ahora))
     }
     return next(e)
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   on('tool.call', async ($, e, next) => {
     const ran = await next(e)
@@ -641,5 +641,5 @@ export const register: Register = (on, options) => {
     await writeData($)
     if (!beat) latir($)
     return ran
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 }

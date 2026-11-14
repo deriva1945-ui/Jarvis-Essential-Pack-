@@ -867,7 +867,7 @@ const JARVIS = {
   presentation: { isFullscreen: false, columns: 100 },
 } as const
 
-const hudBase: TestBody = ($, on) => {
+const hudBase: TestBody = (_, on) => {
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.model', () => ({ value: 'claude-haiku-5-5' }))
   on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 0, window: 100, percent: 0 }, rateLimits: [] } }))

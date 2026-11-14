@@ -1384,7 +1384,6 @@ $id('monbtn').addEventListener('click',cambiaMoneda);
 /*COLOCAR*/
 ` + COLOCAR_JS + `
 /*FIN COLOCAR*/
-var DISPOSICIONES=['auto','columna','franja','tres-columnas','nucleo-central','barra-lateral','barra-inferior','mosaico','foco'];
 var LUGAR_ID={contexto:'p-ctx',coste:'p-cost',comparativa:'p-comp',reparto:'p-mod',agentes:'p-agt',plan:'p-plan',historico:'p-acum',historial:'p-hist',grafica:'p-chart'};
 var VISTA=normalizaVista(null),VISTA_K='',FKEY='consumo.foco.abierto',ELS=null;
 function lugares(){if(!ELS){ELS={};for(var p in LUGAR_ID)ELS[p]=$id(LUGAR_ID[p])}return ELS}

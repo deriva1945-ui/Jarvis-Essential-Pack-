@@ -213,9 +213,8 @@ test('each layout has its own block with grid-template-areas, applied through da
   expect(PAGE).toContain("ponAttr(root,'data-disposicion',VISTA.disposicion);")
   expect(PAGE).toContain(COLOCAR_JS)
   for (const ch of ['`', '$' + '{', String.fromCharCode(92)]) expect(COLOCAR_JS.includes(ch)).toBe(false)
-  // Mismas listas en la página y en disposicion.ts.
-  const disp = /var DISPOSICIONES=(\[[^\]]*\])/.exec(PAGE)?.[1] ?? '[]'
-  expect(JSON.parse(disp.replace(/'/g, '"'))).toEqual([...DISPOSICIONES])
+  // Mismos paneles en la página y en disposicion.ts (la lista de disposiciones solo vive en disposicion.ts).
+  expect(PAGE).not.toContain('var DISPOSICIONES=')
   const ids = /var LUGAR_ID=(\{[^}]*\})/.exec(PAGE)?.[1] ?? '{}'
   expect(Object.keys(JSON.parse(ids.replace(/'/g, '"').replace(/(\w+):/g, '"$1":')))).toEqual([...LUGARES])
 })

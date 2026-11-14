@@ -127,6 +127,10 @@ type Generado =
   | { ok: true; texto: string; ruta: string; errorGuardado?: string }
   | { ok: false; texto: string; ruta: string; motivo: string }
 
+// Primera línea tras un resumen generado: dónde se guardó o por qué no se pudo guardar.
+const cabeceraGuardado = (ui: (typeof UI)[Idioma], g: Extract<Generado, { ok: true }>) =>
+  g.errorGuardado ? ui.noGuardado(g.ruta, g.errorGuardado) : ui.guardado(g.ruta)
+
 // Genera el resumen. Si el modelo responde, lo guarda en el archivo y en el estado. Si no,
 // devuelve un resumen parcial (solo datos de herramientas) y no toca lo ya guardado.
 async function generar($: Ctx, origen: Meta['origen']): Promise<Generado> {
@@ -209,7 +213,7 @@ export const register: Register = (on, options) => {
 
     if (g.ok) {
       $.ui.toast(g.errorGuardado ? ui.noGuardado(g.ruta, g.errorGuardado) : ui.listoAuto(h, g.ruta), { timeoutMs: 10_000 })
-      $.ui.log(`${g.errorGuardado ? ui.noGuardado(g.ruta, g.errorGuardado) : ui.guardado(g.ruta)}\n\n${sugerencia(cfg.idioma, g.texto)}`)
+      $.ui.log(`${cabeceraGuardado(ui, g)}\n\n${sugerencia(cfg.idioma, g.texto)}`)
       return next({ ...e, context: [...(e.context ?? []), `${ui.contexto(h)}\n${g.texto}`] })
     }
 
@@ -219,15 +223,14 @@ export const register: Register = (on, options) => {
     $.ui.toast(aviso, { timeoutMs: 10_000 })
     $.ui.log(aviso)
     return next({ ...e, context: [...(e.context ?? []), `${ui.contextoParcial}\n${g.texto}`] })
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   // Disparador bajo demanda.
   on('command.run', { command: 'resumen' }, async $ => {
     const ui = UI[cfg.idioma]
     const g = await generar($, { tipo: 'manual' })
     if (g.ok) {
-      const cabecera = g.errorGuardado ? ui.noGuardado(g.ruta, g.errorGuardado) : ui.guardado(g.ruta)
-      return { text: `${cabecera}\n\n${sugerencia(cfg.idioma, g.texto)}` }
+      return { text: `${cabeceraGuardado(ui, g)}\n\n${sugerencia(cfg.idioma, g.texto)}` }
     }
     const aviso = `${ui.fallo(g.motivo)} ${ui.rendido}`
     $.ui.toast(aviso, { timeoutMs: 10_000 })

@@ -21,10 +21,10 @@ const SIN_AJUSTES: Ajustes = { idioma: '', modo: '' }
 const estado = atom({ plugin: 'jarvis-banda', key: 'estado' } as const, INICIAL, SHAPE)
 const ajustes = atom({ plugin: 'jarvis-banda', key: 'ajustes' } as const, SIN_AJUSTES, { shape: 'jarvis-banda-ajustes-1' })
 
-export type Familia = 'haiku' | 'opus' | 'fable' | 'otro'
+type Familia = 'haiku' | 'opus' | 'fable' | 'otro'
 
 // Tonos por defecto, en blanco y grises (estética monocroma); cada uno se cambia con userConfig.
-export const COLOR_DEFECTO: Record<Familia, string> = {
+const COLOR_DEFECTO: Record<Familia, string> = {
   haiku: '#a3a3a3', // gris medio
   opus: '#ffffff', // blanco
   fable: '#a3a3a3', // gris medio
@@ -32,10 +32,10 @@ export const COLOR_DEFECTO: Record<Familia, string> = {
 }
 
 // El error es la única alerta con color: rojo apagado, sea cual sea el modelo.
-export const COLOR_ERROR = '#b85c5c'
+const COLOR_ERROR = '#b85c5c'
 
 // Símbolo por estado: todos de una columna.
-export const SIMBOLO: Record<Fase, string> = {
+const SIMBOLO: Record<Fase, string> = {
   esperando: '◌',
   procesando: '◐',
   pensando: '◓',
@@ -46,7 +46,7 @@ export const SIMBOLO: Record<Fase, string> = {
 }
 
 // Cuánto dura el pulso tras un cambio de estado.
-export const PULSO_MS = 600
+const PULSO_MS = 600
 
 const TEXTOS = {
   es: {
@@ -69,7 +69,7 @@ const TEXTOS = {
   },
 } as const satisfies Record<Idioma, Record<Fase, string>>
 
-export type Config = {
+type Config = {
   idioma: Idioma
   modo: Modo
   mostrarModelo: boolean
@@ -85,7 +85,7 @@ const esIdioma = (v: unknown): v is Idioma => v === 'es' || v === 'en'
 const esModo = (v: unknown): v is Modo => v === 'completo' || v === 'compacto' || v === 'oculto'
 
 // Lee userConfig; todo valor raro cae en su valor por defecto.
-export const leerConfig = (o: PluginOptions): Config => {
+const leerConfig = (o: PluginOptions): Config => {
   const color = (k: string, f: Familia) => {
     const v = o[k]
     return esColor(v) ? v.trim() : COLOR_DEFECTO[f]
@@ -106,7 +106,7 @@ export const leerConfig = (o: PluginOptions): Config => {
   }
 }
 
-export const familia = (model: string): Familia => {
+const familia = (model: string): Familia => {
   const m = model.toLowerCase()
   if (m.includes('haiku')) return 'haiku'
   if (m.includes('opus')) return 'opus'
@@ -115,7 +115,7 @@ export const familia = (model: string): Familia => {
 }
 
 // "claude-opus-5-5" -> "OPUS-5.5"; "claude-haiku-4-5-20251001" -> "HAIKU-4.5"; "haiku" -> "HAIKU".
-export const nombreModelo = (model: string): string => {
+const nombreModelo = (model: string): string => {
   if (!model) return '—'
   return model
     .replace(/\[.*?\]/g, '')
@@ -126,13 +126,13 @@ export const nombreModelo = (model: string): string => {
 }
 
 // "mcp__github__create_issue" -> "github/create_issue"; el resto, tal cual.
-export const nombreHerramienta = (tool: string): string => {
+const nombreHerramienta = (tool: string): string => {
   const m = /^mcp__(.+?)__(.+)$/.exec(tool)
   return m ? `${m[1]}/${m[2]}` : tool
 }
 
 // El texto del estado, sin símbolo ni segmentos de modelo o contexto.
-export const textoEstado = (s: Estado, idioma: Idioma): string => {
+const textoEstado = (s: Estado, idioma: Idioma): string => {
   const t = TEXTOS[idioma]
   const h = nombreHerramienta(s.herramienta)
   switch (s.fase) {
@@ -152,7 +152,7 @@ export const textoEstado = (s: Estado, idioma: Idioma): string => {
 }
 
 // La línea entera tal como se ve (el símbolo incluido).
-export const lineaCompleta = (s: Estado, c: Config): string => {
+const lineaCompleta = (s: Estado, c: Config): string => {
   const partes = [textoEstado(s, c.idioma)]
   if (c.modo === 'compacto') return `${SIMBOLO[s.fase]} ${partes[0]}`
   if (c.mostrarModelo) partes.push(nombreModelo(s.modelo))
@@ -160,14 +160,14 @@ export const lineaCompleta = (s: Estado, c: Config): string => {
   return `${SIMBOLO[s.fase]} J.A.R.V.I.S. // ${partes.join(' · ')}`
 }
 
-export const colorDe = (s: Estado, c: Config): string => {
+const colorDe = (s: Estado, c: Config): string => {
   if (s.fase === 'error') return COLOR_ERROR
   const fam = s.fase === 'delegando' && s.modeloDelegado ? familia(s.modeloDelegado) : familia(s.modelo)
   return c.colores[fam]
 }
 
 // Respuesta de /banda: cambia idioma o modo solo en esta sesión.
-export const aplicarComando = (
+const aplicarComando = (
   args: string,
   actual: Ajustes,
   c: Config,
@@ -279,7 +279,7 @@ export const register: Register = (on, options) => {
       // Sin comando: la banda sigue igual.
     }
     return next(e)
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   on('command.run', { command: 'banda' }, async ($, e) => {
     const actual = (await read($, ajustes).catch(() => SIN_AJUSTES)) ?? SIN_AJUSTES
@@ -292,7 +292,7 @@ export const register: Register = (on, options) => {
     const modelo = await modeloSesion($)
     await fijar($, s => ({ ...aProcesando(s), modelo: modelo || s.modelo }))
     return next(e)
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   // Pensando: mientras llega texto de razonamiento visible del hilo principal.
   on('turn.step', async function* ($, e, next) {
@@ -337,7 +337,7 @@ export const register: Register = (on, options) => {
       return mia || s.fase === 'delegando' ? aProcesando(s) : s
     })
     return ran
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   // Esperando permiso: el motor va a preguntar antes de ejecutar la herramienta.
   on('tool.check', async ($, e, next) => {
@@ -346,7 +346,7 @@ export const register: Register = (on, options) => {
       await fijar($, s => ({ ...s, fase: 'permiso', herramienta: e.tool }))
     }
     return r
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   on('agent.spawn', async ($, e, next) => {
     const r = await next(e)
@@ -355,13 +355,13 @@ export const register: Register = (on, options) => {
       await fijar($, s => ({ ...s, fase: 'delegando', herramienta: '', agente: e.subagentType, modeloDelegado: delegado }))
     }
     return r
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   on('session.measure', async ($, e, next) => {
     const p = e.context.percent
     if (typeof p === 'number') await fijarContexto($, Math.round(p))
     return next(e)
-  }).catch(($, e, next) => next(e))
+  }).catch((_, e, next) => next(e))
 
   on('turn.complete', async ($, e, next) => {
     if (e.agentId) {

@@ -60,10 +60,10 @@ const contar = <K extends string>(xs: readonly K[]): Array<[K, number]> => {
 }
 
 // Texto de /portero: reparto de rutas, capas, reglas que más disparan, avisos y últimos casos.
-export function resumen(entradas: readonly Entrada[], carpeta: string, ultimos = 8, top = 6): string {
+export function resumen(entradas: readonly Entrada[], registro: string, ultimos = 8, top = 6): string {
   const total = entradas.length
   if (total === 0) {
-    return `portero: aún no hay decisiones registradas.\nRegistro: ${carpeta}\nUsa /portero reglas para ver las reglas activas.`
+    return `portero: aún no hay decisiones registradas.\nRegistro: ${registro}\nUsa /portero reglas para ver las reglas activas.`
   }
   const lines: string[] = [`portero · ${total} decisiones registradas`, '', 'Reparto de rutas:']
   for (const r of RUTAS) {
@@ -85,6 +85,6 @@ export function resumen(entradas: readonly Entrada[], carpeta: string, ultimos =
     const hora = e.ts.replace('T', ' ').slice(0, 19)
     lines.push(`  ${hora}  ${e.ruta.padEnd(6)}  ${e.motivo}  · ${e.texto || '(sin texto)'}`)
   }
-  lines.push('', `Registro: ${carpeta}`)
+  lines.push('', `Registro: ${registro}`)
   return lines.join('\n')
 }
