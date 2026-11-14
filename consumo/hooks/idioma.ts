@@ -38,7 +38,7 @@ export const EN: readonly (readonly [string, string])[] = [
   ['Último turno', 'Last turn'],
   ['Últimos turnos', 'Latest turns'],
   ['Contexto alto', 'High context'],
-  ['USD por turno', 'USD per turn'],
+  ['Coste por turno', 'Cost per turn'],
   ['Real en turnos', 'Actual (turns)'],
   ['sin estimación', 'no estimate'],
   ['Último dato', 'Last update'],

@@ -6,6 +6,7 @@ import { CONFIG_DEFAULT, leerConfig, PANELES, TEMAS as TEMAS_CONFIG } from './co
 import { DOM, firma, lista, ponAttr, ponEstilo, ponSegs, ponTexto } from './dom'
 import { EN, IDIOMA_JS, traducir } from './idioma'
 import { observe } from './ledger'
+import { convertirMoneda, formatoMoneda, MONEDA_JS } from './moneda'
 import { densidadDe, PAGE } from './page'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
 import { DATA_DIR_DEFAULT, expandir, fileUrl, unir } from './rutas'
@@ -68,7 +69,7 @@ test('the layout adapts by container queries and documented breakpoints, with no
 })
 
 // Temas: bloque de variables por tema en html[data-tema="..."]; el HTML sale con natural.
-const TEMAS = ['natural', 'hibrido', 'mark-ii', 'mark-l', 'stark', 'claro']
+const TEMAS = ['natural', 'hibrido', 'mark-ii', 'mark-l', 'stark', 'claro', 'monocromo']
 const VARS_TEMA = ['--bg', '--panel', '--txt', '--sub', '--acc', '--acc2', '--warn', '--crit', '--ok', '--modelo-opus', '--modelo-haiku', '--modelo-fable', '--modelo-otro']
 function bloqueTema(t: string): string {
   const sel = `html[data-tema="${t}"]{`
@@ -76,7 +77,7 @@ function bloqueTema(t: string): string {
   return i < 0 ? '' : PAGE.slice(i + sel.length, PAGE.indexOf('\n}', i))
 }
 
-test('the page defines the six themes, each with every color variable', () => {
+test('the page defines the seven themes, each with every color variable', () => {
   for (const t of TEMAS) {
     const b = bloqueTema(t)
     expect(b.length > 0).toBe(true)
@@ -1037,6 +1038,8 @@ test('config: with no options datos.js carries the defaults and nothing is logge
     idioma: 'es',
     actualizacion: 1,
     paneles: ['contexto', 'coste', 'reparto', 'agentes', 'historial', 'grafica', 'comparativa', 'plan'],
+    moneda: 'EUR',
+    tipoCambio: 0.92,
   })
   expect(config).toEqual(CONFIG_DEFAULT)
   expect(logs).toHaveLength(0)
@@ -1047,7 +1050,7 @@ test(
   { options: { dataDir: '/prueba/consumo', tema: 'stark', acento: '#FF0080', idioma: 'en', actualizacion: 3, paneles: ['plan', 'coste'] } },
   async ($, on) => {
     const { config, logs } = await arrancar($, on)
-    expect(config).toEqual({ tema: 'stark', acento: '#ff0080', idioma: 'en', actualizacion: 3, paneles: ['coste', 'plan'] })
+    expect(config).toEqual({ tema: 'stark', acento: '#ff0080', idioma: 'en', actualizacion: 3, paneles: ['coste', 'plan'], moneda: 'EUR', tipoCambio: 0.92 })
     expect(logs).toHaveLength(0)
   },
 )
@@ -1289,4 +1292,184 @@ test('accesibilidad: visible focus on controls and the natural labels are not fo
   expect(/SYS\s*\/\//.test(html)).toBe(false)
   expect(html).toContain('Plan · sin tareas activas')
   expect(css).toContain('html[data-tema="natural"] .plt{font-size:var(--fv);letter-spacing:0;text-transform:none}')
+})
+
+// ---------- Moneda ----------
+
+const NB = String.fromCharCode(160)
+const eur = (txt: string) => txt.split(' ').join(NB)
+
+test('moneda: 1 USD at 0.92 is 0,92 €, USD is not converted and a bad rate leaves dollars', () => {
+  expect(convertirMoneda(1, 'EUR', 0.92)).toBe(0.92)
+  expect(formatoMoneda(convertirMoneda(1, 'EUR', 0.92), 'EUR', 'es-ES')).toBe(eur('0,92 €'))
+  expect(convertirMoneda(1, 'USD', 0.92)).toBe(1)
+  expect(convertirMoneda(2.5, 'USD', 0.5)).toBe(2.5)
+  for (const t of [0, -1, NaN, Infinity]) expect(convertirMoneda(3, 'EUR', t)).toBe(3)
+  expect(convertirMoneda(10, 'EUR', 0.5)).toBe(5)
+})
+
+test('moneda: currency format by language, € after the number in Spanish, 4 decimals below 1 and 2 from 1', () => {
+  expect(formatoMoneda(1234.56, 'EUR', 'es-ES')).toBe(eur('1.234,56 €'))
+  expect(formatoMoneda(1234.56, 'EUR', 'en-US')).toBe('€1,234.56')
+  expect(formatoMoneda(0, 'EUR', 'es-ES')).toBe(eur('0,00 €'))
+  // Menos de 1: 4 decimales, o 2 si ya es exacto con 2.
+  expect(formatoMoneda(0.12345, 'EUR', 'es-ES')).toBe(eur('0,1235 €'))
+  expect(formatoMoneda(0.0042, 'EUR', 'en-US')).toBe('€0.0042')
+  expect(formatoMoneda(0.1, 'EUR', 'es-ES')).toBe(eur('0,10 €'))
+  expect(formatoMoneda(-0.0123, 'EUR', 'es-ES')).toBe(eur('-0,0123 €'))
+  // Nunca 3 decimales: 0.103 sale con 4.
+  expect(formatoMoneda(0.103, 'EUR', 'es-ES')).toBe(eur('0,1030 €'))
+  expect(formatoMoneda(0.92, 'EUR', 'en-US')).toBe('€0.92')
+  // Desde 1: 2 decimales.
+  expect(formatoMoneda(12.3456, 'EUR', 'es-ES')).toBe(eur('12,35 €'))
+  expect(formatoMoneda(1, 'EUR', 'en-US')).toBe('€1.00')
+  // Con USD, dólares con el formato del idioma.
+  expect(formatoMoneda(0.25, 'USD', 'en-US')).toBe('$0.25')
+  expect(formatoMoneda(1234.5, 'USD', 'es-ES')).toBe(eur('1.234,50 US$'))
+})
+
+test('moneda: the page converts once, in dinero(), and every cost on the HUD goes through it', () => {
+  // Las funciones de moneda.ts van tal cual en la página (dentro de un template literal).
+  expect(PAGE).toContain(MONEDA_JS)
+  for (const c of ['`', '$' + '{', String.fromCharCode(92)]) expect(MONEDA_JS.includes(c)).toBe(false)
+  const js = PAGE.slice(PAGE.indexOf('<script>', PAGE.indexOf('<body>')))
+  // Un solo sitio convierte: aMoneda() (convertirMoneda solo aparece en su definición y ahí).
+  expect(js.split('convertirMoneda(').length - 1).toBe(2)
+  expect(js).toContain('function aMoneda(usd){return convertirMoneda(usd,MONEDA,TIPO)}')
+  expect(js).toContain('function dinero(usd){return importe(aMoneda(usd))}')
+  // importe() solo da formato: nunca recibe algo ya pasado por dinero() ni vuelve a convertir.
+  expect(js).toContain('function importe(v){return formatoMoneda(v,MONEDA,LOC)}')
+  expect(js).not.toMatch(/dinero\(aMoneda|aMoneda\(aMoneda|dinero\(dinero|aMoneda\(ctop/)
+  // Cifra principal, último turno, historial, comparativa, leyenda de la comparativa, tooltip de la gráfica y acumulado.
+  for (const k of [
+    "tween('costev',Number(d.coste||0),dinero);",
+    "(tx('Último turno')+' ≈ '+dinero(last.coste))",
+    "ponTexto(k[4],t.coste!=null?dinero(t.coste):'—');",
+    "ponTexto($id('cvreal'),dinero(real));",
+    "ponTexto($id('cvopus'),ok?dinero(est):'—');",
+    "ponTexto($id('caha'),dinero(ah));",
+    "' · '+dinero(x.coste||0)",
+    "(t.coste!=null?' · '+dinero(t.coste):'')",
+    "importe(ctop*i/4)",
+    // Acumulado entre sesiones (hoy, semana, total y cada sesión).
+    "ponTexto($id(p[0]),dinero(c.coste||0));",
+    "ponTexto(k[2],dinero(x.coste||0));",
+  ]) expect(js).toContain(k)
+  // Ni cifras sin formato ni la etiqueta USD fija.
+  expect(js).not.toContain('toFixed(4)')
+  expect(js).not.toContain("+' USD'")
+  expect(PAGE).not.toContain('<small>USD</small>')
+  // La moneda llega en config y un cambio vuelve a pintar la gráfica.
+  expect(js).toContain("var mon=c.moneda==='USD'?'USD':'EUR'")
+  expect(js).toContain("if(mon!==MONEDA||tc!==TIPO){MONEDA=mon;TIPO=tc;CHART=''}")
+  // La misma composición que dinero(): formato(conversión(usd)), una sola vez. 1 USD con 0.92 da 0,92 €.
+  const dinero = (usd: number) => formatoMoneda(convertirMoneda(usd, 'EUR', 0.92), 'EUR', 'es-ES')
+  expect(dinero(1)).toBe(eur('0,92 €'))
+  expect(dinero(1)).not.toBe(formatoMoneda(convertirMoneda(convertirMoneda(1, 'EUR', 0.92), 'EUR', 0.92), 'EUR', 'es-ES'))
+})
+
+test(
+  'moneda: the cost is stored in dollars in datos.js; only the page converts it',
+  { options: { dataDir: '/prueba/consumo', moneda: 'EUR', tipoCambio: 0.5 } },
+  async ($, on) => {
+    mock.clock(on, { now: 1_000 })
+    const writes: { path: string; text: string }[] = []
+    on('fs.write', (_, e) => {
+      writes.push(e)
+      return { value: undefined }
+    })
+    on('process.run', () => ok)
+    on('session.start', (_, e) => ({ cwd: e.cwd }))
+    on('session.model', () => ({ value: 'claude-opus-5-5' }))
+    let usd = 0.5
+    on('session.usage', () => ({ value: { startedAt: 0, context: { tokens: 10, window: 200000, percent: 0 }, rateLimits: [], cost: { usd } } }))
+    on('turn.complete', () => ({ text: '' }))
+    await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+    usd = 0.75
+    await $.turn.complete({
+      answer: '', durationMs: 1, isAborted: false, reason: 'answer', turnId: 't1',
+      usage: { model: 'claude-opus-5-5', input_tokens: 10, output_tokens: 10, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+    })
+    const w = writes.filter(x => x.path.endsWith('datos.js')).at(-1)
+    const d = JSON.parse((w?.text ?? '').replace(/^window\.CONSUMO = /, '').replace(/;$/, ''))
+    expect(d.config.moneda).toBe('EUR')
+    expect(d.config.tipoCambio).toBe(0.5)
+    // En dólares, sin convertir: 0.75 acumulado y 0.25 el turno (no 0.375 ni 0.125).
+    expect(d.coste).toBe(0.75)
+    expect(d.historial[0].coste).toBe(0.25)
+    expect(d.comparativa.costeReal).toBe(0.25)
+  },
+)
+
+test('config: moneda and tipoCambio are validated, with a warning for bad values', () => {
+  expect(CONFIG_DEFAULT.moneda).toBe('EUR')
+  expect(CONFIG_DEFAULT.tipoCambio).toBe(0.92)
+  expect(leerConfig({ moneda: 'usd' }).config.moneda).toBe('USD')
+  expect(leerConfig({ moneda: 'EUR', tipoCambio: 0.86 }).config).toEqual({ ...CONFIG_DEFAULT, tipoCambio: 0.86 })
+  expect(leerConfig({ tipoCambio: '0,9' }).config.tipoCambio).toBe(0.9)
+  const bad = leerConfig({ moneda: 'GBP', tipoCambio: -1 })
+  expect(bad.config).toEqual(CONFIG_DEFAULT)
+  expect(bad.avisos).toHaveLength(2)
+  expect(bad.avisos.some(a => a.includes('moneda') && a.includes('EUR'))).toBe(true)
+  expect(bad.avisos.some(a => a.includes('tipoCambio') && a.includes('0.92'))).toBe(true)
+  expect(leerConfig({ tipoCambio: 0 }).avisos).toHaveLength(1)
+})
+
+// ---------- Tema monocromo ----------
+
+const M = 'html[data-tema="monocromo"]'
+const gris = (hex: string) => hex.length === 7 && hex.slice(1, 3) === hex.slice(3, 5) && hex.slice(3, 5) === hex.slice(5, 7)
+
+test('monocromo: exists in the page and in config, and the default theme is still natural', () => {
+  expect(TEMAS_CONFIG).toContain('monocromo')
+  expect(bloqueTema('monocromo').length > 0).toBe(true)
+  expect(CONFIG_DEFAULT.tema).toBe('natural')
+  expect(leerConfig({ tema: 'monocromo' }).config.tema).toBe('monocromo')
+  expect(PAGE).toContain('<html lang="es" data-tema="natural">')
+})
+
+test('monocromo: only white, greys and black, with no accent colour anywhere', () => {
+  const b = bloqueTema('monocromo')
+  const reglas = PAGE.split('\n').filter(l => l.includes(M) && !l.includes(M + '{'))
+  for (const t of [b, ...reglas]) {
+    for (const h of t.match(/#[0-9a-f]{6}\b/gi) ?? []) if (!gris(h.toLowerCase())) throw new Error(`color en monocromo: ${h}`)
+    expect(/#[0-9a-f]{3}\b(?![0-9a-f])/i.test(t.replace(/#[0-9a-f]{6}/gi, ''))).toBe(false)
+    for (const m of t.matchAll(/(?:^|[^0-9])(\d{1,3}),(\d{1,3}),(\d{1,3})(?=[;,)])/g)) {
+      if (!(m[1] === m[2] && m[2] === m[3])) throw new Error(`rgb con color en monocromo: ${m[0]}`)
+    }
+  }
+  for (const v of ['--globo-rgb', '--globo-rgb-w', '--globo-rgb-x', '--ring-rgb']) expect(new RegExp(`${v}:(\\d+),\\1,\\1;`).test(b)).toBe(true)
+  // La opción acento no tiñe el monocromo.
+  expect(PAGE).toContain("if(c.tema==='monocromo')ac=ACENTO_DEF;")
+})
+
+test('monocromo: text reaches 4.5:1 on the background, the panels and the critical panel', () => {
+  const b = bloqueTema('monocromo')
+  const critico = /body\.lv-x #p-ctx\{--glass:(#[0-9a-f]{6})/.exec(PAGE)?.[1] ?? ''
+  expect(critico.length).toBe(7)
+  for (const f of [varDe(b, '--bg'), varDe(b, '--panel'), varDe(b, '--thbg'), critico]) {
+    for (const v of ['--txt', '--sub', '--acc', '--acc2', '--warn', '--crit', '--crit-txt', '--ok', '--modelo-opus', '--modelo-haiku', '--modelo-fable', '--modelo-otro']) {
+      const r = contraste(varDe(b, v), f)
+      if (r < 4.5) throw new Error(`${v} sobre ${f}: ${r.toFixed(2)}`)
+    }
+  }
+  // Alerta crítica invertida: texto del fondo sobre --crit.
+  expect(contraste(varDe(b, '--bg'), varDe(b, '--crit')) >= 4.5).toBe(true)
+  // Sin transparencias que bajen el contraste en las filas sin datos.
+  expect(PAGE).toContain(`${M} .cmp .zero,${M} .cmp .zero b,`)
+})
+
+test('monocromo: keeps the 3D globe, ring and core and tells the critical alert apart by tone and border', () => {
+  for (const l of PAGE.split('\n').filter(x => x.includes(M))) {
+    for (const sel of ['.gring', '#globe', '.reactor', '.halo', '.rc', '.face']) {
+      if (l.includes(`${M} ${sel}`)) expect(l).not.toContain('display:none')
+    }
+  }
+  expect(PAGE).toContain(`${M} .neb,${M} .scan{display:none}`)
+  // Alto: borde discontinuo. Crítico: invertido, doble borde, panel más claro y arco más grueso.
+  expect(PAGE).toContain(`${M} #al-ctx.w{border-style:dashed`)
+  expect(PAGE).toContain(`${M} #al-ctx.x,${M} #al-sig{color:var(--bg);background:var(--crit);border:2px solid var(--crit)`)
+  expect(PAGE).toContain(`${M} body.lv-w #p-ctx{outline:1px dashed var(--warn)`)
+  expect(PAGE).toMatch(/body\.lv-x #p-ctx\{--glass:#1f1f1f;[^}]*outline:4px double var\(--crit\)/)
+  expect(PAGE).toContain(`${M} body.lv-x #arc{stroke-width:4}`)
 })

@@ -56,8 +56,10 @@ export type PlanState = { orden: string[]; tareas: Record<string, { titulo: stri
 
 // Personalización del HUD (userConfig de plugin.json), ya validada. Va en datos.js como "config":
 // la página la lee y no la cambia.
-export type HudTema = 'mark-ii' | 'mark-l' | 'stark' | 'hibrido' | 'claro' | 'natural'
+export type HudTema = 'mark-ii' | 'mark-l' | 'stark' | 'hibrido' | 'claro' | 'natural' | 'monocromo'
 export type HudIdioma = 'es' | 'en'
+// Moneda en la que el HUD muestra el coste. El coste se guarda siempre en dólares; la página convierte al mostrar.
+export type HudMoneda = 'USD' | 'EUR'
 export type HudPanel = 'contexto' | 'coste' | 'reparto' | 'agentes' | 'historial' | 'grafica' | 'comparativa' | 'plan'
 export type HudConfig = {
   tema: HudTema
@@ -68,6 +70,9 @@ export type HudConfig = {
   actualizacion: number
   // Paneles visibles, en el orden fijo del HUD.
   paneles: HudPanel[]
+  // Moneda del HUD y euros por dólar (valor de referencia que el usuario actualiza; solo se usa con EUR).
+  moneda: HudMoneda
+  tipoCambio: number
 }
 
 // Histórico entre sesiones (historico.json en la carpeta de datos). Solo cifras y nombres de modelos y de tipos de agente.

@@ -1,7 +1,7 @@
 {
   "name": "consumo",
   "version": "0.8.0",
-  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus, histórico entre sesiones (hoy, semana, total y últimas sesiones) y comando /jarvis para abrirlo o cerrarlo. Seis temas (natural por defecto: grafito cálido, sin neón, con el globo 3D), sin parpadeo, con densidad automática según el tamaño de la ventana y configurable (tema, acento, idioma, actualización y paneles).",
+  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus, histórico entre sesiones (hoy, semana, total y últimas sesiones) y comando /jarvis para abrirlo o cerrarlo. Siete temas (natural por defecto: grafito cálido, sin neón, con el globo 3D; también monocromo, en blanco y negro), costes en euros o dólares, sin parpadeo, con densidad automática según el tamaño de la ventana y configurable (tema, acento, idioma, actualización, paneles, moneda e histórico).",
   "author": {
     "name": "deriva1945-ui"
   },
@@ -15,14 +15,15 @@
     "tema": {
       "type": "string",
       "title": "Tema / Theme",
-      "description": "Tema de color del HUD: natural (grafito cálido, sin neón, con el globo 3D), mark-ii, mark-l, stark, hibrido o claro. Por defecto: natural. / HUD colour theme: natural (warm graphite, no neon, keeps the 3D globe), mark-ii, mark-l, stark, hibrido (hybrid) or claro (light). Default: natural.",
+      "description": "Tema de color del HUD: natural (grafito cálido, sin neón, con el globo 3D), mark-ii, mark-l, stark, hibrido, claro o monocromo (solo blanco, grises y negro, sin acento). Por defecto: natural. / HUD colour theme: natural (warm graphite, no neon, keeps the 3D globe), mark-ii, mark-l, stark, hibrido (hybrid), claro (light) or monocromo (white, greys and black only, no accent). Default: natural.",
       "options": [
         "natural",
         "mark-ii",
         "mark-l",
         "stark",
         "hibrido",
-        "claro"
+        "claro",
+        "monocromo"
       ],
       "default": "natural"
     },
@@ -75,6 +76,22 @@
       "title": "Retención (días) / Retention (days)",
       "description": "Días que el histórico guarda uno a uno, de 1 a 3650. Los más antiguos se suman en un total y siguen contando en el acumulado. Por defecto: 365. / Days the history keeps one by one, 1 to 3650. Older days are added into one total and still count in the accumulated figures. Default: 365.",
       "default": 365
+    },
+    "moneda": {
+      "type": "string",
+      "title": "Moneda / Currency",
+      "description": "Moneda en la que el HUD muestra el coste: EUR (euros, convertidos con tipoCambio) o USD (dólares, tal como los da Claude Code). Por defecto: EUR. / Currency the HUD shows the cost in: EUR (euros, converted with tipoCambio) or USD (dollars, as Claude Code reports them). Default: EUR.",
+      "options": [
+        "EUR",
+        "USD"
+      ],
+      "default": "EUR"
+    },
+    "tipoCambio": {
+      "type": "number",
+      "title": "Tipo de cambio (€ por $) / Exchange rate (€ per $)",
+      "description": "Euros que vale 1 dólar, para mostrar el coste en EUR (0.92 = 1 USD son 0,92 €). Es un valor de referencia fijo: el plugin no lo consulta en internet y el tipo de cambio real varía, así que actualízalo tú cuando quieras. Por defecto: 0.92. / Euros per 1 US dollar, used to show the cost in EUR (0.92 = 1 USD is €0.92). It is a fixed reference value: the plugin does not look it up online and the real rate changes, so update it yourself. Default: 0.92.",
+      "default": 0.92
     }
   },
   "types": "./types/index.d.ts"
