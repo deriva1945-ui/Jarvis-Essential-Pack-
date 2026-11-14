@@ -1,7 +1,7 @@
 {
   "name": "jarvis-banda",
   "version": "0.3.0",
-  "description": "Línea HUD estilo J.A.R.V.I.S. encima del prompt: siete estados con símbolo, color por modelo, pulso al cambiar, modelo y contexto en la misma línea, y comando /banda.",
+  "description": "Línea HUD estilo J.A.R.V.I.S. encima del prompt: siete estados con símbolo, tono de gris por modelo, pulso al cambiar, modelo y contexto en la misma línea, y comando /banda.",
   "author": {
     "name": "deriva1945-ui"
   },
@@ -41,26 +41,26 @@
     "colorHaiku": {
       "type": "string",
       "title": "Color de Haiku",
-      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal.",
-      "default": "#7dd3fc"
+      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal. Por defecto, gris medio.",
+      "default": "#a3a3a3"
     },
     "colorOpus": {
       "type": "string",
       "title": "Color de Opus",
-      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal.",
-      "default": "#fbbf24"
+      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal. Por defecto, blanco.",
+      "default": "#ffffff"
     },
     "colorFable": {
       "type": "string",
       "title": "Color de Fable",
-      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal.",
-      "default": "#c4b5fd"
+      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal. Por defecto, gris medio.",
+      "default": "#a3a3a3"
     },
     "colorOtro": {
       "type": "string",
       "title": "Color de otros modelos",
-      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal.",
-      "default": "#dbeafe"
+      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal. Por defecto, gris claro.",
+      "default": "#d4d4d4"
     }
   },
   "types": "./types/index.d.ts"

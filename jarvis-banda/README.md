@@ -32,16 +32,16 @@ Detrás del estado, en la misma línea: el modelo activo (`OPUS-5.5`) y el conte
 
 ### Colores
 
-El color de la línea depende del modelo:
+La banda es monocroma, como el HUD de consumo: blanco y grises, sin color de acento. El tono de la línea depende del modelo:
 
-| Modelo | Color por defecto |
+| Modelo | Tono por defecto |
 |---|---|
-| Haiku | cian `#7dd3fc` |
-| Opus | ámbar `#fbbf24` |
-| Fable | violeta `#c4b5fd` |
-| Otros | blanco azulado `#dbeafe` |
+| Haiku | gris medio `#a3a3a3` |
+| Opus | blanco `#ffffff` |
+| Fable | gris medio `#a3a3a3` |
+| Otros | gris claro `#d4d4d4` |
 
-Al delegar, la línea toma el color del modelo del subagente. El estado de error es siempre rojo (`#f87171`).
+Al delegar, la línea toma el tono del modelo del subagente. El estado de error es lo único con color: rojo apagado (`#b85c5c`). Los cuatro tonos se pueden cambiar por cualquier color con las opciones de abajo.
 
 ### Pulso
 
@@ -166,16 +166,16 @@ After the state, on the same line: the active model (`OPUS-5.5`) and the context
 
 ### Colors
 
-The line's color depends on the model:
+The band is monochrome, like the usage HUD: white and greys, no accent color. The line's tone depends on the model:
 
-| Model | Default color |
+| Model | Default tone |
 |---|---|
-| Haiku | cyan `#7dd3fc` |
-| Opus | amber `#fbbf24` |
-| Fable | violet `#c4b5fd` |
-| Others | bluish white `#dbeafe` |
+| Haiku | mid grey `#a3a3a3` |
+| Opus | white `#ffffff` |
+| Fable | mid grey `#a3a3a3` |
+| Others | light grey `#d4d4d4` |
 
-While delegating, the line uses the subagent's model color. The error state is always red (`#f87171`).
+While delegating, the line uses the subagent's model tone. The error state is the only one in color: muted red (`#b85c5c`). All four tones can be changed to any color with the options below.
 
 ### Pulse
 

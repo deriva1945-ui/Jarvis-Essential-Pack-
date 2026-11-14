@@ -23,16 +23,16 @@ const ajustes = atom({ plugin: 'jarvis-banda', key: 'ajustes' } as const, SIN_AJ
 
 export type Familia = 'haiku' | 'opus' | 'fable' | 'otro'
 
-// Colores por defecto; cada uno se cambia con userConfig.
+// Tonos por defecto, en blanco y grises (estética monocroma); cada uno se cambia con userConfig.
 export const COLOR_DEFECTO: Record<Familia, string> = {
-  haiku: '#7dd3fc', // cian
-  opus: '#fbbf24', // ámbar
-  fable: '#c4b5fd', // violeta
-  otro: '#dbeafe', // blanco azulado
+  haiku: '#a3a3a3', // gris medio
+  opus: '#ffffff', // blanco
+  fable: '#a3a3a3', // gris medio
+  otro: '#d4d4d4', // gris claro
 }
 
-// El error se pinta en rojo, sea cual sea el modelo.
-export const COLOR_ERROR = '#f87171'
+// El error es la única alerta con color: rojo apagado, sea cual sea el modelo.
+export const COLOR_ERROR = '#b85c5c'
 
 // Símbolo por estado: todos de una columna.
 export const SIMBOLO: Record<Fase, string> = {

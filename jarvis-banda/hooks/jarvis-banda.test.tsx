@@ -67,7 +67,7 @@ test('espera órdenes al empezar, con modelo y sin contexto todavía', async ($,
   for (const surface of SURFACES) {
     const l = await linea($, surface)
     expect(l?.text).toBe('◌ J.A.R.V.I.S. // ESPERANDO ÓRDENES · HAIKU-5.5')
-    expect(l?.color).toBe('#7dd3fc')
+    expect(l?.color).toBe('#a3a3a3')
   }
 })
 
@@ -93,7 +93,7 @@ test('procesando, ejecutando, delegando y vuelta a esperar, con contexto', async
   await $.agent.spawn(SPAWN)
   const del = await linea($)
   expect(del?.text).toBe('◒ J.A.R.V.I.S. // DELEGANDO → Explore (OPUS-5.5) · HAIKU-5.5')
-  expect(del?.color).toBe('#fbbf24')
+  expect(del?.color).toBe('#ffffff')
 
   await $.turn.complete({ ...TURNO, turnId: 't1', agentId: 'a1', usage: uso('claude-opus-5-5') })
   expect((await linea($))?.text).toBe('◐ J.A.R.V.I.S. // PROCESANDO · HAIKU-5.5')
@@ -101,7 +101,7 @@ test('procesando, ejecutando, delegando y vuelta a esperar, con contexto', async
   await $.turn.complete({ ...TURNO, turnId: 't2', usage: uso('claude-haiku-5-5') })
   const fin = await linea($)
   expect(fin?.text).toBe('◌ J.A.R.V.I.S. // ESPERANDO ÓRDENES · HAIKU-5.5 · CTX 42%')
-  expect(fin?.color).toBe('#7dd3fc')
+  expect(fin?.color).toBe('#a3a3a3')
 })
 
 test('pensando mientras llega razonamiento visible', async ($, on) => {
@@ -173,7 +173,7 @@ test('un permiso dentro de la delegación vuelve a delegando', async ($, on) => 
   expect((await linea($))?.text).toBe('◒ J.A.R.V.I.S. // DELEGANDO → Explore (HAIKU-4.5) · HAIKU-5.5')
 })
 
-test('error en rojo cuando una herramienta falla', async ($, on) => {
+test('error en rojo apagado cuando una herramienta falla', async ($, on) => {
   motor(on)
   on('tool.call', () => ({ result: 'exit 1', isError: true }) as never)
 
@@ -181,17 +181,17 @@ test('error en rojo cuando una herramienta falla', async ($, on) => {
   await $.tool.call({ tool: 'Bash', command: 'false' })
   const l = await linea($)
   expect(l?.text).toBe('✕ J.A.R.V.I.S. // ERROR EN Bash · HAIKU-5.5')
-  expect(l?.color).toBe('#f87171')
+  expect(l?.color).toBe('#b85c5c')
 
   await $.turn.complete({ ...TURNO, turnId: 't1', usage: uso('claude-haiku-5-5') })
   expect((await linea($))?.text).toBe('◌ J.A.R.V.I.S. // ESPERANDO ÓRDENES · HAIKU-5.5 · CTX 42%')
 })
 
-test('color por modelo: Opus, Fable y otros por defecto', async ($, on) => {
+test('tono por modelo: Opus, Fable y otros por defecto', async ($, on) => {
   const casos: [string, string][] = [
-    ['claude-opus-5-5', '#fbbf24'],
-    ['claude-fable-1-0', '#c4b5fd'],
-    ['claude-sonnet-5-0', '#dbeafe'],
+    ['claude-opus-5-5', '#ffffff'],
+    ['claude-fable-1-0', '#a3a3a3'],
+    ['claude-sonnet-5-0', '#d4d4d4'],
   ]
   let modelo = ''
   on('session.model', () => ({ value: modelo }))
@@ -210,7 +210,7 @@ test(
     const casos: [string, string][] = [
       ['claude-haiku-5-5', '#00ff00'],
       ['claude-opus-5-5', 'magenta'],
-      ['claude-fable-1-0', '#c4b5fd'],
+      ['claude-fable-1-0', '#a3a3a3'],
       ['otro-modelo', '#123'],
     ]
     for (const [m, color] of casos) {

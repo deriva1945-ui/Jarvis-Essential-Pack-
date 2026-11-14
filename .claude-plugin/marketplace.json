@@ -22,7 +22,7 @@
     {
       "name": "jarvis-banda",
       "source": "./jarvis-banda",
-      "description": "Línea HUD estilo J.A.R.V.I.S. encima del prompt: estado en vivo con símbolo y color por modelo."
+      "description": "Línea HUD estilo J.A.R.V.I.S. encima del prompt: estado en vivo con símbolo y tono de gris por modelo."
     }
   ]
 }
