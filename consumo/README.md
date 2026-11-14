@@ -4,7 +4,7 @@
 
 **Español** · [English](#en)
 
-Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens. Siete temas de color (por defecto `natural`: grafito cálido con un solo acento, sin neón, con el globo y el anillo 3D), con la barra del plan arriba y una comparativa de Haiku frente a Opus. El comando `/jarvis` abre o cierra el HUD, y las opciones de [Personalización](#es-personalizacion) cambian tema, acento, idioma, ritmo de lectura, paneles visibles y moneda (euros por defecto).
+Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y tokens. Siete temas de color (por defecto `monocromo`: blanco, grises y negro, sin color de acento, con el globo y el anillo 3D en grises; los demás, como `natural`, se eligen con la opción `tema`), con la barra del plan arriba y una comparativa de Haiku frente a Opus. El comando `/jarvis` abre o cierra el HUD, y las opciones de [Personalización](#es-personalizacion) cambian tema, acento, idioma, ritmo de lectura, paneles visibles y moneda (euros por defecto).
 
 ![HUD de consumo](../images/consumo-1920x1080.jpg)
 
@@ -151,7 +151,7 @@ Además de `dataDir`, el HUD tiene estas opciones. Todas salvo `historico` y `re
 
 | Opción | Valores | Por defecto | Qué cambia |
 | --- | --- | --- | --- |
-| `tema` | `natural`, `mark-ii`, `mark-l`, `stark`, `hibrido`, `claro`, `monocromo` | `natural` | Tema de color del HUD (atributo `data-tema` de la página). |
+| `tema` | `monocromo`, `natural`, `mark-ii`, `mark-l`, `stark`, `hibrido`, `claro` | `monocromo` | Tema de color del HUD (atributo `data-tema` de la página). |
 | `acento` | color hex: `#rgb` o `#rrggbb` | `#7fe7ff` | Color de acento. Con el valor por defecto cada tema usa su propio acento; otro valor sustituye al del tema. |
 | `idioma` | `es`, `en` | `es` | Idioma de las etiquetas, la hora y los números del HUD. Los nombres de agentes, modelos y tareas no se traducen. |
 | `actualizacion` | número de segundos, de 1 a 5 | `1` | Cada cuánto la página vuelve a leer `datos.js`. |
@@ -163,13 +163,13 @@ Además de `dataDir`, el HUD tiene estas opciones. Todas salvo `historico` y `re
 
 Los temas:
 
-- `natural` (por defecto): grafito cálido, texto marfil y un solo acento salvia; sin brillos, cristal, rejilla ni escaneo. Arriba, en una franja, contexto (globo, anillo y núcleo 3D), coste y comparativa; debajo, el detalle. Cifras de tabla en monoespaciada.
+- `monocromo` (por defecto): solo blanco, grises y negro, sin ningún color de acento (la opción `acento` no se aplica). Paneles opacos sin brillo; el globo, el anillo y el núcleo 3D siguen, en grises. Contraste de 4,5:1 o más en todo el texto. El aviso alto lleva borde discontinuo; el crítico se ve invertido (negro sobre blanco), con doble borde y el panel de contexto más claro.
+- `natural`: grafito cálido, texto marfil y un solo acento salvia; sin brillos, cristal, rejilla ni escaneo. Arriba, en una franja, contexto (globo, anillo y núcleo 3D), coste y comparativa; debajo, el detalle. Cifras de tabla en monoespaciada.
 - `hibrido`: blanco-cian sobre azul-negro, con el anillo del globo en ámbar.
 - `mark-ii`: cian eléctrico sobre azul-negro profundo, con más brillo.
 - `mark-l`: blanco y celeste, paneles de cristal más claros.
 - `stark`: ámbar y oro sobre carbón.
 - `claro`: fondo claro con acentos en azul, para trabajar de día.
-- `monocromo`: solo blanco, grises y negro, sin ningún color de acento (la opción `acento` no se aplica). Paneles opacos sin brillo; el globo, el anillo y el núcleo 3D siguen, en grises. Contraste de 4,5:1 o más en todo el texto. El aviso alto lleva borde discontinuo; el crítico se ve invertido (negro sobre blanco), con doble borde y el panel de contexto más claro.
 
 En todos los demás el rojo se reserva para las alertas. En las ventanas pequeñas (densidad compacta) los brillos, el desenfoque y el fondo animado se apagan.
 
@@ -247,7 +247,7 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE).
 
 [Español](#es) · **English**
 
-Opens a live HUD window with what the session spends: context, cost and tokens. Seven colour themes (by default `natural`: warm graphite with a single accent, no neon, keeps the 3D globe and ring), with the plan bar at the top and a Haiku versus Opus comparison. The `/jarvis` command opens or closes the HUD, and the [Customisation](#en-customisation) options change theme, accent, language, refresh rate, visible panels and currency (euros by default).
+Opens a live HUD window with what the session spends: context, cost and tokens. Seven colour themes (by default `monocromo`: white, greys and black with no accent colour, 3D globe and ring in greys; the others, such as `natural`, are picked with the `tema` option), with the plan bar at the top and a Haiku versus Opus comparison. The `/jarvis` command opens or closes the HUD, and the [Customisation](#en-customisation) options change theme, accent, language, refresh rate, visible panels and currency (euros by default).
 
 ![consumo HUD](../images/consumo-1920x1080.jpg)
 
@@ -394,7 +394,7 @@ Besides `dataDir`, the HUD has these options. All but `historico` and `retencion
 
 | Option | Values | Default | What it changes |
 | --- | --- | --- | --- |
-| `tema` | `natural`, `mark-ii`, `mark-l`, `stark`, `hibrido` (hybrid), `claro` (light), `monocromo` (black and white) | `natural` | HUD colour theme (the page's `data-tema` attribute). |
+| `tema` | `monocromo` (black and white), `natural`, `mark-ii`, `mark-l`, `stark`, `hibrido` (hybrid), `claro` (light) | `monocromo` | HUD colour theme (the page's `data-tema` attribute). |
 | `acento` | hex colour: `#rgb` or `#rrggbb` | `#7fe7ff` | Accent colour. With the default each theme keeps its own accent; any other value replaces it. |
 | `idioma` | `es`, `en` | `es` | Language of the HUD labels, time and numbers. Agent, model and task names are not translated. |
 | `actualizacion` | number of seconds, 1 to 5 | `1` | How often the page re-reads `datos.js`. |
@@ -406,13 +406,13 @@ Besides `dataDir`, the HUD has these options. All but `historico` and `retencion
 
 The themes:
 
-- `natural` (default): warm graphite, ivory text and a single sage accent; no glow, glass, grid or scan line. A summary band at the top holds context (3D globe, ring and core), cost and the comparison; the detail sits below. Table figures in monospace.
+- `monocromo` (default): white, greys and black only, with no accent colour at all (the `acento` option is not applied). Opaque panels with no glow; the 3D globe, ring and core stay, in greys. All text reaches 4.5:1 contrast or more. The high warning gets a dashed border; the critical one is inverted (black on white), with a double border and a lighter context panel.
+- `natural`: warm graphite, ivory text and a single sage accent; no glow, glass, grid or scan line. A summary band at the top holds context (3D globe, ring and core), cost and the comparison; the detail sits below. Table figures in monospace.
 - `hibrido`: white-cyan on blue-black, with an amber ring around the globe.
 - `mark-ii`: electric cyan on deep blue-black, brighter glow.
 - `mark-l`: white and light blue, lighter glass panels.
 - `stark`: amber and gold on charcoal.
 - `claro`: light background with blue accents, for daytime work.
-- `monocromo`: white, greys and black only, with no accent colour at all (the `acento` option is not applied). Opaque panels with no glow; the 3D globe, ring and core stay, in greys. All text reaches 4.5:1 contrast or more. The high warning gets a dashed border; the critical one is inverted (black on white), with a double border and a lighter context panel.
 
 Red is kept for alerts in every other theme. In small windows (compact density) glows, blur and the animated background are turned off.
 

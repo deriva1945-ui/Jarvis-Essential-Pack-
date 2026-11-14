@@ -68,7 +68,7 @@ test('the layout adapts by container queries and documented breakpoints, with no
   expect(css).not.toMatch(/font-size:\s*(?:[0-9]|1[0-3])(?:\.\d+)?px/)
 })
 
-// Temas: bloque de variables por tema en html[data-tema="..."]; el HTML sale con natural.
+// Temas: bloque de variables por tema en html[data-tema="..."]; el HTML sale con monocromo.
 const TEMAS = ['natural', 'hibrido', 'mark-ii', 'mark-l', 'stark', 'claro', 'monocromo']
 const VARS_TEMA = ['--bg', '--panel', '--txt', '--sub', '--acc', '--acc2', '--warn', '--crit', '--ok', '--modelo-opus', '--modelo-haiku', '--modelo-fable', '--modelo-otro']
 function bloqueTema(t: string): string {
@@ -86,16 +86,15 @@ test('the page defines the seven themes, each with every color variable', () => 
 })
 
 test('the default theme is natural', () => {
-  // El HTML sale con data-tema="natural" y, sin atributo, :root:not([data-tema]) da las variables de natural.
+  // El HTML sale con data-tema="monocromo" y, sin atributo, :root:not([data-tema]) da las variables de monocromo.
   // Los demás temas solo se aplican con su atributo.
-  expect(PAGE).toContain(':root:not([data-tema]),html[data-tema="natural"]{')
-  for (const t of TEMAS.filter(x => x !== 'natural')) {
+  expect(PAGE).toContain(':root:not([data-tema]),html[data-tema="monocromo"]{')
+  for (const t of TEMAS.filter(x => x !== 'monocromo')) {
     expect(PAGE).not.toContain(`:root,html[data-tema="${t}"]`)
     expect(PAGE).not.toContain(`:root:not([data-tema]),html[data-tema="${t}"]`)
     expect(PAGE).toContain(`\nhtml[data-tema="${t}"]{`)
   }
-  expect(PAGE.indexOf(':root:not([data-tema]),html[data-tema="natural"]{') < PAGE.indexOf('html[data-tema="hibrido"]{')).toBe(true)
-  expect(PAGE).toContain('<html lang="es" data-tema="natural">')
+  expect(PAGE).toContain('<html lang="es" data-tema="monocromo">')
 })
 
 test('themes keep red for alerts only and drop effects in compact density', () => {
@@ -1033,7 +1032,7 @@ const arrancar = async ($: Parameters<TestBody>[0], on: Parameters<TestBody>[1])
 test('config: with no options datos.js carries the defaults and nothing is logged', PRUEBA, async ($, on) => {
   const { config, logs } = await arrancar($, on)
   expect(config).toEqual({
-    tema: 'natural',
+    tema: 'monocromo',
     acento: '#7fe7ff',
     idioma: 'es',
     actualizacion: 1,
@@ -1071,7 +1070,7 @@ test(
   { options: { dataDir: '/prueba/consumo', densidad: 'compacto', tema: 'natural', idioma: 'en' } },
   async ($, on) => {
     const { config, logs } = await arrancar($, on)
-    expect(config).toEqual({ ...CONFIG_DEFAULT, idioma: 'en' })
+    expect(config).toEqual({ ...CONFIG_DEFAULT, tema: 'natural', idioma: 'en' })
     expect('densidad' in (config as object)).toBe(false)
     expect(logs).toHaveLength(0)
     // leerConfig tampoco se queja con un valor raro de la opción antigua.
@@ -1104,7 +1103,7 @@ test('config: leerConfig rejects bad values one by one and keeps the good ones',
 
 test('config: the page applies config (data-tema on <html>, accent, language, refresh and panels)', () => {
   expect(PAGE).toContain('aplicaConfig(d.config);')
-  expect(PAGE).toContain("ponAttr(root,'data-tema',TEMAS.indexOf(c.tema)>=0?c.tema:'natural');")
+  expect(PAGE).toContain("ponAttr(root,'data-tema',TEMAS.indexOf(c.tema)>=0?c.tema:'monocromo');")
   // Un cambio de tema vuelve a teñir el globo.
   expect(PAGE).toContain('if(GLOBO.tinta)GLOBO.tinta();')
   // Los mismos temas y paneles que valida config.ts.
@@ -1148,7 +1147,7 @@ test('config: idioma en translates the labels and leaves data alone', () => {
   expect(PAGE).toContain('ponTexto(k[1],t.agente)')
 })
 
-// ---------- Tema natural (por defecto) ----------
+// ---------- Tema natural ----------
 
 // Contraste WCAG entre dos colores #rrggbb.
 const lum = (hex: string): number => {
@@ -1420,12 +1419,23 @@ test('config: moneda and tipoCambio are validated, with a warning for bad values
 const M = 'html[data-tema="monocromo"]'
 const gris = (hex: string) => hex.length === 7 && hex.slice(1, 3) === hex.slice(3, 5) && hex.slice(3, 5) === hex.slice(5, 7)
 
-test('monocromo: exists in the page and in config, and the default theme is still natural', () => {
+test('monocromo: exists in the page and in config, and natural is still available with the tema option', () => {
   expect(TEMAS_CONFIG).toContain('monocromo')
   expect(bloqueTema('monocromo').length > 0).toBe(true)
-  expect(CONFIG_DEFAULT.tema).toBe('natural')
   expect(leerConfig({ tema: 'monocromo' }).config.tema).toBe('monocromo')
-  expect(PAGE).toContain('<html lang="es" data-tema="natural">')
+  expect(leerConfig({ tema: 'natural' }).config.tema).toBe('natural')
+  expect(leerConfig({ tema: 'natural' }).avisos).toHaveLength(0)
+})
+
+test('monocromo is the default theme: in config, in the html and in the page fallback', () => {
+  expect(CONFIG_DEFAULT.tema).toBe('monocromo')
+  expect(leerConfig({}).config.tema).toBe('monocromo')
+  // Un tema que no vale vuelve al defecto, monocromo.
+  expect(leerConfig({ tema: 'iron' }).config.tema).toBe('monocromo')
+  expect(PAGE).toContain('<html lang="es" data-tema="monocromo">')
+  expect(PAGE).not.toContain('data-tema="natural">')
+  expect(PAGE).toContain(':root:not([data-tema]),html[data-tema="monocromo"]{')
+  expect(PAGE).toContain("TEMAS.indexOf(c.tema)>=0?c.tema:'monocromo'")
 })
 
 test('monocromo: only white, greys and black, with no accent colour anywhere', () => {

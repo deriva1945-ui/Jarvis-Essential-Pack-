@@ -25,8 +25,8 @@
 // Moneda: el coste llega en dólares en datos.js y se queda así; la página lo convierte solo al mostrarlo, con dinero()
 // (convertirMoneda y formatoMoneda de moneda.ts), en todas las cifras de coste: panel Coste, último turno, comparativa,
 // gráfica, tablas y tooltips. Formato de moneda del idioma (es-ES 1.234,56 €; en €1,234.56), hasta 4 decimales por debajo de 1.
-// Temas (atributo data-tema en <html>, lo pone aplicaConfig con config.tema): natural (por defecto), hibrido (blanco-cian con anillo
-// ámbar), mark-ii, mark-l, stark, claro y monocromo (blanco, grises y negro, sin acento). El HTML sale con data-tema="natural".
+// Temas (atributo data-tema en <html>, lo pone aplicaConfig con config.tema): monocromo (por defecto: blanco, grises y negro, sin
+// acento), natural, hibrido (blanco-cian con anillo ámbar), mark-ii, mark-l, stark y claro. El HTML sale con data-tema="monocromo".
 // Natural: grafito cálido sin neón, paneles opacos con filo de 1 px, cifras de tabla en monoespaciada y su propia distribución
 // (franja de resumen: contexto, coste y comparativa en una fila; el detalle debajo). Conserva el globo, el anillo y el núcleo 3D.
 // Cada tema es un bloque de variables CSS (--bg, --panel, --txt, --sub, --acc, --acc2, --warn, --crit, --ok, --modelo-*); rojo solo en alertas.
@@ -44,7 +44,7 @@ export function densidadDe(w: number, h: number): 'comodo' | 'compacto' {
 }
 
 export const PAGE = `<!doctype html>
-<html lang="es" data-tema="natural"><head><meta charset="utf-8">
+<html lang="es" data-tema="monocromo"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Consumo · HUD</title>
 <script>
@@ -54,15 +54,15 @@ var densidadDe=(` + String(densidadDe) + `);
 document.documentElement.setAttribute('data-densidad',densidadDe(window.innerWidth,window.innerHeight));
 </script>
 <style>
-/* Temas. Cada tema es un bloque de variables sobre html[data-tema="..."]. El HTML sale con data-tema="natural" (el tema por defecto)
-   y la opción tema lo cambia; si alguien quita el atributo, :root:not([data-tema]) deja las variables de natural.
+/* Temas. Cada tema es un bloque de variables sobre html[data-tema="..."]. El HTML sale con data-tema="monocromo" (el tema por defecto)
+   y la opción tema lo cambia; si alguien quita el atributo, :root:not([data-tema]) deja las variables de monocromo.
    Variables de cada tema: --bg fondo, --panel panel opaco (y respaldo sin desenfoque), --txt texto, --sub etiquetas,
    --acc acento, --acc2 segundo acento, --warn aviso (contexto alto), --crit alerta crítica (el único rojo),
    --ok plan completado, --modelo-opus / -haiku / -fable / -otro colores de familia.
    Las versiones -rgb (r,g,b) sirven para las transparencias. Todo texto pasa 4,5:1 sobre --bg y --panel.
    --glow escala los brillos (0 en compacto), --cristal es el desenfoque de los paneles y --globo-filtro tiñe el globo del canvas. */
-:root:not([data-tema]),html[data-tema="natural"]{
-  /* Natural (por defecto): grafito cálido, texto marfil y un solo acento salvia. Sin brillos ni cristal; el globo, el anillo
+html[data-tema="natural"]{
+  /* Natural: grafito cálido, texto marfil y un solo acento salvia. Sin brillos ni cristal; el globo, el anillo
      inclinado y el núcleo siguen en 3D. --borde y --borde-2 son los filos de 1 px de los paneles, --globo-rgb*
      tiñen las líneas del globo (normal, aviso, crítico) y --cifra es la letra de las cifras grandes. Distribución propia al final. */
   --bg:#151412;--bg-rgb:21,20,18;--panel:#1d1b18;--txt:#eee8dc;--sub:#b8af9f;
@@ -141,8 +141,8 @@ html[data-tema="claro"]{
   --glow:.3;--cristal:blur(12px);--globo-filtro:hue-rotate(14deg) saturate(1.6) brightness(.42);--globo-filtro-x:brightness(.8) saturate(1.4);
   color-scheme:light;
 }
-html[data-tema="monocromo"]{
-  /* Monocromo: solo blanco, grises y negro, sin ningún color de acento (la opción acento no se aplica). Paneles opacos
+:root:not([data-tema]),html[data-tema="monocromo"]{
+  /* Monocromo (por defecto): solo blanco, grises y negro, sin ningún color de acento (la opción acento no se aplica). Paneles opacos
      sin brillo ni cristal; el globo, el anillo inclinado y el núcleo siguen en 3D, en grises. Los avisos se distinguen por
      tono y borde: alto con borde discontinuo; crítico invertido (blanco sobre negro), con doble borde y panel más claro. */
   --bg:#000000;--bg-rgb:0,0,0;--panel:#111111;--txt:#ffffff;--sub:#b5b5b5;
@@ -1262,7 +1262,7 @@ function renderPlan(d){
 $id('pll').addEventListener('toggle',function(){try{localStorage.setItem(PKEY,$id('pll').open?'1':'0')}catch(e){}});
 
 // Personalización. Solo actúa cuando config cambia (al abrir la página y si el usuario cambia una opción).
-//   tema: atributo data-tema en <html> (sin valor válido, natural). Un cambio de tema vuelve a teñir el globo.
+//   tema: atributo data-tema en <html> (sin valor válido, monocromo). Un cambio de tema vuelve a teñir el globo.
 //   acento: sustituye a --acc del tema; con el valor por defecto (#7fe7ff) cada tema usa su propio acento. Monocromo no lo aplica.
 //   idioma: es o en (etiquetas, fechas y números).
 //   actualizacion: segundos entre lecturas de datos.js (1 a 5).
@@ -1290,7 +1290,7 @@ function aplicaConfig(c){
   if(k===CFG)return;
   CFG=k;
   var root=document.documentElement;
-  ponAttr(root,'data-tema',TEMAS.indexOf(c.tema)>=0?c.tema:'natural');
+  ponAttr(root,'data-tema',TEMAS.indexOf(c.tema)>=0?c.tema:'monocromo');
   if(GLOBO.tinta)GLOBO.tinta();
   var ac=typeof c.acento==='string'&&c.acento.charAt(0)==='#'&&(c.acento.length===4||c.acento.length===7)?c.acento.toLowerCase():ACENTO_DEF;
   if(c.tema==='monocromo')ac=ACENTO_DEF;
