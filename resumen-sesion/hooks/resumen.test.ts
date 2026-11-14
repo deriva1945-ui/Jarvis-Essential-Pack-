@@ -354,3 +354,38 @@ test('degradation: a model call that throws, or a file that cannot be written, n
   expect(ver.text).toContain('Añadir caché al cliente HTTP.')
   expect(s.files.size).toBe(0)
 })
+
+// ---------- Presentación ----------
+
+const GRISES = ['#ffffff', '#d4d4d4', '#a3a3a3', '#737373']
+
+test('/resumen y /resumen-ver se dibujan en blanco y grises, con separadores grises entre secciones', async ($, on) => {
+  mock.clock(on, { now: 10 * H })
+  base(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const { text } = await $.command.run(cmd('resumen'))
+
+  for (const command of ['resumen', 'resumen-ver'] as const) {
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const ui = await $.ui.mount({
+        plugin: 'resumen-sesion',
+        surface,
+        component: 'CommandOutput',
+        props: { command, args: '', text: text ?? '', isErrored: false },
+      })
+      const textos = await ui.findAll({ type: 'Text' })
+      for (const t of textos) if (t.props.color !== undefined) expect(GRISES).toContain(t.props.color)
+      // El tramo más interior que coincide: el que lleva el tono.
+      const tono = async (re: RegExp) => (await ui.findAll({ type: 'Text', text: re })).at(-1)?.props
+      expect((await tono(/^Resumen guardado en /))?.color).toBe('#ffffff')
+      expect(await tono(/^# Resumen de traspaso$/)).toMatchObject({ color: '#ffffff', weight: 'bold' })
+      expect(await tono(/^Objetivo$/)).toMatchObject({ color: '#ffffff', weight: 'bold' })
+      expect((await tono(/^## $/))?.color).toBe('#a3a3a3')
+      expect((await tono(/^──── copiar desde aquí ────$/))?.color).toBe('#a3a3a3')
+      expect((await tono(/pega este texto como primer mensaje/))?.color).toBe('#d4d4d4')
+      const separadores = (await ui.findAll({ type: 'Text', text: /^─{40}$/ })).filter(t => t.props.color === '#a3a3a3')
+      expect(separadores).toHaveLength(SECCIONES_ES.length)
+      await ui.unmount()
+    }
+  }
+})

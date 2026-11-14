@@ -58,6 +58,8 @@ Resumen de traspaso de tu sesión, para retomarla en una sesión nueva sin arras
 
 La salida de los comandos queda en la conversación, así que el modelo también la lee.
 
+Se dibuja en monocromo, como el HUD de consumo: la primera línea y la cabecera del resumen en blanco, cada sección con su título en blanco y un separador gris encima, y el resto en grises. Sin colores de acento.
+
 ## Configuración
 
 Opciones de `userConfig`. Se cambian con `claude plugin configure resumen-sesion@jarvis-essential-pack`, con `/config` o, con `--plugin-dir`, en `pluginConfigs` de `settings.json`:
@@ -167,6 +169,8 @@ Why a new session? Every turn processes the whole history again. Starting fresh 
 | `/resumen-ver` | Shows the last saved summary (with its date), ready to copy. Does not call the model. |
 
 Command output stays in the conversation, so the model reads it too.
+
+It is drawn in monochrome, like the usage HUD: the first line and the summary header in white, each section with its title in white and a grey separator above it, and the rest in greys. No accent colors.
 
 ## Configuration
 

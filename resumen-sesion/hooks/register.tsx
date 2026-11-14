@@ -1,6 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { Hook, Register } from 'claude-code'
 
+import { lineasMonocromas, TONO } from './presentacion'
+
 import type { UltimoResumen } from '../types'
 import {
   CONFIG_DEFAULT,
@@ -252,4 +254,32 @@ export const register: Register = (on, options) => {
     if (previo) return { text: `${ui.verMemoria(ruta)}\n\n${sugerencia(cfg.idioma, previo.texto)}` }
     return { text: ui.nada(ruta) }
   })
+
+  // Dibujo monocromo de la salida de /resumen y /resumen-ver: el texto es el mismo (se copia
+  // igual); solo cambian los tonos y el separador gris encima de cada sección.
+  for (const command of ['resumen', 'resumen-ver']) {
+    on('ui.render', { component: 'CommandOutput', props: { command } }, async ($, e, next) => {
+      if (e.props.isErrored) return next(e)
+      try {
+        const { Box, Text } = $.ui.resolve(e)
+        return (
+          <Box flexDirection="column">
+            {lineasMonocromas(e.props.text).map(l => (
+              <Text wrap="wrap">
+                {l.length === 0
+                  ? ' '
+                  : l.map(t => (
+                      <Text color={TONO[t.tono]} weight={t.negrita ? 'bold' : undefined}>
+                        {t.texto}
+                      </Text>
+                    ))}
+              </Text>
+            ))}
+          </Box>
+        )
+      } catch {
+        return next(e)
+      }
+    })
+  }
 }
