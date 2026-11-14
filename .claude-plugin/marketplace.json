@@ -18,7 +18,7 @@
     {
       "name": "consumo",
       "source": "./consumo",
-      "description": "Ventana HUD en directo, monocroma por defecto: contexto, coste en euros, tokens por modelo, plan, comparativa Haiku/Opus, acumulado entre sesiones y /jarvis."
+      "description": "Ventana HUD en directo, monocroma por defecto: contexto, coste en euros o dólares (botón), tokens por modelo, plan, comparativa Haiku/Opus, acumulado entre sesiones, nueve disposiciones y /jarvis."
     },
     {
       "name": "jarvis-banda",

@@ -1,6 +1,6 @@
 {
   "name": "resumen-sesion",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Resumen de traspaso en secciones fijas, automático tras un rato sin escribir o con /resumen; lo guarda en un archivo y te lo deja listo para una sesión nueva (/resumen-ver).",
   "types": "./types/index.d.ts",
   "author": {

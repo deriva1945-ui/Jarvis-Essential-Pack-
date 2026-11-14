@@ -8,7 +8,7 @@ Añade el comando `/mods`: un diagnóstico del pack `jarvis-essential-pack`. Por
 
 ![Salida de /mods](../images/mods-terminal.png)
 
-*Ejemplo en HTML de una versión anterior, no es una captura real.*
+*Ejemplo en HTML con el formato actual de `/mods`, no es una captura real.*
 
 ## Subcomandos
 
@@ -138,7 +138,7 @@ Set the `idioma` option to `en` for English output.
 
 ![/mods output](../images/mods-terminal.png)
 
-*HTML example of an earlier version, not a real screenshot.*
+*HTML example with the current `/mods` format (Spanish output), not a real screenshot.*
 
 ## Subcommands
 

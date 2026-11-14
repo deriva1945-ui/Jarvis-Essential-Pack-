@@ -30,6 +30,6 @@ All five mods follow the same path: **events → hooks → data → screen**.
 - **They do not break the session.** If a mod fails, it lets the event through unchanged.
 - **They only listen to what they need.** A mod does not see events it does not ask for.
 - **They do not store your whole conversation.** Only three mods write to disk, each in its own data folder (`dataDir` option):
-  - `consumo` (`~/CLAUDE/consumo`): the page, `datos.js` (numbers, model names, each subagent's short description and plan task titles), `estado.json` / `estado.js` (whether the HUD is open) and `historico.json` (only figures and model and agent-type names, never prompt text).
+  - `consumo` (`~/CLAUDE/consumo`): the page, `datos.js` (numbers, model names, each subagent's short description and plan task titles), `estado.json` / `estado.js` (whether the HUD is open) and `historico.json` (only figures and model and agent-type names, never prompt text). The page also keeps three view preferences in the browser (localStorage): the currency picked with the button, and whether the plan list and the foco list are open.
   - `portero` (`~/CLAUDE/portero`): `decisiones.jsonl`, with the route, layer, reason and the request text cut short with obvious secrets masked. Turn it off with `logEnabled`.
   - `resumen-sesion` (`~/CLAUDE/resumen-sesion`): `ultimo-resumen.md`, the last handover summary.

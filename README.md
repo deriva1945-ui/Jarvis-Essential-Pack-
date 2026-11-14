@@ -7,7 +7,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="Licencia MIT" src="https://img.shields.io/badge/licencia-MIT-333333?labelColor=111111"></a>
   <a href="https://docs.claude.com/en/docs/claude-code"><img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-mods-333333?labelColor=111111"></a>
-  <a href="CHANGELOG.md"><img alt="Versión 0.4.0" src="https://img.shields.io/badge/versi%C3%B3n-0.4.0-333333?labelColor=111111"></a>
+  <a href="CHANGELOG.md"><img alt="Versión 0.5.0" src="https://img.shields.io/badge/versi%C3%B3n-0.5.0-333333?labelColor=111111"></a>
   <a href="CONTRIBUTING.md"><img alt="Contribuciones bienvenidas" src="https://img.shields.io/badge/contribuciones-bienvenidas-333333?labelColor=111111"></a>
 </p>
 
@@ -33,6 +33,12 @@
 <a id="es-novedades"></a>
 
 ## Novedades
+
+**Versión 0.5.0 del pack**
+
+- **consumo 0.10.0:** nueve disposiciones de los paneles (`disposicion`), con orden, tamaño de cada panel, escala, paneles ocultos y tamaño de la ventana configurables, y un botón en la cabecera para cambiar los costes entre euros y dólares (`€` / `US$`) al momento, recordado en ese navegador. Sigue con el histórico entre sesiones, los euros por defecto y el tema `monocromo` por defecto.
+- **portero 0.2.1, resumen-sesion 0.2.1, jarvis-banda 0.3.1 y mods-estado 0.4.1:** repaso interno del código, sin cambios de comportamiento ni de opciones.
+- Imágenes rehechas en la misma estética monocroma: HUD con el botón de moneda y el bloque Acumulado, la banda con modelo y contexto, y las salidas actuales de `/mods` y `/resumen`.
 
 **Versión 0.4.0 del pack**
 
@@ -62,11 +68,11 @@ Todos los cambios en [CHANGELOG.md](CHANGELOG.md).
 
 | Mod | Qué hace | Imagen |
 |---|---|---|
-| **[portero](portero/)**<br><sub>v0.2.0</sub> | Mira cada petición y decide quién la hace, por capas de reglas. Lo ligero, el modelo de la sesión. Lo pesado, un subagente Opus. `/portero` enseña el reparto. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
-| **[resumen-sesion](resumen-sesion/)**<br><sub>v0.2.0</sub> | Si vuelves tras 2 horas sin escribir, o con `/resumen`, Haiku escribe un resumen de traspaso en secciones para seguir en una sesión nueva. `/resumen-ver` muestra el último. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
-| **[consumo](consumo/)**<br><sub>v0.8.0</sub> | Ventana HUD en directo, monocroma por defecto: barra del plan, contexto usado, coste en euros, tokens por agente y por modelo, comparativa Haiku frente a Opus y acumulado entre sesiones. `/jarvis` la abre o la cierra. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
-| **[jarvis-banda](jarvis-banda/)**<br><sub>v0.3.0</sub> | Una línea monocroma encima del prompt con el estado en vivo (esperando, procesando, pensando, ejecutando, delegando, permiso o error), el modelo y el contexto. `/banda` cambia idioma y modo. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
-| **[mods-estado](mods-estado/)**<br><sub>v0.4.0</sub> | Comando `/mods`: diagnóstico del pack (estado, versión instalada y de tu copia local, fallos de carga). `/mods on` y `/mods off` activan o desactivan un mod; `/mods actualizar` da los comandos para actualizar. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
+| **[portero](portero/)**<br><sub>v0.2.1</sub> | Mira cada petición y decide quién la hace, por capas de reglas. Lo ligero, el modelo de la sesión. Lo pesado, un subagente Opus. `/portero` enseña el reparto. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
+| **[resumen-sesion](resumen-sesion/)**<br><sub>v0.2.1</sub> | Si vuelves tras 2 horas sin escribir, o con `/resumen`, Haiku escribe un resumen de traspaso en secciones para seguir en una sesión nueva. `/resumen-ver` muestra el último. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
+| **[consumo](consumo/)**<br><sub>v0.10.0</sub> | Ventana HUD en directo, monocroma por defecto: barra del plan, contexto usado, coste en euros (un botón cambia a dólares), tokens por agente y por modelo, comparativa Haiku frente a Opus, acumulado entre sesiones y nueve disposiciones. `/jarvis` la abre o la cierra. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
+| **[jarvis-banda](jarvis-banda/)**<br><sub>v0.3.1</sub> | Una línea monocroma encima del prompt con el estado en vivo (esperando, procesando, pensando, ejecutando, delegando, permiso o error), el modelo y el contexto. `/banda` cambia idioma y modo. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
+| **[mods-estado](mods-estado/)**<br><sub>v0.4.1</sub> | Comando `/mods`: diagnóstico del pack (estado, versión instalada y de tu copia local, fallos de carga). `/mods on` y `/mods off` activan o desactivan un mod; `/mods actualizar` da los comandos para actualizar. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
 
 Cada mod es independiente. Instala solo los que quieras.
 
@@ -240,6 +246,12 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE). Cada mod lleva también su propio 
 
 ## What's new
 
+**Pack version 0.5.0**
+
+- **consumo 0.10.0:** nine panel layouts (`disposicion`), with configurable order, size of each panel, scale, hidden panels and window size, and a header button that switches costs between euros and dollars (`€` / `US$`) at once, remembered in that browser. History across sessions, euros by default and the `monocromo` default theme stay.
+- **portero 0.2.1, resumen-sesion 0.2.1, jarvis-banda 0.3.1 and mods-estado 0.4.1:** internal code tidy-up, with no change in behaviour or options.
+- Images redone in the same monochrome look: the HUD with the currency button and the Accumulated block, the band with model and context, and the current `/mods` and `/resumen` output.
+
 **Pack version 0.4.0**
 
 The whole pack moves to a monochrome look (white, greys and black), images included.
@@ -268,11 +280,11 @@ Every change is in [CHANGELOG.md](CHANGELOG.md).
 
 | Mod | What it does | Image |
 |---|---|---|
-| **[portero](portero/)**<br><sub>v0.2.0</sub> | Looks at each request and decides who handles it, through layers of rules. Light work: the session model. Heavy work: an Opus subagent. `/portero` shows the split. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
-| **[resumen-sesion](resumen-sesion/)**<br><sub>v0.2.0</sub> | When you come back after 2 hours without typing, or with `/resumen`, Haiku writes a handover summary in sections so you can continue in a new session. `/resumen-ver` shows the last one. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
-| **[consumo](consumo/)**<br><sub>v0.8.0</sub> | Live HUD window, monochrome by default: plan bar, context used, cost in euros, tokens per agent and per model, a Haiku versus Opus comparison and totals across sessions. `/jarvis` opens or closes it. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
-| **[jarvis-banda](jarvis-banda/)**<br><sub>v0.3.0</sub> | One monochrome line above the prompt with the live state (waiting, processing, thinking, running a tool, delegating, permission or error), the model and the context. `/banda` changes language and mode. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
-| **[mods-estado](mods-estado/)**<br><sub>v0.4.0</sub> | `/mods` command: a pack check-up (state, installed and local copy version, load failures). `/mods on` and `/mods off` enable or disable a mod; `/mods update` gives the commands to update. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
+| **[portero](portero/)**<br><sub>v0.2.1</sub> | Looks at each request and decides who handles it, through layers of rules. Light work: the session model. Heavy work: an Opus subagent. `/portero` shows the split. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
+| **[resumen-sesion](resumen-sesion/)**<br><sub>v0.2.1</sub> | When you come back after 2 hours without typing, or with `/resumen`, Haiku writes a handover summary in sections so you can continue in a new session. `/resumen-ver` shows the last one. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
+| **[consumo](consumo/)**<br><sub>v0.10.0</sub> | Live HUD window, monochrome by default: plan bar, context used, cost in euros (a button switches to dollars), tokens per agent and per model, a Haiku versus Opus comparison, totals across sessions and nine layouts. `/jarvis` opens or closes it. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
+| **[jarvis-banda](jarvis-banda/)**<br><sub>v0.3.1</sub> | One monochrome line above the prompt with the live state (waiting, processing, thinking, running a tool, delegating, permission or error), the model and the context. `/banda` changes language and mode. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
+| **[mods-estado](mods-estado/)**<br><sub>v0.4.1</sub> | `/mods` command: a pack check-up (state, installed and local copy version, load failures). `/mods on` and `/mods off` enable or disable a mod; `/mods update` gives the commands to update. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
 
 Each mod works on its own. Install only the ones you want.
 

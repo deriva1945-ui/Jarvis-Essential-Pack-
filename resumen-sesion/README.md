@@ -8,7 +8,7 @@ Resumen de traspaso de tu sesión, para retomarla en una sesión nueva sin arras
 
 ![Ejemplo de resumen-sesion](../images/resumen-terminal.png)
 
-*Ejemplo en HTML, no es una captura real.*
+*Ejemplo en HTML de la salida de `/resumen`, no es una captura real.*
 
 ## Qué hace
 
@@ -120,7 +120,7 @@ A handover summary of your session, so you can pick it up in a new session witho
 
 ![resumen-sesion example](../images/resumen-terminal.png)
 
-*HTML example, not a real screenshot.*
+*HTML example of the `/resumen` output (Spanish), not a real screenshot.*
 
 ## What it does
 

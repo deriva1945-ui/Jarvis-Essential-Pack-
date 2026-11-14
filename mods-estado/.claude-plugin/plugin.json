@@ -1,6 +1,6 @@
 {
   "name": "mods-estado",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Comando /mods: diagnóstico del pack jarvis-essential-pack (versión instalada y de la copia local, mods rotos, instalaciones antiguas); /mods on, off, actualizar y ayuda.",
   "author": {
     "name": "deriva1945-ui"

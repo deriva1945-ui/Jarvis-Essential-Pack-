@@ -12,7 +12,7 @@ Dibuja una línea estilo J.A.R.V.I.S. encima del prompt con el estado en vivo de
 
 ![jarvis-banda delegando](../images/banda-delegando.png)
 
-*Aproximación en HTML de la versión 0.2.0, no es la salida real de la terminal.*
+*Aproximación en HTML de la línea en modo completo con los colores por defecto, no es la salida real de la terminal.*
 
 ## Qué muestra
 
@@ -129,6 +129,7 @@ O cárgalo con `--plugin-dir` (ver el [README principal](../README.md#es-cargar)
 
 ## Cambios
 
+- **0.3.1:** repaso interno del código, sin cambios de comportamiento ni de opciones.
 - **0.3.0:** estados pensando, esperando permiso y error; modelo y contexto en la misma línea; pulso al cambiar; `userConfig` (idioma, modo, colores, modelo, contexto, animación); comando `/banda`; textos en inglés.
 - **0.2.0:** una sola línea con esperando, procesando, ejecutando y delegando.
 
@@ -152,7 +153,7 @@ Draws one J.A.R.V.I.S.-style line above the prompt with the session's live state
 
 ![jarvis-banda delegating](../images/banda-delegando.png)
 
-*HTML approximation of version 0.2.0, not the real terminal output.*
+*HTML approximation of the line in full mode with the default colours, not the real terminal output.*
 
 ## What it shows
 
@@ -269,6 +270,7 @@ Or load it with `--plugin-dir` (see the [main README](../README.md#en-load)).
 
 ## Changes
 
+- **0.3.1:** internal code tidy-up, with no change in behaviour or options.
 - **0.3.0:** thinking, awaiting-permission and error states; model and context on the same line; pulse on change; `userConfig` (language, mode, colors, model, context, animation); `/banda` command; English labels.
 - **0.2.0:** one line with waiting, processing, running and delegating.
 

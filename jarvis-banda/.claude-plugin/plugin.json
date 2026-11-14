@@ -1,6 +1,6 @@
 {
   "name": "jarvis-banda",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Línea HUD estilo J.A.R.V.I.S. encima del prompt: siete estados con símbolo, tono de gris por modelo, pulso al cambiar, modelo y contexto en la misma línea, y comando /banda.",
   "author": {
     "name": "deriva1945-ui"

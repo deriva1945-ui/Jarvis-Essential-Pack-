@@ -17,6 +17,8 @@ Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y t
 - **Comparativa Haiku frente a Opus:** lo que costó la sesión y lo que habría costado si el trabajo enviado a Haiku hubiera ido a Opus, con el coste por token de tus propios turnos. Muestra el ahorro en la moneda del HUD (euros por defecto) y en %. Necesita más de 1000 tokens de cada modelo; si no, pone "sin datos de Opus todavía" (o de Haiku) y no estima nada.
 - **Acumulado entre sesiones:** guarda el consumo en `historico.json` y muestra el total desde el primer uso, el de hoy, el de esta semana y las últimas sesiones con su coste y su duración. Cerrar Claude Code no lo borra (ver [Histórico entre sesiones](#es-historico)).
 - **Comando `/jarvis`:** abre el HUD si está cerrado y lo cierra si está abierto.
+- **Botón de moneda** en la cabecera (`€` / `US$`): cambia todos los costes entre euros y dólares al momento y se recuerda en ese navegador (ver [Moneda y tipo de cambio](#es-moneda)).
+- **Nueve disposiciones** de los paneles, con orden, tamaño de cada panel, escala, paneles ocultos y tamaño de la ventana configurables (ver [Disposición, orden y tamaño de la ventana](#es-disposicion)).
 - Avisa cuando el contexto pasa del **70 %** y del **85 %**: por encima del 85 % el HUD entero pasa a rojo de alerta (en `monocromo`, sin color: alerta invertida y doble borde).
 - Si pasan 10 segundos sin latido nuevo **y** van 3 lecturas seguidas sin él, marca "Sin señal". Una lectura fallida suelta no enciende el aviso, y el primer latido nuevo lo apaga.
 - No parpadea: pinta los paneles una vez y después solo cambia los textos y barras que cambian. Si solo llega el latido, no toca nada.
@@ -25,7 +27,7 @@ Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y t
 - Respeta la preferencia del sistema de reducir el movimiento: el globo y el anillo se quedan quietos, nada se anima y las cifras cambian sin deslizarse. Los datos se leen igual.
 - Accesible: texto de 14 px como mínimo, contraste de 4,5:1 o más en los temas `natural` y `monocromo` y foco visible al moverse con el teclado.
 
-Se adapta al tamaño de la ventana (cada panel se ajusta además por dentro según su propio ancho):
+Con la disposición `auto` (la de por defecto) se adapta al tamaño de la ventana (cada panel se ajusta además por dentro según su propio ancho):
 
 | Ancho | Diseño |
 |---|---|
@@ -224,6 +226,8 @@ También aparecen en `/config` dentro de Claude Code. Si cargas el mod con `--pl
 }
 ```
 
+<a id="es-disposicion"></a>
+
 ## Disposición, orden y tamaño de la ventana
 
 Seis opciones más deciden dónde va cada panel. Las cinco primeras van a `datos.js` en el campo `vista` (ya validadas) y la página las aplica sin recargar: solo cambia atributos (`data-disposicion` en `<html>`, `data-puesto`, `data-zona` y `data-tam` en cada panel) y CSS. El orden de los paneles en el HTML no cambia, la lectura de datos sigue igual (sin parpadeo) y el tema, el acento, el idioma, la densidad automática, el movimiento reducido y el globo 3D funcionan con todas las disposiciones.
@@ -326,7 +330,9 @@ Opens a live HUD window with what the session spends: context, cost and tokens. 
 - **Haiku versus Opus comparison:** what the session cost and what it would have cost if the work sent to Haiku had gone to Opus, using the cost per token of your own turns. It shows the saving in the HUD currency (euros by default) and %. It needs more than 1000 tokens from each model; otherwise it shows "sin datos de Opus todavía" (no Opus data yet, or Haiku) and estimates nothing.
 - **Accumulated across sessions:** saves usage in `historico.json` and shows the total since first use, today, this week and the latest sessions with their cost and length. Closing Claude Code does not erase it (see [History across sessions](#en-history)).
 - **`/jarvis` command:** opens the HUD when it is closed and closes it when it is open.
-- It warns when context goes over **70 %** and **85 %**: above 85 % the whole HUD turns alert red.
+- **Currency button** in the header (`€` / `US$`): switches every cost between euros and dollars at once and is remembered in that browser (see [Currency and exchange rate](#en-currency)).
+- **Nine panel layouts**, with configurable order, size of each panel, scale, hidden panels and window size (see [Layout, order and window size](#en-layout)).
+- It warns when context goes over **70 %** and **85 %**: above 85 % the whole HUD turns alert red (in `monocromo`, with no colour: an inverted alert and a double border).
 - After 10 seconds without a new heartbeat **and** 3 reads in a row without one, it shows "Sin señal" (no signal). A single failed read does not trigger it, and the first new heartbeat clears it.
 - No flicker: it draws the panels once and then only changes the text and bars that change. If only the heartbeat arrives, it touches nothing.
 - It works offline: everything is inside the page.
@@ -334,7 +340,7 @@ Opens a live HUD window with what the session spends: context, cost and tokens. 
 - It honours the system setting to reduce motion: the globe and ring stay still, nothing animates and numbers change without sliding. Data is read the same way.
 - Accessible: text is at least 14 px, contrast is 4.5:1 or more in the `natural` and `monocromo` themes and focus is visible when moving with the keyboard.
 
-It adapts to the window size (and each panel also adjusts inside to its own width):
+With the `auto` layout (the default) it adapts to the window size (and each panel also adjusts inside to its own width):
 
 | Width | Layout |
 |---|---|
@@ -532,6 +538,8 @@ They also show up in `/config` inside Claude Code. If you load the mod with `--p
   }
 }
 ```
+
+<a id="en-layout"></a>
 
 ## Layout, order and window size
 

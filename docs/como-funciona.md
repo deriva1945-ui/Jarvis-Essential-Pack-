@@ -30,6 +30,6 @@ Los cinco mods siguen el mismo camino: **eventos → hooks → datos → pantall
 - **No rompen la sesión.** Si un mod falla, deja pasar el evento sin cambios.
 - **Solo escuchan lo que necesitan.** Un mod no ve los eventos que no pide.
 - **No guardan tu conversación entera.** Solo escriben en disco tres mods, cada uno en su carpeta de datos (opción `dataDir`):
-  - `consumo` (`~/CLAUDE/consumo`): la página, `datos.js` (números, nombres de modelo, la descripción corta de cada subagente y los títulos de tareas del plan), `estado.json` / `estado.js` (si el HUD está abierto) e `historico.json` (solo cifras y nombres de modelos y de tipos de agente, nunca el texto de las peticiones).
+  - `consumo` (`~/CLAUDE/consumo`): la página, `datos.js` (números, nombres de modelo, la descripción corta de cada subagente y los títulos de tareas del plan), `estado.json` / `estado.js` (si el HUD está abierto) e `historico.json` (solo cifras y nombres de modelos y de tipos de agente, nunca el texto de las peticiones). La página guarda además en el navegador (localStorage) solo tres preferencias de vista: la moneda elegida con el botón, y si la lista del plan y la de foco están abiertas.
   - `portero` (`~/CLAUDE/portero`): `decisiones.jsonl`, con la ruta, la capa, el motivo y el texto de la petición recortado y con los secretos evidentes tapados. Se apaga con `logEnabled`.
   - `resumen-sesion` (`~/CLAUDE/resumen-sesion`): `ultimo-resumen.md`, el último resumen de traspaso.

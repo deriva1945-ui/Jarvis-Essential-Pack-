@@ -1,6 +1,6 @@
 {
   "name": "portero",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Clasifica cada petición por capas (reglas, historial y, si hace falta, un modelo ligero): las ligeras las resuelve el modelo de la sesión, las pesadas se delegan a un subagente potente. Registro local de decisiones y comando /portero.",
   "author": {
     "name": "deriva1945-ui"
