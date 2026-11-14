@@ -1,1 +1,67 @@
-{ "name": "jarvis-banda", "version": "0.2.0", "description": "Línea HUD estilo J.A.R.V.I.S. encima del prompt: estado en vivo con símbolo y color por modelo.", "author": { "name": "deriva1945-ui" }, "types": "./types/index.d.ts" }
+{
+  "name": "jarvis-banda",
+  "version": "0.3.0",
+  "description": "Línea HUD estilo J.A.R.V.I.S. encima del prompt: siete estados con símbolo, tono de gris por modelo, pulso al cambiar, modelo y contexto en la misma línea, y comando /banda.",
+  "author": {
+    "name": "deriva1945-ui"
+  },
+  "userConfig": {
+    "idioma": {
+      "type": "string",
+      "title": "Idioma · Language",
+      "description": "Idioma de la banda: es (español) o en (English).",
+      "options": ["es", "en"],
+      "default": "es"
+    },
+    "modo": {
+      "type": "string",
+      "title": "Modo",
+      "description": "completo: J.A.R.V.I.S., estado, modelo y contexto. compacto: solo símbolo y estado. oculto: sin banda.",
+      "options": ["completo", "compacto", "oculto"],
+      "default": "completo"
+    },
+    "mostrarModelo": {
+      "type": "boolean",
+      "title": "Mostrar el modelo",
+      "description": "Añade el modelo activo al final de la línea (modo completo).",
+      "default": true
+    },
+    "mostrarContexto": {
+      "type": "boolean",
+      "title": "Mostrar el contexto",
+      "description": "Añade el porcentaje de contexto usado al final de la línea (modo completo).",
+      "default": true
+    },
+    "animacion": {
+      "type": "boolean",
+      "title": "Pulso al cambiar de estado",
+      "description": "Invierte el símbolo unos 600 ms cada vez que cambia el estado.",
+      "default": true
+    },
+    "colorHaiku": {
+      "type": "string",
+      "title": "Color de Haiku",
+      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal. Por defecto, gris medio.",
+      "default": "#a3a3a3"
+    },
+    "colorOpus": {
+      "type": "string",
+      "title": "Color de Opus",
+      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal. Por defecto, blanco.",
+      "default": "#ffffff"
+    },
+    "colorFable": {
+      "type": "string",
+      "title": "Color de Fable",
+      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal. Por defecto, gris medio.",
+      "default": "#a3a3a3"
+    },
+    "colorOtro": {
+      "type": "string",
+      "title": "Color de otros modelos",
+      "description": "Color hexadecimal (#rrggbb o #rgb) o nombre de color de la terminal. Por defecto, gris claro.",
+      "default": "#d4d4d4"
+    }
+  },
+  "types": "./types/index.d.ts"
+}

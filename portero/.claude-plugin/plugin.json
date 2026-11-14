@@ -1,8 +1,101 @@
 {
   "name": "portero",
-  "version": "0.1.0",
-  "description": "Clasifica cada petición: las ligeras las resuelve el modelo ligero de la sesión, las pesadas se delegan a un subagente potente (Opus).",
+  "version": "0.2.0",
+  "description": "Clasifica cada petición por capas (reglas, historial y, si hace falta, un modelo ligero): las ligeras las resuelve el modelo de la sesión, las pesadas se delegan a un subagente potente. Registro local de decisiones y comando /portero.",
   "author": {
     "name": "deriva1945-ui"
+  },
+  "userConfig": {
+    "heavyModel": {
+      "type": "string",
+      "title": "Modelo pesado",
+      "description": "Modelo del subagente para la ruta pesada: opus o fable.",
+      "options": ["opus", "fable"],
+      "default": "opus"
+    },
+    "classifierModel": {
+      "type": "string",
+      "title": "Modelo clasificador",
+      "description": "Modelo ligero que decide los casos que las reglas no deciden. Por defecto: haiku.",
+      "default": "haiku"
+    },
+    "heavyLength": {
+      "type": "number",
+      "title": "Umbral de longitud (pesada)",
+      "description": "Con más caracteres que este número, la petición va por la ruta pesada. Por defecto: 600.",
+      "default": 600
+    },
+    "lightLength": {
+      "type": "number",
+      "title": "Umbral de longitud (ligera)",
+      "description": "Las reglas ligeras y de historial solo se aplican a peticiones con menos caracteres que este número. Por defecto: 200.",
+      "default": 200
+    },
+    "ruleLength": {
+      "type": "boolean",
+      "title": "Regla: longitud",
+      "description": "Peticiones largas → pesada.",
+      "default": true
+    },
+    "ruleCode": {
+      "type": "boolean",
+      "title": "Regla: bloques de código",
+      "description": "Bloques de código o trazas de error → pesada.",
+      "default": true
+    },
+    "rulePaths": {
+      "type": "boolean",
+      "title": "Regla: rutas de archivo",
+      "description": "Peticiones que nombran archivos de código → pesada.",
+      "default": true
+    },
+    "ruleKeywords": {
+      "type": "boolean",
+      "title": "Regla: palabras clave",
+      "description": "Palabras pesadas (depura, refactor, analiza...) y ligeras (traduce, formatea, qué es...).",
+      "default": true
+    },
+    "ruleHistory": {
+      "type": "boolean",
+      "title": "Regla: historial reciente",
+      "description": "Un seguimiento corto tras una petición pesada sigue por la ruta pesada.",
+      "default": true
+    },
+    "contextMessages": {
+      "type": "number",
+      "title": "Mensajes de contexto",
+      "description": "Mensajes recientes que se pasan al subagente (el doble con dudosa). 0 para no pasar ninguno. Por defecto: 4.",
+      "default": 4
+    },
+    "contextChars": {
+      "type": "number",
+      "title": "Caracteres de contexto",
+      "description": "Máximo de caracteres de contexto para el subagente (el doble con dudosa). Por defecto: 4000.",
+      "default": 4000
+    },
+    "dataDir": {
+      "type": "string",
+      "title": "Carpeta del registro",
+      "description": "Carpeta donde se guarda decisiones.jsonl. Ruta absoluta o empezando por ~ (tu carpeta de usuario). Por defecto: ~/CLAUDE/portero.",
+      "default": "~/CLAUDE/portero"
+    },
+    "logEnabled": {
+      "type": "boolean",
+      "title": "Registro de decisiones",
+      "description": "Guarda cada decisión en decisiones.jsonl, solo en tu equipo.",
+      "default": true
+    },
+    "logMaxEntries": {
+      "type": "number",
+      "title": "Máximo de entradas del registro",
+      "description": "Se conservan las últimas N decisiones. Por defecto: 2000.",
+      "default": 2000
+    },
+    "logTextChars": {
+      "type": "number",
+      "title": "Caracteres de texto en el registro",
+      "description": "Cuánto texto de cada petición se guarda (recortado y con secretos evidentes tapados). 0 para no guardar texto. Por defecto: 120.",
+      "default": 120
+    }
   }
 }

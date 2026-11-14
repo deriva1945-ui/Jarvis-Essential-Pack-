@@ -1,30 +1,83 @@
 import type { Hook, Register } from 'claude-code'
 
-import { esAbsoluta, expandir, MODS_DIR_DEFAULT, unir } from './rutas'
+import {
+  compararVersiones,
+  type Instalado,
+  isActivo,
+  parseListaJson,
+  parseListaTexto,
+  parseMarketplaces,
+  versionDeManifest,
+} from './lista'
+import { esAbsoluta, esRutaWindows, expandir, MODS_DIR_DEFAULT, padre, unir } from './rutas'
+import { lineasMonocromas, SEPARADOR, TONO } from './presentacion'
+import { type Idioma, idiomaDe, textos } from './textos'
 
-// Los mods del pack jarvis-essential-pack que /mods vigila.
-const PACK = ['portero', 'resumen-sesion', 'consumo', 'jarvis-banda'] as const
+// Los mods del pack jarvis-essential-pack. mods-estado es este mismo mod.
+const SELF = 'mods-estado'
+const PACK = ['portero', 'resumen-sesion', 'consumo', 'jarvis-banda', SELF] as const
 
-// Los únicos nombres que /mods on y /mods off aceptan: el pack y este mismo mod.
-const ALLOWED: readonly string[] = [...PACK, 'mods-estado']
+// Marketplace actual del pack y el nombre que tenía antes.
+const MARKETPLACE = 'jarvis-essential-pack'
+const OLD_MARKETPLACE = 'portero-claude'
+const REPO = 'deriva1945-ui/portero-claude'
+const REPO_URL = `https://github.com/${REPO}.git`
 
-const USAGE = 'Uso: /mods, /mods on <nombre> o /mods off <nombre>.'
-const DONE = 'Hecho. El cambio se aplica en la próxima sesión; reinicia Claude Code.'
-
-// Valor de la opción modsDir (userConfig): la carpeta donde el usuario guarda su copia local
-// de los mods. register() lo fija al cargar el módulo; un cambio en la configuración recarga el
-// módulo con el valor nuevo.
+// Valores de userConfig. register() los fija al cargar el módulo; un cambio en la configuración
+// recarga el módulo con los valores nuevos.
 let modsDirOption = MODS_DIR_DEFAULT
+let idioma: Idioma = 'es'
 
-type Listed = { name: string; source: string; version: string; status: string; isActive: boolean }
-
-type CliOutcome = { isOk: true; stdout: string } | { isOk: false; reason: string }
-
-type ListOutcome =
-  | { isOk: true; stdout: string; plugins: Listed[] }
-  | { isOk: false; reason: string }
+const T = () => textos(idioma)
 
 type Ctx = Parameters<Hook<'command.run'>>[0]
+
+type CliOutcome =
+  | { isOk: true; stdout: string }
+  | { isOk: false; reason: string; isSpawnFailure: boolean }
+
+const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err))
+
+// Ejecuta "claude <args>" sin shell. En Windows "claude" puede ser claude.cmd, que se prueba
+// después. Nunca lanza: un fallo vuelve como texto en reason.
+async function runClaude($: Ctx, args: string[]): Promise<CliOutcome> {
+  const failures: string[] = []
+  for (const exe of ['claude', 'claude.cmd']) {
+    try {
+      const run = await $.process.run([exe, ...args], { timeoutMs: 60_000 })
+      if (run.exitCode === 0) return { isOk: true, stdout: run.stdout }
+      const detail = (run.stderr || run.stdout).trim().split(/\r?\n/).slice(0, 3).join(' / ')
+      return {
+        isOk: false,
+        reason: T().exitCode(`${exe} ${args.join(' ')}`, run.exitCode ?? -1, detail),
+        isSpawnFailure: false,
+      }
+    } catch (err) {
+      failures.push(`${exe}: ${errorText(err)}`)
+    }
+  }
+  return { isOk: false, reason: T().cannotRun(`claude ${args.join(' ')}`, failures.join('; ')), isSpawnFailure: true }
+}
+
+// Lista de plugins instalados: primero "claude plugin list --json"; si esa versión de la CLI no
+// lo admite, la salida de texto.
+async function leerPlugins($: Ctx): Promise<{ isOk: true; plugins: Instalado[] } | { isOk: false; reason: string }> {
+  const json = await runClaude($, ['plugin', 'list', '--json'])
+  if (json.isOk) {
+    const parsed = parseListaJson(json.stdout)
+    if (parsed) return { isOk: true, plugins: parsed }
+  } else if (json.isSpawnFailure) {
+    return json
+  }
+  const text = await runClaude($, ['plugin', 'list'])
+  return text.isOk ? { isOk: true, plugins: parseListaTexto(text.stdout) } : text
+}
+
+// Marketplaces configurados, o null si no se pudieron leer.
+async function leerMarketplaces($: Ctx): Promise<string[] | null> {
+  const r = await runClaude($, ['plugin', 'marketplace', 'list', '--json'])
+  return r.isOk ? parseMarketplaces(r.stdout) : null
+}
 
 // Carpeta de la copia local. "~" es la carpeta del usuario: USERPROFILE en Windows, HOME en
 // macOS y Linux. Devuelve null si hace falta y no se conoce.
@@ -44,176 +97,286 @@ const dentroDe = (file: string, dir: string) => {
   return esAbsoluta(dir) && norm(file).startsWith(norm(dir) + '/')
 }
 
-// Lee la salida de "claude plugin list":
-//   > nombre@marketplace
-//     Version: 1.2.3
-//     Status: √ loaded
-const parsePluginList = (stdout: string): Listed[] => {
-  const plugins: Listed[] = []
-  let current: Listed | undefined
-  for (const raw of stdout.split(/\r?\n/)) {
-    const line = raw.trim()
-    const head = /^[>❯›»]\s*([^\s@]+)(?:@(\S+))?/.exec(line)
-    if (head) {
-      current = { name: head[1]!, source: head[2] ?? '', version: '?', status: '', isActive: false }
-      plugins.push(current)
-      continue
-    }
-    if (!current) continue
-    const version = /^Version:\s*(.+)$/i.exec(line)
-    if (version) current.version = version[1]!.trim()
-    const status = /^Status:\s*(.+)$/i.exec(line)
-    if (status) {
-      current.status = status[1]!.trim()
-      const s = current.status.toLowerCase()
-      current.isActive = /loaded|enabled/.test(s) && !/disabled|failed|error|not /.test(s)
-    }
+async function existe($: Ctx, path: string): Promise<boolean> {
+  try {
+    return await $.fs.exists(path)
+  } catch {
+    return false
   }
-  return plugins
 }
 
-const errorText = (err: unknown): string =>
-  err instanceof Error ? err.message : String(err)
+// Versión del plugin.json de una carpeta de mod: la versión, 'ilegible' o null si no hay manifiesto.
+async function versionEn($: Ctx, modDir: string): Promise<string | null> {
+  const manifest = unir(unir(modDir, '.claude-plugin'), 'plugin.json')
+  if (!(await existe($, manifest))) return null
+  try {
+    const text = await $.fs.read(manifest)
+    return typeof text === 'string' ? (versionDeManifest(text) ?? T().unreadable) : T().unreadable
+  } catch {
+    return T().unreadable
+  }
+}
 
-// Ejecuta "claude <args>" sin shell. En Windows "claude" puede ser claude.cmd, que se prueba
-// después. Nunca lanza: un fallo vuelve como texto en reason.
-async function runClaude($: Ctx, args: string[]): Promise<CliOutcome> {
-  const failures: string[] = []
-  for (const exe of ['claude', 'claude.cmd']) {
-    try {
-      const run = await $.process.run([exe, ...args], { timeoutMs: 60_000 })
-      if (run.exitCode === 0) return { isOk: true, stdout: run.stdout }
-      const detail = (run.stderr || run.stdout).trim().split(/\r?\n/).slice(0, 3).join(' / ')
-      return {
-        isOk: false,
-        reason: `"${exe} ${args.join(' ')}" terminó con código ${run.exitCode}${detail ? `: ${detail}` : ''}`,
+type Copia = {
+  dir: string | null
+  note: string // línea sobre la carpeta
+  versions: Map<string, string> // mod → versión ('ilegible' si no se pudo leer)
+  isGit: boolean
+}
+
+async function leerCopia($: Ctx): Promise<Copia> {
+  const t = T()
+  const dir = await carpetaMods($)
+  const versions = new Map<string, string>()
+  if (dir === null) return { dir, note: t.localUnknownHome(modsDirOption), versions, isGit: false }
+  try {
+    if (!(await $.fs.exists(dir))) return { dir, note: t.localNone(dir), versions, isGit: false }
+    const entries = await $.fs.list(dir)
+    const names = new Set(entries.filter(x => x.kind !== 'file').map(x => x.name.toLowerCase()))
+    for (const name of PACK) {
+      if (!names.has(name)) continue
+      versions.set(name, (await versionEn($, unir(dir, name))) ?? '?')
+    }
+    return { dir, note: t.localCount(dir, versions.size), versions, isGit: names.has('.git') }
+  } catch (err) {
+    return { dir, note: t.localUnreadable(dir, errorText(err)), versions, isGit: false }
+  }
+}
+
+// La instalación que cuenta para un mod: la del marketplace actual, si no otra que no sea del
+// antiguo, si no la del antiguo.
+function elegir(plugins: Instalado[], name: string): Instalado | undefined {
+  const all = plugins.filter(p => p.name.toLowerCase() === name)
+  return (
+    all.find(p => p.marketplace === MARKETPLACE) ?? all.find(p => p.marketplace !== OLD_MARKETPLACE) ?? all[0]
+  )
+}
+
+const scopeFlag = (p: Instalado) => (p.scope === 'project' || p.scope === 'local' ? ` --scope ${p.scope}` : '')
+
+// Tabla de columnas alineadas, con una línea bajo el encabezado.
+function tabla(rows: string[][]): string[] {
+  const widths = rows[0]!.map((_, i) => Math.max(...rows.map(r => r[i]!.length)))
+  const out = rows.map(r => '  ' + r.map((c, i) => (i === r.length - 1 ? c : c.padEnd(widths[i]!))).join('  ').trimEnd())
+  const ancho = Math.max(...out.map(l => l.length)) - 2
+  return [out[0]!, `  ${SEPARADOR.repeat(ancho)}`, ...out.slice(1)]
+}
+
+async function informe($: Ctx): Promise<string> {
+  const t = T()
+  const list = await leerPlugins($)
+  const markets = list.isOk ? await leerMarketplaces($) : null
+  const copia = await leerCopia($)
+  const root = $.plugin.root
+  const plugins = list.isOk ? list.plugins : []
+
+  const warnings: string[] = []
+  const missing: string[] = []
+  const mismatches: string[] = []
+  const rows: string[][] = [[`    ${t.colMod}`, t.colState, t.colInstalled, t.colLocal, '']]
+
+  for (const name of PACK) {
+    const found = elegir(plugins, name)
+    const local = copia.versions.get(name)
+    let mark: string
+    let state: string
+    if (!list.isOk) {
+      mark = '[?]'
+      state = t.stUnknown
+    } else if (!found) {
+      if (name === SELF) {
+        mark = '[x]'
+        state = t.stSelf
+      } else {
+        mark = '[ ]'
+        state = t.stMissing
+        missing.push(name)
       }
-    } catch (err) {
-      failures.push(`${exe}: ${errorText(err)}`)
+    } else if (found.errors.length > 0) {
+      mark = '[!]'
+      state = t.stFailed
+    } else if (found.isEnabled) {
+      mark = '[x]'
+      state = t.stActive
+    } else {
+      mark = '[ ]'
+      state = t.stDisabled
+      missing.push(name)
+    }
+    if (found && found.marketplace === OLD_MARKETPLACE) state += ` (${t.oldTag})`
+
+    const installed = found ? found.version : '—'
+    let flag = ''
+    if (found && local && found.version !== '?' && local !== '?' && local !== t.unreadable && local !== found.version) {
+      flag = '≠'
+      const cmp = compararVersiones(local, found.version)
+      const id = `${name}@${found.marketplace || MARKETPLACE}`
+      mismatches.push(
+        cmp === null
+          ? t.mismatchOther(name, found.version, local)
+          : cmp > 0
+            ? t.mismatchLocalNewer(name, found.version, local, id, found.marketplace || MARKETPLACE)
+            : t.mismatchLocalOlder(name, found.version, local),
+      )
+    }
+    rows.push([`${mark} ${name}`, state, installed, local ?? t.noLocal, flag])
+  }
+
+  const lines: string[] = []
+  if (!list.isOk) lines.push(t.listFailed(list.reason), '')
+  lines.push(t.packTitle(MARKETPLACE), ...tabla(rows), t.legend)
+
+  // Mods del pack que fallaron al cargar, con el texto del error.
+  for (const p of plugins) {
+    if (!(PACK as readonly string[]).includes(p.name.toLowerCase()) || p.errors.length === 0) continue
+    for (const err of p.errors) warnings.push(t.broken(p.id, err))
+    warnings.push(t.brokenHint(p.id))
+    if (p.errors.some(e => /manifest|plugin\.json|hooks|module|módulo/i.test(e))) warnings.push(t.brokenManifestHint)
+  }
+  warnings.push(...mismatches)
+  if (list.isOk && missing.length > 0) warnings.push(t.notLoaded(missing.join(', ')))
+
+  // Restos del marketplace antiguo: solo se avisa, no se borra nada.
+  const old = plugins.filter(p => p.marketplace === OLD_MARKETPLACE)
+  const hasOldMarket = markets?.includes(OLD_MARKETPLACE) ?? false
+  if (old.length > 0 || hasOldMarket) {
+    warnings.push(t.oldInstalls(OLD_MARKETPLACE, MARKETPLACE))
+    for (const p of old) warnings.push(`  - ${t.oldPlugin(p.id)}`)
+    if (hasOldMarket) warnings.push(`  - ${t.oldMarket(OLD_MARKETPLACE)}`)
+    for (const p of old) warnings.push(`    claude plugin uninstall ${p.id}${scopeFlag(p)}`)
+    if (hasOldMarket) warnings.push(`    claude plugin marketplace remove ${OLD_MARKETPLACE}`)
+    if (old.length > 0) {
+      warnings.push(`  ${t.oldReinstall}`)
+      if (!(markets?.includes(MARKETPLACE) ?? false)) warnings.push(`    claude plugin marketplace add ${REPO}`)
+      const names = [...new Set(old.map(p => p.name))]
+      for (const n of names) warnings.push(`    claude plugin install ${n}@${MARKETPLACE}`)
     }
   }
-  return {
-    isOk: false,
-    reason:
-      `no se pudo ejecutar "claude ${args.join(' ')}" (${failures.join('; ')}). ` +
-      'Comprueba que claude está en el PATH y que el mod tiene permiso para ejecutar procesos.',
+
+  lines.push('')
+  if (warnings.length > 0) lines.push(t.warnings, ...warnings.map(w => (w.startsWith(' ') ? w : `${t.warnPrefix} ${w}`)))
+  else if (list.isOk) lines.push(t.allActive)
+
+  const others = plugins.filter(p => !(PACK as readonly string[]).includes(p.name.toLowerCase()))
+  if (list.isOk) {
+    lines.push('', t.others)
+    if (others.length === 0) lines.push(`  ${t.noOthers}`)
+    for (const p of others) lines.push(`  ${isActivo(p) ? t.active : t.inactive}  ${p.id}  v${p.version}`)
   }
+
+  const isRootLocal = copia.dir !== null && dentroDe(root, copia.dir)
+  lines.push('', copia.note, t.selfRoot(root, isRootLocal))
+  return lines.join('\n')
+}
+
+// /mods actualizar: solo muestra comandos; no ejecuta nada que cambie el disco o la instalación.
+async function actualizar($: Ctx): Promise<string> {
+  const t = T()
+  const lines: string[] = [t.updTitle, '']
+
+  const list = await leerPlugins($)
+  const installed = list.isOk ? list.plugins.filter(p => p.marketplace === MARKETPLACE && (PACK as readonly string[]).includes(p.name)) : []
+  if (installed.length > 0) {
+    lines.push(t.updInstalled(MARKETPLACE), `   claude plugin marketplace update ${MARKETPLACE}`)
+    for (const p of installed) lines.push(`   claude plugin update ${p.id}${scopeFlag(p)}`)
+  } else {
+    lines.push(t.updNoInstalled(MARKETPLACE), `   claude plugin marketplace add ${REPO}`)
+    for (const n of PACK) lines.push(`   claude plugin install ${n}@${MARKETPLACE}`)
+  }
+  lines.push('')
+
+  const dir = await carpetaMods($)
+  if (dir === null) {
+    lines.push(t.updLocalUnknown)
+  } else {
+    const isWin = esRutaWindows(dir)
+    const q = (p: string) => `"${p}"`
+    if (await existe($, unir(dir, '.git'))) {
+      lines.push(t.updLocalGit(dir), t.updShell(isWin ? 'PowerShell' : 'bash/zsh'), `   git -C ${q(dir)} pull`)
+    } else {
+      const repoDir = unir(padre(dir), 'portero-claude')
+      const hasRepo = await existe($, unir(repoDir, '.git'))
+      lines.push(t.updLocalCopy(dir))
+      if (!hasRepo) lines.push(t.updCloneFirst(repoDir))
+      lines.push(t.updShell(isWin ? 'PowerShell' : 'bash/zsh'))
+      if (!hasRepo) lines.push(`   git clone ${REPO_URL} ${q(repoDir)}`)
+      lines.push(`   git -C ${q(repoDir)} pull`)
+      for (const n of PACK) {
+        const from = unir(repoDir, n)
+        const to = unir(dir, n)
+        lines.push(isWin ? `   robocopy ${q(from)} ${q(to)} /E` : `   mkdir -p ${q(to)} && cp -R ${q(from + '/.')} ${q(to + '/')}`)
+      }
+      lines.push(t.updOverwrite)
+    }
+  }
+  lines.push('', t.updRestart)
+  return lines.join('\n')
+}
+
+function ayuda(): string {
+  const t = T()
+  return [...t.help, '', t.helpNames(PACK.join(', ')), t.helpOptions].join('\n')
 }
 
 // /mods on <nombre> y /mods off <nombre>: solo nombres del pack. El cambio vale desde la
 // próxima sesión; no se intenta recargar nada.
 async function toggle($: Ctx, sub: 'on' | 'off', rest: string[]): Promise<string> {
-  if (rest.length !== 1) return USAGE
+  const t = T()
+  if (rest.length !== 1) return t.usage
   const given = rest[0]!
   const name = given.toLowerCase()
-  if (!ALLOWED.includes(name)) {
-    return `"${given}" no es un mod del pack. Nombres permitidos: ${ALLOWED.join(', ')}.`
-  }
+  if (!(PACK as readonly string[]).includes(name)) return t.notPack(given, PACK.join(', '))
   const r = await runClaude($, ['plugin', sub === 'on' ? 'enable' : 'disable', name])
-  if (!r.isOk) return `No se pudo ${sub === 'on' ? 'activar' : 'desactivar'} ${name}: ${r.reason}`
-  return DONE
+  if (!r.isOk) return t.toggleFailed(sub === 'on', name, r.reason)
+  return t.done
 }
 
 export const register: Register = (on, options) => {
   const opt = options['modsDir']
   modsDirOption = typeof opt === 'string' && opt.trim() !== '' ? opt : MODS_DIR_DEFAULT
+  idioma = idiomaDe(options['idioma'])
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'mods',
-      description: 'Lista los mods del pack; on/off <nombre> los activa o desactiva',
-      argumentHint: '[on|off <nombre>]',
+      description: T().description,
+      argumentHint: idioma === 'en' ? '[on|off <name> | update | help]' : '[on|off <nombre> | actualizar | ayuda]',
     })
     return next(e)
   }).catch(($, e, next) => next(e))
 
   on('command.run', { command: 'mods' }, async ($, e) => {
     const [sub, ...rest] = (e.args ?? '').trim().split(/\s+/).filter(Boolean)
-    if (sub !== undefined) {
-      const s = sub.toLowerCase()
-      return { text: s === 'on' || s === 'off' ? await toggle($, s, rest) : USAGE }
-    }
+    if (sub === undefined) return { text: await informe($) }
+    const s = sub.toLowerCase()
+    if (s === 'on' || s === 'off') return { text: await toggle($, s, rest) }
+    if (s === 'actualizar' || s === 'update') return { text: await actualizar($) }
+    if (s === 'ayuda' || s === 'help' || s === '?') return { text: ayuda() }
+    return { text: `${T().unknownSub(sub)} ${T().usage}` }
+  }).catch(($, e, next) => (next.called ? next(e) : { text: T().reportFailed }))
 
-    // 1. Lista de plugins: la API no la da, así que se pregunta a la CLI.
-    const cli = await runClaude($, ['plugin', 'list'])
-    const outcome: ListOutcome = cli.isOk
-      ? { isOk: true, stdout: cli.stdout, plugins: parsePluginList(cli.stdout) }
-      : cli
-
-    // 2. Copia local en la carpeta modsDir: qué carpetas del pack hay.
-    const localDir = await carpetaMods($)
-    let localNames = new Set<string>()
-    let localNote = ''
-    if (localDir === null) {
-      localNote = `${modsDirOption}: sin copia local (no se sabe cuál es tu carpeta de usuario; pon una ruta absoluta en modsDir)`
-    } else {
-      try {
-        if (await $.fs.exists(localDir)) {
-          const entries = await $.fs.list(localDir)
-          localNames = new Set(entries.filter(x => x.kind !== 'file').map(x => x.name.toLowerCase()))
-          localNote = `${localDir}: ${localNames.size} carpeta(s)`
-        } else {
-          localNote = `${localDir}: sin copia local`
-        }
-      } catch (err) {
-        localNote = `${localDir}: sin copia local (no se pudo leer: ${errorText(err)})`
-      }
-    }
-
-    const root = $.plugin.root
-    const isRootLocal = localDir !== null && dentroDe(root, localDir)
-
-    // 3. Resumen del pack.
-    const listed = outcome.isOk ? outcome.plugins : []
-    const width = Math.max(...PACK.map(n => n.length))
-    const missing: string[] = []
-    const rows = PACK.map(name => {
-      const found = listed.find(p => p.name.toLowerCase() === name)
-      const local = localDir !== null && localNames.has(name) ? `copia local: ${unir(localDir, name)}` : 'sin copia local'
-      let state: string
-      if (!outcome.isOk) state = 'estado desconocido'
-      else if (!found) state = 'no instalado'
-      else if (found.isActive) state = `activo v${found.version}`
-      else state = `no cargado v${found.version} (${found.status || 'sin estado'})`
-      if (outcome.isOk && !found?.isActive) missing.push(name)
-      const mark = !outcome.isOk ? '[?]' : found?.isActive ? '[x]' : '[ ]'
-      return `  ${mark} ${name.padEnd(width)}  ${state} · ${local}`
-    })
-
-    const lines: string[] = []
-    if (outcome.isOk) {
-      lines.push('Plugins (claude plugin list):')
-      if (listed.length === 0) lines.push('  (la lista está vacía)')
-      for (const p of listed) {
-        const isPack = (PACK as readonly string[]).includes(p.name.toLowerCase())
-        lines.push(
-          `  ${p.isActive ? 'activo   ' : 'inactivo '} ${p.name}@${p.source || '?'}  v${p.version}${isPack ? '  [pack]' : ''}`,
-        )
-      }
-      if (listed.length === 0 && outcome.stdout.trim()) {
-        lines.push('', outcome.stdout.trim())
-      }
-    } else {
-      lines.push(`No se pudo leer la lista de plugins: ${outcome.reason}`)
-    }
-    lines.push('', 'Pack jarvis-essential-pack:', ...rows)
-    if (missing.length > 0) {
-      lines.push(
-        '',
-        `Aviso: del pack no están cargados: ${missing.join(', ')}.` +
-          ' (Un mod cargado con --plugin-dir no aparece en "claude plugin list".)',
+  // Dibujo monocromo de la salida de /mods: el texto es el mismo; solo cambian los tonos.
+  on('ui.render', { component: 'CommandOutput', props: { command: 'mods' } }, async ($, e, next) => {
+    if (e.props.isErrored) return next(e)
+    try {
+      const { Box, Text } = $.ui.resolve(e)
+      return (
+        <Box flexDirection="column">
+          {lineasMonocromas(e.props.text).map(l => (
+            <Text wrap="wrap">
+              {l.length === 0
+                ? ' '
+                : l.map(t => (
+                    <Text color={TONO[t.tono]} weight={t.negrita ? 'bold' : undefined}>
+                      {t.texto}
+                    </Text>
+                  ))}
+            </Text>
+          ))}
+        </Box>
       )
-    } else if (outcome.isOk) {
-      lines.push('', 'Todos los mods del pack están activos.')
+    } catch {
+      return next(e)
     }
-    lines.push(
-      '',
-      localNote,
-      `Este mod (mods-estado) se carga desde ${root}${isRootLocal ? ' (copia local)' : ''}.`,
-    )
-
-    return { text: lines.join('\n') }
-  }).catch(($, e, next) =>
-    next.called ? next(e) : { text: 'mods-estado: no se pudo preparar el informe de /mods.' },
-  )
+  })
 }

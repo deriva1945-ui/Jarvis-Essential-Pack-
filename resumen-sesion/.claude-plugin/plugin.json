@@ -1,9 +1,42 @@
 {
   "name": "resumen-sesion",
-  "version": "0.1.0",
-  "description": "Tras un rato sin escribir, resume la sesión con Haiku y te sugiere retomarla en una sesión nueva con ese resumen.",
+  "version": "0.2.0",
+  "description": "Resumen de traspaso en secciones fijas, automático tras un rato sin escribir o con /resumen; lo guarda en un archivo y te lo deja listo para una sesión nueva (/resumen-ver).",
   "types": "./types/index.d.ts",
   "author": {
     "name": "deriva1945-ui"
+  },
+  "userConfig": {
+    "idleHours": {
+      "type": "number",
+      "title": "Horas sin actividad",
+      "description": "Horas sin actividad a partir de las que tu siguiente mensaje genera el resumen automático. Admite decimales (0.5 = media hora). Por defecto: 2.",
+      "default": 2
+    },
+    "maxTokens": {
+      "type": "number",
+      "title": "Límite de tokens del resumen",
+      "description": "Tokens máximos de la respuesta del modelo (entre 200 y 8000). Por defecto: 800.",
+      "default": 800
+    },
+    "includeFiles": {
+      "type": "boolean",
+      "title": "Incluir archivos tocados",
+      "description": "Si el resumen lleva la sección de archivos tocados. Por defecto: sí.",
+      "default": true
+    },
+    "language": {
+      "type": "string",
+      "title": "Idioma del resumen",
+      "description": "Idioma del resumen y de los avisos: es (español) o en (inglés). Por defecto: es.",
+      "options": ["es", "en"],
+      "default": "es"
+    },
+    "dataDir": {
+      "type": "string",
+      "title": "Carpeta de datos",
+      "description": "Carpeta donde se guarda ultimo-resumen.md. Ruta absoluta o empezando por ~ (tu carpeta de usuario). Por defecto: ~/CLAUDE/resumen-sesion.",
+      "default": "~/CLAUDE/resumen-sesion"
+    }
   }
 }
