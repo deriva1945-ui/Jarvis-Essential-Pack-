@@ -30,6 +30,12 @@ Una sola línea, siempre. Cada estado tiene su símbolo de una columna:
 
 Detrás del estado, en la misma línea: el modelo activo (`OPUS-5.5`) y el contexto usado (`CTX 42%`). El contexto aparece cuando Claude Code ya lo ha medido (tras la primera respuesta).
 
+| Esperando | Procesando | Ejecutando |
+|---|---|---|
+| ![esperando](../images/banda-esperando.png) | ![procesando](../images/banda-procesando.png) | ![ejecutando](../images/banda-ejecutando.png) |
+
+*Aproximaciones en HTML, no son la salida real de la terminal.*
+
 ### Colores
 
 La banda es monocroma, como el HUD de consumo: blanco y grises, sin color de acento. El tono de la línea depende del modelo:
@@ -163,6 +169,12 @@ Always one line. Each state has its own one-column symbol (labels shown with `id
 | ✕ | ERROR IN tool | when a tool ends with an error, until the next change |
 
 After the state, on the same line: the active model (`OPUS-5.5`) and the context used (`CTX 42%`). The context appears once Claude Code has measured it (after the first response).
+
+| Waiting | Processing | Running |
+|---|---|---|
+| ![waiting](../images/banda-esperando.png) | ![processing](../images/banda-procesando.png) | ![running](../images/banda-ejecutando.png) |
+
+*HTML approximations, not the real terminal output.*
 
 ### Colors
 

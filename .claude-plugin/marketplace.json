@@ -8,27 +8,27 @@
     {
       "name": "portero",
       "source": "./portero",
-      "description": "Clasifica cada petición: ligeras con el modelo de la sesión, pesadas delegadas a un subagente Opus."
+      "description": "Clasifica cada petición por capas: ligeras con el modelo de la sesión, pesadas delegadas a un subagente Opus; /portero muestra el reparto."
     },
     {
       "name": "resumen-sesion",
       "source": "./resumen-sesion",
-      "description": "Tras un rato sin escribir, resume la sesión con Haiku para retomarla en una sesión nueva."
+      "description": "Resumen de traspaso en secciones con Haiku, tras un rato sin escribir o con /resumen; /resumen-ver muestra el último."
     },
     {
       "name": "consumo",
       "source": "./consumo",
-      "description": "Ventana HUD en directo: contexto, coste, tokens por modelo, plan, comparativa Haiku/Opus y /jarvis."
+      "description": "Ventana HUD en directo, monocroma por defecto: contexto, coste en euros, tokens por modelo, plan, comparativa Haiku/Opus, acumulado entre sesiones y /jarvis."
     },
     {
       "name": "jarvis-banda",
       "source": "./jarvis-banda",
-      "description": "Línea HUD estilo J.A.R.V.I.S. encima del prompt: estado en vivo con color por modelo."
+      "description": "Línea HUD estilo J.A.R.V.I.S. encima del prompt: estado en vivo, modelo y contexto, en blanco y grises; /banda."
     },
     {
       "name": "mods-estado",
       "source": "./mods-estado",
-      "description": "Comando /mods: qué mods del pack están activos; /mods on y /mods off."
+      "description": "Comando /mods: diagnóstico del pack (estado, versiones, fallos de carga); /mods on, /mods off y /mods actualizar."
     }
   ]
 }

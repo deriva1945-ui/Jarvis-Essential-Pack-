@@ -5,10 +5,10 @@
 <p align="center"><b>Cinco mods para Claude Code con estilo J.A.R.V.I.S.: reparten el trabajo entre modelos, muestran el consumo y te dicen en qué está la sesión.</b></p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="Licencia MIT" src="https://img.shields.io/badge/licencia-MIT-22d3ee"></a>
-  <a href="https://docs.claude.com/en/docs/claude-code"><img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-mods-d97757"></a>
-  <a href="CHANGELOG.md"><img alt="Versión 0.3.0" src="https://img.shields.io/badge/versi%C3%B3n-0.3.0-64748b"></a>
-  <a href="CONTRIBUTING.md"><img alt="Contribuciones bienvenidas" src="https://img.shields.io/badge/contribuciones-bienvenidas-34d399"></a>
+  <a href="LICENSE"><img alt="Licencia MIT" src="https://img.shields.io/badge/licencia-MIT-333333?labelColor=111111"></a>
+  <a href="https://docs.claude.com/en/docs/claude-code"><img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-mods-333333?labelColor=111111"></a>
+  <a href="CHANGELOG.md"><img alt="Versión 0.4.0" src="https://img.shields.io/badge/versi%C3%B3n-0.4.0-333333?labelColor=111111"></a>
+  <a href="CONTRIBUTING.md"><img alt="Contribuciones bienvenidas" src="https://img.shields.io/badge/contribuciones-bienvenidas-333333?labelColor=111111"></a>
 </p>
 
 <p align="center"><b>Español</b> · <a href="#en">English</a></p>
@@ -34,6 +34,16 @@
 
 ## Novedades
 
+**Versión 0.4.0 del pack**
+
+Todo el pack pasa a una estética monocroma (blanco, grises y negro), también en las imágenes.
+
+- **consumo 0.8.0:** histórico entre sesiones (bloque Acumulado: hoy, semana, total y últimas sesiones), costes en euros por defecto (`moneda` y `tipoCambio`), tema `monocromo` por defecto, densidad automática según el tamaño de la ventana y sin parpadeo. `/jarvis` sigue abriendo y cerrando el HUD.
+- **portero 0.2.0:** clasificación por capas, override `!dudosa`, registro local de decisiones y comando `/portero`.
+- **resumen-sesion 0.2.0:** resumen de traspaso en secciones, comandos `/resumen` y `/resumen-ver`, y el último resumen guardado en disco.
+- **jarvis-banda 0.3.0:** siete estados, modelo y contexto en la misma línea, color monocromo por defecto y comando `/banda`.
+- **mods-estado 0.4.0:** `/mods` como diagnóstico del pack (versión instalada y copia local, fallos de carga, restos del marketplace antiguo), `/mods actualizar` y `/mods ayuda`, en blanco y grises.
+
 **Versión 0.3.0 del pack**
 
 - **consumo 0.4.0 y mods-estado 0.3.0:** sin rutas fijas de Windows. La carpeta de datos del HUD (`dataDir`) y la carpeta del pack (`modsDir`) se configuran con `claude plugin configure`; por defecto, `~/CLAUDE/consumo` y `~/CLAUDE/mods` dentro de tu carpeta de usuario. Ver [Configurar las carpetas](#es-carpetas).
@@ -52,11 +62,11 @@ Todos los cambios en [CHANGELOG.md](CHANGELOG.md).
 
 | Mod | Qué hace | Imagen |
 |---|---|---|
-| **[portero](portero/)**<br><sub>v0.1.0</sub> | Mira cada petición y decide quién la hace. Lo ligero, el modelo de la sesión. Lo pesado, un subagente Opus. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
-| **[resumen-sesion](resumen-sesion/)**<br><sub>v0.1.0</sub> | Si vuelves tras 2 horas sin escribir, Haiku escribe un resumen de traspaso para seguir en una sesión nueva. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
-| **[consumo](consumo/)**<br><sub>v0.4.0</sub> | Ventana HUD en directo, en blanco-cian: barra del plan, contexto usado, coste, tokens por agente y por modelo, y comparativa Haiku frente a Opus. `/jarvis` la abre o la cierra. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
-| **[jarvis-banda](jarvis-banda/)**<br><sub>v0.2.0</sub> | Una línea encima del prompt con el estado en vivo: esperando, procesando, ejecutando o delegando. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
-| **[mods-estado](mods-estado/)**<br><sub>v0.3.0</sub> | Comando `/mods`: lista los plugins activos y marca los del pack. `/mods on` y `/mods off` activan o desactivan un mod. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
+| **[portero](portero/)**<br><sub>v0.2.0</sub> | Mira cada petición y decide quién la hace, por capas de reglas. Lo ligero, el modelo de la sesión. Lo pesado, un subagente Opus. `/portero` enseña el reparto. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
+| **[resumen-sesion](resumen-sesion/)**<br><sub>v0.2.0</sub> | Si vuelves tras 2 horas sin escribir, o con `/resumen`, Haiku escribe un resumen de traspaso en secciones para seguir en una sesión nueva. `/resumen-ver` muestra el último. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
+| **[consumo](consumo/)**<br><sub>v0.8.0</sub> | Ventana HUD en directo, monocroma por defecto: barra del plan, contexto usado, coste en euros, tokens por agente y por modelo, comparativa Haiku frente a Opus y acumulado entre sesiones. `/jarvis` la abre o la cierra. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
+| **[jarvis-banda](jarvis-banda/)**<br><sub>v0.3.0</sub> | Una línea monocroma encima del prompt con el estado en vivo (esperando, procesando, pensando, ejecutando, delegando, permiso o error), el modelo y el contexto. `/banda` cambia idioma y modo. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
+| **[mods-estado](mods-estado/)**<br><sub>v0.4.0</sub> | Comando `/mods`: diagnóstico del pack (estado, versión instalada y de tu copia local, fallos de carga). `/mods on` y `/mods off` activan o desactivan un mod; `/mods actualizar` da los comandos para actualizar. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
 
 Cada mod es independiente. Instala solo los que quieras.
 
@@ -120,11 +130,13 @@ En macOS o Linux vale lo mismo con `claude --plugin-dir ~/CLAUDE/mods/portero --
 
 ## Configurar las carpetas
 
-Ningún mod usa rutas fijas. Dos mods tienen una opción de carpeta (`userConfig` en su `plugin.json`):
+Ningún mod usa rutas fijas. Cuatro mods tienen una opción de carpeta (`userConfig` en su `plugin.json`):
 
 | Mod | Opción | Para qué | Valor por defecto |
 |---|---|---|---|
-| `consumo` | `dataDir` | dónde se escriben `index.html`, `datos.js`, `estado.json` y `estado.js` | `~/CLAUDE/consumo` |
+| `consumo` | `dataDir` | dónde se escriben `index.html`, `datos.js`, `estado.json`, `estado.js` e `historico.json` | `~/CLAUDE/consumo` |
+| `portero` | `dataDir` | dónde se guarda el registro `decisiones.jsonl` | `~/CLAUDE/portero` |
+| `resumen-sesion` | `dataDir` | dónde se guarda `ultimo-resumen.md` | `~/CLAUDE/resumen-sesion` |
 | `mods-estado` | `modsDir` | dónde está tu copia local del pack | `~/CLAUDE/mods` |
 
 `~` es tu carpeta de usuario (`%USERPROFILE%` en Windows, `$HOME` en macOS y Linux). Acepta también una ruta absoluta.
@@ -181,9 +193,9 @@ Más detalle y un diagrama en [docs/como-funciona.md](docs/como-funciona.md).
 - **Sin audio en Windows.** Los mods no reproducen sonidos ni voz.
 - **portero no cambia el modelo del hilo principal.** Si la sesión usa Opus, lo ligero también va con Opus. Para ahorrar, pon la sesión en Haiku con `/model`.
 - **El HUD de consumo no se ha probado en todos los PC.** Puede variar con la versión de Windows, el navegador o el escalado de pantalla.
-- **mods-estado no ve los mods cargados con `--plugin-dir`.** Salen como "no cargado" aunque estén en uso, y `/mods on` y `/mods off` no los cambian.
+- **mods-estado no ve los mods cargados con `--plugin-dir`.** Salen como "no instalado" aunque estén en uso (salvo el propio mods-estado, que sale como "en uso"), y `/mods on` y `/mods off` no los cambian.
 - **`/jarvis` no siempre cierra la ventana.** `window.close()` puede no funcionar en algunas versiones de Edge; entonces la página avisa y la cierras a mano.
-- **Textos en español.** Lo que los mods muestran en la terminal está en español.
+- **Textos en español por defecto.** consumo, jarvis-banda, mods-estado y resumen-sesion tienen una opción de idioma (`idioma` o `language`) para pasar a inglés; portero solo está en español.
 
 <a id="es-contribuir"></a>
 
@@ -228,6 +240,16 @@ MIT © deriva1945-ui. Ver [LICENSE](LICENSE). Cada mod lleva también su propio 
 
 ## What's new
 
+**Pack version 0.4.0**
+
+The whole pack moves to a monochrome look (white, greys and black), images included.
+
+- **consumo 0.8.0:** history across sessions (Accumulated block: today, this week, total and latest sessions), costs in euros by default (`moneda` and `tipoCambio`), `monocromo` as the default theme, automatic density from the window size and no flicker. `/jarvis` still opens and closes the HUD.
+- **portero 0.2.0:** layered classification, `!dudosa` override, local decision log and the `/portero` command.
+- **resumen-sesion 0.2.0:** handover summary in sections, `/resumen` and `/resumen-ver` commands, and the last summary saved to disk.
+- **jarvis-banda 0.3.0:** seven states, model and context on the same line, monochrome colour by default and the `/banda` command.
+- **mods-estado 0.4.0:** `/mods` as a pack check-up (installed version and local copy, load failures, leftovers from the old marketplace), `/mods update` and `/mods help`, in white and greys.
+
 **Pack version 0.3.0**
 
 - **consumo 0.4.0 and mods-estado 0.3.0:** no fixed Windows paths. The HUD data folder (`dataDir`) and the pack folder (`modsDir`) are set with `claude plugin configure`; by default, `~/CLAUDE/consumo` and `~/CLAUDE/mods` inside your user folder. See [Configure the folders](#en-folders).
@@ -246,11 +268,11 @@ Every change is in [CHANGELOG.md](CHANGELOG.md).
 
 | Mod | What it does | Image |
 |---|---|---|
-| **[portero](portero/)**<br><sub>v0.1.0</sub> | Looks at each request and decides who handles it. Light work: the session model. Heavy work: an Opus subagent. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
-| **[resumen-sesion](resumen-sesion/)**<br><sub>v0.1.0</sub> | When you come back after 2 hours without typing, Haiku writes a handover summary so you can continue in a new session. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
-| **[consumo](consumo/)**<br><sub>v0.4.0</sub> | Live white-cyan HUD window: plan bar, context used, cost, tokens per agent and per model, and a Haiku versus Opus comparison. `/jarvis` opens or closes it. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
-| **[jarvis-banda](jarvis-banda/)**<br><sub>v0.2.0</sub> | One line above the prompt with the live state: waiting, processing, running a tool, or delegating. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
-| **[mods-estado](mods-estado/)**<br><sub>v0.3.0</sub> | `/mods` command: lists active plugins and marks the ones from this pack. `/mods on` and `/mods off` enable or disable a mod. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
+| **[portero](portero/)**<br><sub>v0.2.0</sub> | Looks at each request and decides who handles it, through layers of rules. Light work: the session model. Heavy work: an Opus subagent. `/portero` shows the split. | <img src="images/portero-diagrama.png" alt="portero" width="280"> |
+| **[resumen-sesion](resumen-sesion/)**<br><sub>v0.2.0</sub> | When you come back after 2 hours without typing, or with `/resumen`, Haiku writes a handover summary in sections so you can continue in a new session. `/resumen-ver` shows the last one. | <img src="images/resumen-terminal.png" alt="resumen-sesion" width="280"> |
+| **[consumo](consumo/)**<br><sub>v0.8.0</sub> | Live HUD window, monochrome by default: plan bar, context used, cost in euros, tokens per agent and per model, a Haiku versus Opus comparison and totals across sessions. `/jarvis` opens or closes it. | <img src="images/consumo-900x600.png" alt="consumo" width="280"> |
+| **[jarvis-banda](jarvis-banda/)**<br><sub>v0.3.0</sub> | One monochrome line above the prompt with the live state (waiting, processing, thinking, running a tool, delegating, permission or error), the model and the context. `/banda` changes language and mode. | <img src="images/banda-delegando.png" alt="jarvis-banda" width="280"> |
+| **[mods-estado](mods-estado/)**<br><sub>v0.4.0</sub> | `/mods` command: a pack check-up (state, installed and local copy version, load failures). `/mods on` and `/mods off` enable or disable a mod; `/mods update` gives the commands to update. | <img src="images/mods-terminal.png" alt="mods-estado" width="280"> |
 
 Each mod works on its own. Install only the ones you want.
 
@@ -314,11 +336,13 @@ On macOS or Linux the same works with `claude --plugin-dir ~/CLAUDE/mods/portero
 
 ## Configure the folders
 
-No mod uses fixed paths. Two mods have a folder option (`userConfig` in their `plugin.json`):
+No mod uses fixed paths. Four mods have a folder option (`userConfig` in their `plugin.json`):
 
 | Mod | Option | What for | Default |
 |---|---|---|---|
-| `consumo` | `dataDir` | where `index.html`, `datos.js`, `estado.json` and `estado.js` are written | `~/CLAUDE/consumo` |
+| `consumo` | `dataDir` | where `index.html`, `datos.js`, `estado.json`, `estado.js` and `historico.json` are written | `~/CLAUDE/consumo` |
+| `portero` | `dataDir` | where the `decisiones.jsonl` log is kept | `~/CLAUDE/portero` |
+| `resumen-sesion` | `dataDir` | where `ultimo-resumen.md` is kept | `~/CLAUDE/resumen-sesion` |
 | `mods-estado` | `modsDir` | where your local copy of the pack is | `~/CLAUDE/mods` |
 
 `~` is your user folder (`%USERPROFILE%` on Windows, `$HOME` on macOS and Linux). An absolute path works too.
@@ -375,9 +399,9 @@ More detail and a diagram in [docs/how-it-works.md](docs/how-it-works.md).
 - **No audio on Windows.** The mods play no sounds or voice.
 - **portero does not change the main thread's model.** If the session runs on Opus, light work also runs on Opus. To save, switch the session to Haiku with `/model`.
 - **The consumo HUD has not been tested on every PC.** It may vary with the Windows version, the browser or display scaling.
-- **mods-estado cannot see mods loaded with `--plugin-dir`.** They show as "not loaded" even when in use, and `/mods on` and `/mods off` do not change them.
+- **mods-estado cannot see mods loaded with `--plugin-dir`.** They show as "not installed" even when in use (except mods-estado itself, which shows as "in use"), and `/mods on` and `/mods off` do not change them.
 - **`/jarvis` does not always close the window.** `window.close()` may not work in some Edge versions; the page then shows a notice and you close it by hand.
-- **Spanish labels.** What the mods show in the terminal is in Spanish.
+- **Spanish labels by default.** consumo, jarvis-banda, mods-estado and resumen-sesion have a language option (`idioma` or `language`) to switch to English; portero is Spanish only.
 
 <a id="en-contributing"></a>
 
