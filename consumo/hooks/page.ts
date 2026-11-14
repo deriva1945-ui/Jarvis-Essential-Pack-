@@ -5,11 +5,13 @@
 // Todo en línea, sin CDN: tiene que funcionar offline desde file://.
 //
 // Tamaños de ventana (detalle en el comentario de breakpoints del CSS):
-//   < 560 px          una columna, por prioridad: contexto, coste, comparativa, reparto, agentes, plan, últimos turnos, gráfica.
+//   < 560 px          una columna, por prioridad: contexto, coste, comparativa, reparto, agentes, plan, acumulado, últimos turnos, gráfica.
 //   560-899           dos columnas arriba (contexto | coste y comparativa) y el resto a todo el ancho.
 //   900-1199          dos columnas; reparto y agentes lado a lado; plan, últimos turnos y gráfica a todo el ancho.
 //   >= 1200           tres columnas: contexto | coste y comparativa | reparto y agentes.
-//   >= 1600 y alto >= 1000  todo cabe en la ventana: plan arriba y la gráfica con los últimos turnos llenan el alto que queda.
+//   >= 1600 y alto >= 1000  todo cabe en la ventana: plan arriba y la gráfica con el acumulado y los últimos turnos llenan el alto que queda.
+// Acumulado (historico.json, entre sesiones): total desde el primer uso, hoy, esta semana y las últimas sesiones. En compacto
+//   se queda con las tres cifras y sin la lista de sesiones. Sin histórico (opción historico = false) el panel no se ve.
 //   Desde 320 px de ancho sin desplazamiento horizontal; los paneles se ajustan por dentro con container queries.
 // Arriba, a todo el ancho: barra de progreso del plan de Claude (TaskCreate / TaskUpdate), con la lista plegable.
 // Densidad automática: atributo data-densidad="comodo|compacto" en <html>, según el área útil de la ventana (ver densidadDe()).
@@ -252,9 +254,9 @@ body.lv-x .pnl:before,body.lv-x .pnl:after{border-color:var(--rd)}
 /* Rejilla: una sola, la de .wrap. .grid no dibuja caja (display:contents), así el plan puede ir entre los paneles
    según la prioridad. Áreas por tamaño en el bloque de breakpoints, al final del CSS. */
 .grid{display:contents}
-.wrap{grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "hist" "chart" "foot"}
-html[data-densidad="compacto"] .wrap{grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "chart"}
-#p-ctx{grid-area:ctx}#p-cost{grid-area:cost}#p-comp{grid-area:comp}#p-mod{grid-area:mod}#p-chart{grid-area:chart}#p-hist{grid-area:hist}#p-agt{grid-area:agt}
+.wrap{grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "acum" "hist" "chart" "foot"}
+html[data-densidad="compacto"] .wrap{grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "acum" "chart"}
+#p-acum{grid-area:acum}#p-ctx{grid-area:ctx}#p-cost{grid-area:cost}#p-comp{grid-area:comp}#p-mod{grid-area:mod}#p-chart{grid-area:chart}#p-hist{grid-area:hist}#p-agt{grid-area:agt}
 html[data-densidad="compacto"] #p-hist,html[data-densidad="compacto"] footer{display:none}
 
 /* Contexto: globo holográfico (canvas) con un anillo blanco-cian inclinado (CSS 3D) que gira al revés, sobre un halo cian */
@@ -315,6 +317,29 @@ body.lv-x .rc .p small{color:var(--rd)}
 .ctk i{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);margin-right:6px;vertical-align:-1px}
 .ctk b{font-weight:normal;color:var(--txt)}
 .cnote{font-size:var(--fk);color:var(--sub);margin-top:auto}
+
+/* Acumulado (histórico entre sesiones): tres cifras (hoy, semana, total) y la lista de las últimas sesiones, sin tablas.
+   Con sitio (panel de 760 px o más) las cifras y la lista van lado a lado. En compacto solo las cifras. */
+.acb{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--gap);flex:1;min-height:0}
+.acb>.kv{align-self:start;align-content:start}
+.acb .kv .k{white-space:nowrap}
+.acb .kv .v b{font-weight:normal}
+.acb .kv .v i{font-style:normal;color:var(--sub);font-size:var(--fk);margin-left:10px}
+.acb .kv .v i.tk{margin-left:6px}
+@container (max-width:599px){.acb .kv .v i.tk{display:none}}
+.acs{display:flex;flex-direction:column;min-height:0}
+.acs>.k{margin-bottom:6px}
+.acl{list-style:none;margin:0;padding:0;overflow-y:auto;min-height:0;flex:1;scrollbar-width:thin;scrollbar-color:rgba(var(--acc-rgb),.4) transparent}
+.acl li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 16px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line);font-size:var(--fk);color:var(--sub)}
+.acl li .d{min-width:0;overflow-wrap:anywhere}
+.acl li .d em{font-style:normal;color:var(--ce);margin-left:8px}
+.acl li .c{color:var(--txt);font-size:var(--fv);text-align:right;white-space:nowrap}
+.acl li .u{white-space:nowrap;text-align:right}
+.acl li.vacia{display:block}
+.pnl.ac-off{display:none!important}
+html[data-densidad="compacto"] .acs{display:none}
+@container (min-width:760px){.acb{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(18px,2vw,40px)}}
+@container (max-width:419px){.acl li{grid-template-columns:minmax(0,1fr) auto}.acl li .u{grid-column:1;text-align:left}.acl li .c{grid-row:1 / span 2;grid-column:2;align-self:center}}
 
 /* Barras segmentadas */
 .seg{display:flex;gap:2px;height:10px;align-items:stretch;min-width:0}
@@ -393,11 +418,12 @@ footer .line{flex:1;align-self:center;height:1px;background:linear-gradient(90de
 
 /* ===== Breakpoints =====
    Ventana (media queries, ancho x alto):
-     base   < 560 px   una columna por prioridad: contexto, coste, comparativa, reparto, agentes, plan, últimos turnos, gráfica.
+     base   < 560 px   una columna por prioridad: contexto, coste, comparativa, reparto, agentes, plan, acumulado, últimos turnos, gráfica.
      560 px             dos columnas arriba: contexto | coste + comparativa; reparto, agentes, plan, turnos y gráfica a todo el ancho.
      900 px             dos columnas: contexto | coste + comparativa; reparto | agentes; plan, turnos y gráfica a todo el ancho.
      1200 px            tres columnas: contexto | coste + comparativa | reparto + agentes; plan, turnos y gráfica a todo el ancho.
-     1600 px y 1000 px de alto   pantalla completa sin desplazar: plan arriba, las tres columnas y abajo gráfica | turnos con el alto que queda.
+     1600 px y 1000 px de alto   pantalla completa sin desplazar: plan arriba, las tres columnas y abajo acumulado | gráfica | turnos con el alto que queda.
+     El acumulado va siempre detrás del plan y delante de los últimos turnos (prioridad).
      Por debajo de 1000 px de alto la página se desplaza en vertical; nunca en horizontal.
    Panel (container queries, ancho del propio panel; cada .pnl es container-type:inline-size):
      < 600 px   tablas sin hora ni turnos; reparto de agentes solo con el %.
@@ -421,20 +447,20 @@ footer .line{flex:1;align-self:center;height:1px;background:linear-gradient(90de
 /* 560 px: contexto a la izquierda, coste y comparativa a la derecha */
 @media (min-width:560px){
   .wrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-    grid-template-areas:"head head" "ctx cost" "ctx comp" "mod mod" "agt agt" "plan plan" "hist hist" "chart chart" "foot foot"}
-  html[data-densidad="compacto"] .wrap{grid-template-areas:"head head" "ctx cost" "ctx comp" "mod mod" "agt agt" "plan plan" "chart chart"}
+    grid-template-areas:"head head" "ctx cost" "ctx comp" "mod mod" "agt agt" "plan plan" "acum acum" "hist hist" "chart chart" "foot foot"}
+  html[data-densidad="compacto"] .wrap{grid-template-areas:"head head" "ctx cost" "ctx comp" "mod mod" "agt agt" "plan plan" "acum acum" "chart chart"}
 }
 /* 900 px: reparto y agentes lado a lado; la gráfica a todo el ancho para que sus etiquetas no se junten */
 @media (min-width:900px){
   .wrap{grid-template-columns:minmax(0,.85fr) minmax(0,1fr);
-    grid-template-areas:"head head" "ctx cost" "ctx comp" "mod agt" "plan plan" "hist hist" "chart chart" "foot foot"}
-  html[data-densidad="compacto"] .wrap{grid-template-areas:"head head" "ctx cost" "ctx comp" "mod agt" "plan plan" "chart chart"}
+    grid-template-areas:"head head" "ctx cost" "ctx comp" "mod agt" "plan plan" "acum acum" "hist hist" "chart chart" "foot foot"}
+  html[data-densidad="compacto"] .wrap{grid-template-areas:"head head" "ctx cost" "ctx comp" "mod agt" "plan plan" "acum acum" "chart chart"}
 }
 /* 1200 px: tres columnas */
 @media (min-width:1200px){
   .wrap{grid-template-columns:minmax(0,.9fr) minmax(0,1fr) minmax(0,1.15fr);
-    grid-template-areas:"head head head" "ctx cost mod" "ctx comp agt" "plan plan plan" "hist hist hist" "chart chart chart" "foot foot foot"}
-  html[data-densidad="compacto"] .wrap{grid-template-areas:"head head head" "ctx cost mod" "ctx comp agt" "plan plan plan" "chart chart chart"}
+    grid-template-areas:"head head head" "ctx cost mod" "ctx comp agt" "plan plan plan" "acum acum acum" "hist hist hist" "chart chart chart" "foot foot foot"}
+  html[data-densidad="compacto"] .wrap{grid-template-areas:"head head head" "ctx cost mod" "ctx comp agt" "plan plan plan" "acum acum acum" "chart chart chart"}
 }
 /* Mientras la página se desplaza, la tabla de turnos no pasa de un alto razonable. */
 .tblw{max-height:clamp(220px,50vh,440px)}
@@ -443,7 +469,9 @@ footer .line{flex:1;align-self:center;height:1px;background:linear-gradient(90de
 @media (min-width:1600px) and (min-height:1000px){
   .wrap{height:100vh;grid-template-columns:minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.1fr);
     grid-template-rows:auto min-content min-content min-content minmax(236px,1fr) auto;
-    grid-template-areas:"head head head" "plan plan plan" "ctx cost mod" "ctx comp agt" "chart chart hist" "foot foot foot"}
+    grid-template-areas:"head head head" "plan plan plan" "ctx cost mod" "ctx comp agt" "acum chart hist" "foot foot foot"}
+  /* Sin histórico (opción historico = false): la gráfica vuelve a ocupar el sitio del acumulado. */
+  body.ac-sin:not(.pn-sel) .wrap{grid-template-areas:"head head head" "plan plan plan" "ctx cost mod" "ctx comp agt" "chart chart hist" "foot foot foot"}
   .tblw{max-height:none}
   .chart{min-height:120px}
   .reactor{max-width:clamp(200px,min(70cqi,23vh),440px)}
@@ -643,6 +671,10 @@ html[data-tema="natural"] td.num,html[data-tema="natural"] .kv .v,html[data-tema
 /* Filas sin datos: en el gris de las etiquetas, no con transparencia (el contraste no baja de 4,5:1). */
 html[data-tema="natural"] .cmp .zero,html[data-tema="natural"] .cmp .zero b,html[data-tema="natural"] #p-comp.nodata .cpb .opus,html[data-tema="natural"] #p-comp.nodata #cvopus{opacity:1;color:var(--sub)}
 html[data-tema="natural"] .plok{text-transform:none}
+/* Acumulado: filas con el filo del tema y cifras en monoespaciada. */
+html[data-tema="natural"] .acl li{border-bottom-color:var(--borde)}
+html[data-tema="natural"] .acl li .c,html[data-tema="natural"] .acb .kv .v b{font-family:var(--mono);font-size:max(14px,.92em);letter-spacing:0}
+html[data-tema="natural"] .acl li .d em{color:var(--acc)}
 /* Coste: la cifra arriba y el modelo de la sesión al pie del panel. */
 html[data-tema="natural"] #p-cost .in>.k{margin-top:auto;padding-top:12px}
 
@@ -657,27 +689,28 @@ html[data-tema="natural"] #p-cost .in>.k{margin-top:auto;padding-top:12px}
   html[data-tema="natural"] .ctxb{flex-direction:row;align-items:center;justify-content:flex-start;gap:clamp(18px,2vw,40px)}
   html[data-tema="natural"] .reactor{width:clamp(150px,min(40%,24vh),300px);max-width:none}
   html[data-tema="natural"] .kv{flex:1;min-width:0}
-  html[data-tema="natural"] body:not(.pn-sel) .wrap{grid-template-areas:"head head" "ctx ctx" "cost comp" "mod mod" "agt agt" "plan plan" "hist hist" "chart chart" "foot foot"}
-  html[data-tema="natural"][data-densidad="compacto"] body:not(.pn-sel) .wrap{grid-template-areas:"head head" "ctx ctx" "cost comp" "mod mod" "agt agt" "plan plan" "chart chart"}
+  html[data-tema="natural"] body:not(.pn-sel) .wrap{grid-template-areas:"head head" "ctx ctx" "cost comp" "mod mod" "agt agt" "plan plan" "acum acum" "hist hist" "chart chart" "foot foot"}
+  html[data-tema="natural"][data-densidad="compacto"] body:not(.pn-sel) .wrap{grid-template-areas:"head head" "ctx ctx" "cost comp" "mod mod" "agt agt" "plan plan" "acum acum" "chart chart"}
 }
 /* 900-1199 px: reparto y agentes lado a lado. */
 @media (min-width:900px){
   html[data-tema="natural"] body:not(.pn-sel) .wrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-    grid-template-areas:"head head" "ctx ctx" "cost comp" "mod agt" "plan plan" "hist hist" "chart chart" "foot foot"}
-  html[data-tema="natural"][data-densidad="compacto"] body:not(.pn-sel) .wrap{grid-template-areas:"head head" "ctx ctx" "cost comp" "mod agt" "plan plan" "chart chart"}
+    grid-template-areas:"head head" "ctx ctx" "cost comp" "mod agt" "plan plan" "acum acum" "hist hist" "chart chart" "foot foot"}
+  html[data-tema="natural"][data-densidad="compacto"] body:not(.pn-sel) .wrap{grid-template-areas:"head head" "ctx ctx" "cost comp" "mod agt" "plan plan" "acum acum" "chart chart"}
 }
 /* 1200 px o más: la franja de tres paneles; debajo, reparto a la izquierda y agentes a su lado. */
 @media (min-width:1200px){
   html[data-tema="natural"] body:not(.pn-sel) .wrap{grid-template-columns:minmax(0,1.3fr) minmax(0,.85fr) minmax(0,1fr);
-    grid-template-areas:"head head head" "ctx cost comp" "mod agt agt" "plan plan plan" "hist hist hist" "chart chart chart" "foot foot foot"}
-  html[data-tema="natural"][data-densidad="compacto"] body:not(.pn-sel) .wrap{grid-template-areas:"head head head" "ctx cost comp" "mod agt agt" "plan plan plan" "chart chart chart"}
+    grid-template-areas:"head head head" "ctx cost comp" "mod agt agt" "plan plan plan" "acum acum acum" "hist hist hist" "chart chart chart" "foot foot foot"}
+  html[data-tema="natural"][data-densidad="compacto"] body:not(.pn-sel) .wrap{grid-template-areas:"head head head" "ctx cost comp" "mod agt agt" "plan plan plan" "acum acum acum" "chart chart chart"}
 }
 /* 1600 px o más y alto de 1000 o más: todo cabe. El plan arriba, la franja, y debajo reparto con la gráfica y agentes con los
    últimos turnos. La fila del medio toma el alto de su contenido y la de abajo, lo que sobra. */
 @media (min-width:1600px) and (min-height:1000px){
   html[data-tema="natural"] body:not(.pn-sel) .wrap{grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr) minmax(0,1fr);
     grid-template-rows:auto min-content min-content min-content minmax(150px,1fr) auto;
-    grid-template-areas:"head head head" "plan plan plan" "ctx cost comp" "mod chart chart" "agt hist hist" "foot foot foot"}
+    grid-template-areas:"head head head" "plan plan plan" "ctx cost comp" "mod chart acum" "agt hist acum" "foot foot foot"}
+  html[data-tema="natural"] body.ac-sin:not(.pn-sel) .wrap{grid-template-areas:"head head head" "plan plan plan" "ctx cost comp" "mod chart chart" "agt hist hist" "foot foot foot"}
   html[data-tema="natural"] .reactor{width:clamp(170px,min(40%,20vh),400px)}
 }
 
@@ -788,6 +821,18 @@ body.pn-sel .wrap>header,body.pn-sel .wrap>footer,body.pn-sel #p-plan,body.pn-se
     <div class="ph"><span class="t">Reparto por modelo</span><span class="r num" id="mtot">0 tokens</span></div>
     <div class="stack empty" id="stack"></div>
     <div class="cmp" id="cmp"><span class="hd">Modelo</span><span class="hd">Trabajo</span><span class="hd r-al">%</span><span class="hd tn r-al">Turnos</span><div class="filas" id="cmpr"></div></div>
+  </div></section>
+
+  <section class="pnl" id="p-acum"><div class="in">
+    <div class="ph"><span class="t">Acumulado</span><span class="r num" id="acdesde">sin datos todavía</span></div>
+    <div class="acb">
+      <div class="kv">
+        <span class="k">Hoy</span><span class="v num"><b id="achoy">0.0000 USD</b><i id="achoyt">0 turnos</i><i class="tk" id="achoyk"></i></span>
+        <span class="k">Esta semana</span><span class="v num"><b id="acsem">0.0000 USD</b><i id="acsemt">0 turnos</i><i class="tk" id="acsemk"></i></span>
+        <span class="k">Total</span><span class="v num"><b id="actot">0.0000 USD</b><i id="actott">0 turnos</i><i class="tk" id="actotk"></i></span>
+      </div>
+      <div class="acs"><div class="k">Últimas sesiones</div><ol class="acl" id="acses"><li class="vacia">Sin sesiones guardadas todavía</li></ol></div>
+    </div>
   </div></section>
 
   <section class="pnl" id="p-chart"><div class="in">
@@ -1032,6 +1077,39 @@ function renderAgents(d){
   });
 }
 
+// Acumulado entre sesiones (historico.json). Las cifras vienen hechas en datos.js; sin bloque (historico = false) el panel no se ve.
+function usd(x){x=Number(x||0);return x.toFixed(x>=100?2:4)+' USD'}
+function nTurnos(x){return n(x)+tx(x===1?' turno':' turnos')}
+function dur(ms){var m=Math.round(Number(ms||0)/60000);if(m<1)return '< 1 min';if(m<60)return m+' min';var h=Math.floor(m/60),r=m%60;return h+' h'+(r?' '+(r<10?'0':'')+r+' min':'')}
+function fecha(t){var d=new Date(t);return d.toLocaleDateString(LOC,{day:'numeric',month:'short'})+' · '+d.toLocaleTimeString(LOC,{hour:'2-digit',minute:'2-digit'})}
+function filaSesion(){var li=mk('li','','<span class="d"><span></span><em hidden></em></span><span class="u num"></span><span class="c num"></span>');ponTexto(li.firstChild.lastChild,tx('esta sesión'));return li}
+function filaSinSesion(){return mk('li','vacia',tx('Sin sesiones guardadas todavía'))}
+function renderAcum(d){
+  var a=d.acumulado||null;
+  ponClase($id('p-acum'),'ac-off',!a);
+  ponClase(document.body,'ac-sin',!a);
+  if(!a)return;
+  var ses=a.sesionesTotales||0;
+  ponTexto($id('acdesde'),a.desde?tx('desde ')+new Date(a.desde).toLocaleDateString(LOC,{day:'numeric',month:'short',year:'numeric'})+' · '+n(ses)+tx(ses===1?' sesión':' sesiones'):tx('sin datos todavía'));
+  [['achoy','hoy'],['acsem','semana'],['actot','total']].forEach(function(p){
+    var c=a[p[1]]||{};
+    ponTexto($id(p[0]),usd(c.coste));
+    ponTexto($id(p[0]+'t'),nTurnos(c.turnos||0));
+    ponTexto($id(p[0]+'k'),'· '+kn((c.entrada||0)+(c.salida||0))+' tokens');
+    ponAttr($id(p[0]).parentNode,'title',tx('entrada ')+n(c.entrada)+tx(' · salida ')+n(c.salida)+tx(' · caché ')+n(c.cache));
+  });
+  var ls=a.sesiones||[];
+  lista($id('acses'),ls.length?ls:VACIA,function(x){return x.vacia?'vacia':String(x.inicio)},function(x){return x.vacia?filaSinSesion():filaSesion()},function(li,x){
+    if(x.vacia)return;
+    var k=li.children;
+    ponTexto(k[0].firstChild,fecha(x.inicio));
+    ver(k[0].lastChild,!!x.actual);
+    ponAttr(k[0],'title',(x.modelo||'')+' · '+nTurnos(x.turnos||0));
+    ponTexto(k[1],dur(x.duracion));
+    ponTexto(k[2],usd(x.coste));
+  });
+}
+
 // Comparativa Haiku frente a Opus. Las cifras vienen hechas en datos.js; sin estimación se dice por qué y no se inventa nada.
 function renderComp(d){
   var c=d.comparativa||null;
@@ -1180,7 +1258,7 @@ function aplicaConfig(c){
     ponAttr(root,'lang',idi);
     estaticos().forEach(function(x){var v=tx(x.v);if(x.n){if(x.n.nodeValue!==v)x.n.nodeValue=v}else ponAttr(x.e,x.k,v)});
     // Las filas ya creadas llevan textos del idioma anterior: se vacían y la pasada de abajo las crea de nuevo.
-    ['cmpr','hrows','rows','ctk','plist'].forEach(function(id){var b=$id(id);while(b.firstChild)b.removeChild(b.firstChild)});
+    ['cmpr','hrows','rows','ctk','plist','acses'].forEach(function(id){var b=$id(id);while(b.firstChild)b.removeChild(b.firstChild)});
     CHART='';
     tick();pintaSenal();
   }
@@ -1209,6 +1287,7 @@ function render(d){
   renderChart(d);
   renderHist(d);
   renderAgents(d);
+  renderAcum(d);
   ponTexto($id('ts'),tx('Último dato')+': '+hhmm(d.actualizado));
   FIRMA=f;
 }

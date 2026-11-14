@@ -7,6 +7,7 @@
 
 export const EN: readonly (readonly [string, string])[] = [
   ['HUD cerrado. Escribe /jarvis para abrirlo.', 'HUD closed. Type /jarvis to open it.'],
+  ['Sin sesiones guardadas todavía', 'No saved sessions yet'],
   ['Estimación con tus turnos reales; varía con la caché y con la proporción de entrada y salida.', 'Estimate from your real turns; it varies with cache use and the input/output mix.'],
   ['Suma del coste de los turnos contados; el panel Coste incluye además lo gastado antes de abrir el HUD', 'Sum of the cost of the counted turns; the Cost panel also includes what was spent before the HUD opened'],
   ['), así que no se usa para la estimación', '), so it is not used for the estimate'],
@@ -21,6 +22,11 @@ export const EN: readonly (readonly [string, string])[] = [
   ['datos.js no responde', 'datos.js is not responding'],
   ['Último turno sin coste', 'Last turn without cost'],
   ['Modelo de la sesión', 'Session model'],
+  ['Últimas sesiones', 'Latest sessions'],
+  ['sin datos todavía', 'no data yet'],
+  ['esta sesión', 'this session'],
+  ['Esta semana', 'This week'],
+  ['Acumulado', 'Across sessions'],
   ['Reparto por modelo', 'Split by model'],
   ['Progreso del plan', 'Plan progress'],
   ['Sin turnos todavía', 'No turns yet'],
@@ -55,6 +61,9 @@ export const EN: readonly (readonly [string, string])[] = [
   [' agente', ' agent'],
   [' turnos', ' turns'],
   [' turno', ' turn'],
+  [' sesiones', ' sessions'],
+  [' sesión', ' session'],
+  ['desde ', 'since '],
   ['Agentes', 'Agents'],
   ['Agente', 'Agent'],
   ['Crítico', 'Critical'],
@@ -79,6 +88,7 @@ export const EN: readonly (readonly [string, string])[] = [
   ['Hecha', 'Done'],
   ['Alto', 'High'],
   ['Hora', 'Time'],
+  ['Hoy', 'Today'],
   ['pico', 'peak'],
   [' de ', ' of '],
 ]

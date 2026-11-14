@@ -1,6 +1,6 @@
 import type { PluginOptions } from 'claude-code'
 
-import type { HudConfig, HudIdioma, HudPanel, HudTema } from '../types'
+import type { HistoricoConfig, HudConfig, HudIdioma, HudPanel, HudTema } from '../types'
 
 // Opciones de personalización del HUD (userConfig de plugin.json). Los valores por defecto
 // tienen que coincidir con los "default" del manifiesto.
@@ -79,5 +79,32 @@ export function leerConfig(options: PluginOptions): { config: HudConfig; avisos:
     }
   }
 
+  return { config: c, avisos }
+}
+
+// Histórico entre sesiones: historico (true por defecto) y retencionDias (días por día que se guardan, 365 por defecto).
+// Van aparte de HudConfig porque no los lee la página: solo el mod.
+export const RETENCION_MIN = 1
+export const RETENCION_MAX = 3650
+export const HISTORICO_DEFAULT: HistoricoConfig = { activo: true, retencionDias: 365 }
+
+export function leerHistorico(options: PluginOptions): { config: HistoricoConfig; avisos: string[] } {
+  const avisos: string[] = []
+  const c: HistoricoConfig = { ...HISTORICO_DEFAULT }
+  const h = options['historico']
+  if (h !== undefined) {
+    if (typeof h === 'boolean') c.activo = h
+    else if (typeof h === 'string' && /^(true|false)$/i.test(h.trim())) c.activo = h.trim().toLowerCase() === 'true'
+    else avisos.push(`historico = ${texto(h)} no es true ni false; se usa true`)
+  }
+  const r = options['retencionDias']
+  if (r !== undefined) {
+    const n = typeof r === 'number' ? r : typeof r === 'string' && r.trim() !== '' ? Number(r) : NaN
+    if (Number.isInteger(n) && n >= RETENCION_MIN && n <= RETENCION_MAX) c.retencionDias = n
+    else
+      avisos.push(
+        `retencionDias = ${texto(r)} no es un número entero de ${RETENCION_MIN} a ${RETENCION_MAX}; se usa ${HISTORICO_DEFAULT.retencionDias}`,
+      )
+  }
   return { config: c, avisos }
 }

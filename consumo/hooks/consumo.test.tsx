@@ -42,7 +42,7 @@ test('the layout adapts by container queries and documented breakpoints, with no
   }
   // Una rejilla con áreas nombradas; .grid no dibuja caja para que el plan pueda ir entre los paneles.
   expect(css).toContain('.grid{display:contents}')
-  expect(css).toContain('grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "hist" "chart" "foot"')
+  expect(css).toContain('grid-template-areas:"head" "ctx" "cost" "comp" "mod" "agt" "plan" "acum" "hist" "chart" "foot"')
   // Breakpoints de ventana: los que se usan están documentados en el comentario del CSS.
   const doc = css.slice(css.indexOf('/* ===== Breakpoints ====='), css.indexOf('*/', css.indexOf('/* ===== Breakpoints =====')))
   expect(doc.length).toBeGreaterThan(100)
@@ -1207,8 +1207,8 @@ test('natural: keeps the 3D globe, ring and core, and drops neon, glass, grid, s
 
 test('natural: summary band layout that leaves the panel selection (pn-sel) alone', () => {
   // Franja: contexto, coste y comparativa en una fila; el detalle debajo. Con todo a la vista en pantallas grandes.
-  expect(PAGE).toContain(`grid-template-areas:"head head head" "plan plan plan" "ctx cost comp" "mod chart chart" "agt hist hist" "foot foot foot"`)
-  expect(PAGE).toContain(`grid-template-areas:"head head head" "ctx cost comp" "mod agt agt" "plan plan plan" "hist hist hist" "chart chart chart" "foot foot foot"`)
+  expect(PAGE).toContain(`grid-template-areas:"head head head" "plan plan plan" "ctx cost comp" "mod chart acum" "agt hist acum" "foot foot foot"`)
+  expect(PAGE).toContain(`grid-template-areas:"head head head" "ctx cost comp" "mod agt agt" "plan plan plan" "acum acum acum" "hist hist hist" "chart chart chart" "foot foot foot"`)
   // Las reglas de distribución de natural no tocan la rejilla cuando hay paneles ocultos.
   for (const l of reglasNatural()) if (l.includes('grid-template-areas')) expect(l).toContain(':not(.pn-sel) .wrap')
 })

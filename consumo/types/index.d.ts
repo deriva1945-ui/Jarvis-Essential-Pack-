@@ -70,6 +70,58 @@ export type HudConfig = {
   paneles: HudPanel[]
 }
 
+// Histórico entre sesiones (historico.json en la carpeta de datos). Solo cifras y nombres de modelos y de tipos de agente.
+// Opciones historico (true por defecto) y retencionDias (365 por defecto), ya validadas.
+export type HistoricoConfig = { activo: boolean; retencionDias: number }
+// Cifras acumuladas: coste en USD (suma del coste de los turnos), tokens por tipo y turnos.
+export type Cifras = { coste: number; entrada: number; salida: number; cache: number; cacheEscritura: number; turnos: number }
+export type DiaHist = Cifras & { modelos: Record<string, Cifras> }
+// Una sesión: id del motor, inicio y fin (ms), coste, turnos, modelo principal (el de más turnos) y turnos por modelo.
+export type SesionHist = { id: string; inicio: number; fin: number; coste: number; turnos: number; modelo: string; modelos: Record<string, number> }
+export type Historico = {
+  version: 1
+  // Primer uso (ms); null sin turnos.
+  desde: number | null
+  actualizado: number
+  // Desde el primer uso, con el reparto por modelo y por tipo de agente ("principal" o el subagentType).
+  total: Cifras & { modelos: Record<string, Cifras>; agentes: Record<string, Cifras> }
+  // Días que salieron de la retención, sumados (hasta: el último de ellos).
+  anteriores: Cifras & { dias: number; hasta: string | null }
+  // Por día local, AAAA-MM-DD.
+  dias: Record<string, DiaHist>
+  // Últimas sesiones, de la más antigua a la más nueva; las que pasan del límite se suman en sesionesAnteriores.
+  sesiones: SesionHist[]
+  sesionesAnteriores: { sesiones: number; coste: number; turnos: number }
+  // Turnos ya sumados (sesión:turno), para no contar dos veces el mismo.
+  turnos: string[]
+}
+// Un turno que se suma al histórico.
+export type TurnoHist = {
+  id: string
+  sesion: string
+  // Inicio de la sesión (ms) y hora del turno.
+  inicio: number
+  at: number
+  modelo: string
+  agente: string
+  entrada: number
+  salida: number
+  cache: number
+  cacheEscritura: number
+  coste: number | null
+}
+// Bloque "acumulado" de datos.js (null con historico desactivado o sin poder leer el archivo).
+export type AcumCifras = { coste: number; turnos: number; entrada: number; salida: number; cache: number }
+export type Acumulado = {
+  desde: number | null
+  total: AcumCifras
+  hoy: AcumCifras
+  semana: AcumCifras
+  dias: number
+  sesionesTotales: number
+  sesiones: { inicio: number; fin: number; duracion: number; coste: number; turnos: number; modelo: string; actual: boolean }[]
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'consumo': {
@@ -83,6 +135,11 @@ declare module 'claude-code' {
       comp: Shaped<Record<string, CompRow>>
       // Si el HUD está abierto (session.start o /jarvis lo cambian).
       abierto: Shaped<boolean>
+      // Resumen del histórico para datos.js, y el tipo de cada subagente (para el histórico, sin su descripción).
+      acum: Shaped<Acumulado | null>
+      tipos: Shaped<Record<string, string>>
+      // Sesión a la que van los turnos del histórico y su inicio (cambia tras /clear sin session.start).
+      sesionHist: Shaped<{ id: string; inicio: number } | null>
     }
   }
 }

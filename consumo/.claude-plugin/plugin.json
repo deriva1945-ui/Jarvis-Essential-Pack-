@@ -1,7 +1,7 @@
 {
   "name": "consumo",
-  "version": "0.7.0",
-  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus y comando /jarvis para abrirlo o cerrarlo. Seis temas (natural por defecto: grafito cálido, sin neón, con el globo 3D), sin parpadeo, con densidad automática según el tamaño de la ventana y configurable (tema, acento, idioma, actualización y paneles).",
+  "version": "0.8.0",
+  "description": "HUD en directo: contexto, coste, tokens por agente y modelo, barra del plan, comparativa Haiku frente a Opus, histórico entre sesiones (hoy, semana, total y últimas sesiones) y comando /jarvis para abrirlo o cerrarlo. Seis temas (natural por defecto: grafito cálido, sin neón, con el globo 3D), sin parpadeo, con densidad automática según el tamaño de la ventana y configurable (tema, acento, idioma, actualización y paneles).",
   "author": {
     "name": "deriva1945-ui"
   },
@@ -9,7 +9,7 @@
     "dataDir": {
       "type": "string",
       "title": "Carpeta de datos",
-      "description": "Carpeta donde consumo escribe index.html, datos.js, estado.json y estado.js. Ruta absoluta o empezando por ~ (tu carpeta de usuario). Por defecto: ~/CLAUDE/consumo.",
+      "description": "Carpeta donde consumo escribe index.html, datos.js, estado.json, estado.js e historico.json. Si la cambias, el histórico se queda en la carpeta anterior y se empieza uno nuevo. Ruta absoluta o empezando por ~ (tu carpeta de usuario). Por defecto: ~/CLAUDE/consumo.",
       "default": "~/CLAUDE/consumo"
     },
     "tema": {
@@ -63,6 +63,18 @@
         "comparativa",
         "plan"
       ]
+    },
+    "historico": {
+      "type": "boolean",
+      "title": "Histórico entre sesiones / History across sessions",
+      "description": "Guarda el consumo de cada turno en historico.json (en la carpeta de datos) y muestra el bloque Acumulado: total desde el primer uso, hoy, esta semana y las últimas sesiones. Solo cifras y nombres de modelos y de tipos de agente, nunca el texto de las peticiones. Con false no se lee ni se escribe nada. Por defecto: true. / Saves each turn's usage in historico.json (in the data folder) and shows the Accumulated block: total since first use, today, this week and the latest sessions. Only figures and model and agent-type names, never prompt text. With false nothing is read or written. Default: true.",
+      "default": true
+    },
+    "retencionDias": {
+      "type": "number",
+      "title": "Retención (días) / Retention (days)",
+      "description": "Días que el histórico guarda uno a uno, de 1 a 3650. Los más antiguos se suman en un total y siguen contando en el acumulado. Por defecto: 365. / Days the history keeps one by one, 1 to 3650. Older days are added into one total and still count in the accumulated figures. Default: 365.",
+      "default": 365
     }
   },
   "types": "./types/index.d.ts"

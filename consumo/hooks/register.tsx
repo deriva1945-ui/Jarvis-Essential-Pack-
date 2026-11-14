@@ -1,9 +1,10 @@
 import { atom, read, update } from 'claude-code'
 import type { Hook, Register, Timer } from 'claude-code'
 
-import type { AgentRow, CompRow, Comparativa, CtxSnap, Familia, HudConfig, Ledger, ModelRow, PlanState, TurnRec } from '../types'
+import type { Acumulado, AgentRow, CompRow, Comparativa, CtxSnap, Familia, HistoricoConfig, Historico, HudConfig, Ledger, ModelRow, PlanState, TurnoHist, TurnRec } from '../types'
 import { calcular, COMP0, familia, sumar } from './comparativa'
-import { CONFIG_DEFAULT, leerConfig } from './config'
+import { CONFIG_DEFAULT, HISTORICO_DEFAULT, leerConfig, leerHistorico } from './config'
+import { cerrarSesion, diaDe, nuevo, parsear, recortar, resumir, sumarTurno } from './historico'
 import { observe } from './ledger'
 import type { PlanData } from './plan'
 import { actualizar, crear, idCreada, PLAN0, resumen } from './plan'
@@ -30,6 +31,12 @@ const plan = atom({ plugin: 'consumo', key: 'plan' } as const, PLAN0, { shape: '
 const comp = atom({ plugin: 'consumo', key: 'comp' } as const, COMP0, { shape: 'consumo-comp-1' })
 // Si el HUD está abierto, según lo último que hizo el mod (session.start o /jarvis).
 const abierto = atom({ plugin: 'consumo', key: 'abierto' } as const, false, { shape: 'consumo-abierto-1' })
+// Histórico entre sesiones: el resumen que va a datos.js, el tipo de cada subagente y la sesión en curso.
+const acum = atom({ plugin: 'consumo', key: 'acum' } as const, null as Acumulado | null, { shape: 'consumo-acum-1' })
+const tipos = atom({ plugin: 'consumo', key: 'tipos' } as const, {} as Record<string, string>, { shape: 'consumo-tipos-1' })
+const sesionHist = atom({ plugin: 'consumo', key: 'sesionHist' } as const, null as { id: string; inicio: number } | null, {
+  shape: 'consumo-sesion-hist-1',
+})
 
 type ModeloData = {
   modelo: string
@@ -75,6 +82,8 @@ type Data = {
   latido: number
   // Personalización del usuario (userConfig), ya validada. Solo lectura para la página.
   config: HudConfig
+  // Histórico entre sesiones (historico.json): total, hoy, semana y últimas sesiones. null si está desactivado.
+  acumulado: Acumulado | null
 }
 
 const alerta = (c: CtxSnap | null): Data['alerta'] =>
@@ -131,11 +140,12 @@ type Snap = {
   t: Ledger
   p: PlanState
   k: Record<string, CompRow>
+  a: Acumulado | null
   model: string
   updated: number
 }
 
-const toData = ({ r, m, h, lb, c, t, p, k, model, updated }: Snap, now: number): Data => ({
+const toData = ({ r, m, h, lb, c, t, p, k, a, model, updated }: Snap, now: number): Data => ({
   modelo: model,
   // Sin lectura del contexto todavía: todo a cero (antes la ventana salía como "1" y el libre como "1").
   contexto: c ?? { tokens: 0, window: 0, percent: 0 },
@@ -163,9 +173,10 @@ const toData = ({ r, m, h, lb, c, t, p, k, model, updated }: Snap, now: number):
   actualizado: updated,
   latido: now,
   config: hudConfig,
+  acumulado: historicoConfig.activo ? a : null,
 })
 
-const EMPTY: Snap = { r: {}, m: {}, h: [], lb: {}, c: null, t: LEDGER0, p: PLAN0, k: COMP0, model: '', updated: 0 }
+const EMPTY: Snap = { r: {}, m: {}, h: [], lb: {}, c: null, t: LEDGER0, p: PLAN0, k: COMP0, a: null, model: '', updated: 0 }
 
 // Escribe los datos que lee la página. Un fallo aquí no debe romper la sesión.
 const payload = (data: Data) => `window.CONSUMO = ${JSON.stringify(data)};`
@@ -179,6 +190,8 @@ let dataDirOption = DATA_DIR_DEFAULT
 let hudConfig: HudConfig = CONFIG_DEFAULT
 // Valores que no valían y cayeron al defecto; se escriben en el log al empezar la sesión.
 let configAvisos: string[] = []
+// Opciones historico y retencionDias (userConfig), validadas en register().
+let historicoConfig: HistoricoConfig = HISTORICO_DEFAULT
 
 // Carpeta donde se escriben index.html, datos.js, estado.json y estado.js. "~" es la carpeta del
 // usuario: USERPROFILE en Windows, HOME en macOS y Linux. Sin ninguna de las dos, la carpeta
@@ -207,6 +220,7 @@ async function snap($: Ctx): Promise<Snap> {
     t: await read($, ledger),
     p: await read($, plan),
     k: await read($, comp),
+    a: await read($, acum),
     model: await $.session.model(),
     updated: updatedAt,
   }
@@ -250,6 +264,109 @@ async function writeEstado($: Ctx, isOpen: boolean): Promise<string | null> {
   }
 }
 
+// ---------- Histórico entre sesiones (historico.json) ----------
+// $.fs no tiene rename: write() sobrescribe el archivo entero. Para que un corte no deje el histórico roto se escribe
+// primero historico.tmp.json completo y después historico.json. Al leer, si historico.json falta o no es un JSON
+// válido, se usa historico.tmp.json (que siempre es igual o más nuevo); si historico.json estaba roto, antes se
+// guarda una copia en historico.roto-<fecha>.json. Si nada vale, se empieza uno nuevo sin fallar.
+const HIST = 'historico.json'
+const HIST_TMP = 'historico.tmp.json'
+
+// Una operación del histórico a la vez (leer, sumar y escribir): con subagentes en paralelo, dos turn.complete
+// no pueden leer el mismo archivo y pisarse al escribir.
+let cola: Promise<unknown> = Promise.resolve()
+function enCola<T>(fn: () => Promise<T>): Promise<T> {
+  const r = cola.then(fn, fn)
+  cola = r.catch(() => undefined)
+  return r
+}
+
+const marca = (ms: number) => {
+  const d = new Date(ms)
+  const p = (n: number) => (n < 10 ? '0' : '') + n
+  return `${diaDe(ms)}T${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`
+}
+
+const log = ($: Ctx, text: string) => {
+  try {
+    $.ui.log(`consumo: ${text}`)
+  } catch {
+    // Sin log no pasa nada.
+  }
+}
+
+// Lee historico.json. null: el archivo existe pero no se pudo leer (no se toca, para no perder datos).
+async function leerHistoricoArchivo($: Ctx, dir: string): Promise<Historico | null> {
+  const ruta = unir(dir, HIST)
+  const tmp = async (): Promise<Historico> => {
+    try {
+      const p = unir(dir, HIST_TMP)
+      if (!(await $.fs.exists(p))) return nuevo()
+      const r = parsear(await $.fs.read(p))
+      return r.roto ? nuevo() : r.h
+    } catch {
+      return nuevo()
+    }
+  }
+  let existe: boolean
+  try {
+    existe = await $.fs.exists(ruta)
+  } catch {
+    return null
+  }
+  if (!existe) return tmp()
+  let texto: string
+  try {
+    texto = await $.fs.read(ruta)
+  } catch {
+    return null
+  }
+  const r = parsear(texto)
+  if (!r.roto) return r.h
+  const copia = unir(dir, `historico.roto-${marca(await $.clock.now())}.json`)
+  try {
+    await $.fs.write(copia, texto)
+  } catch (err) {
+    // Sin copia no se sobrescribe el archivo roto: puede que el usuario quiera recuperarlo.
+    log($, `${ruta} no es un JSON válido y no se pudo copiar (${errorText(err)}); el histórico queda en pausa`)
+    return null
+  }
+  const h = await tmp()
+  const recuperado = h.total.turnos > 0
+  log(
+    $,
+    `${ruta} no era un JSON válido; se guardó una copia en ${copia} y ` +
+      (recuperado ? `se sigue con ${HIST_TMP} (la última escritura completa)` : 'se empieza un histórico nuevo'),
+  )
+  return h
+}
+
+async function escribirHistorico($: Ctx, dir: string, h: Historico): Promise<void> {
+  const texto = JSON.stringify(h)
+  await $.fs.write(unir(dir, HIST_TMP), texto)
+  await $.fs.write(unir(dir, HIST), texto)
+}
+
+// Lee, cambia con fn y escribe (si fn cambió algo); deja el resumen en el átomo acum.
+async function conHistorico($: Ctx, fn: (h: Historico, ahora: number) => { h: Historico; cambiado: boolean }): Promise<void> {
+  if (!historicoConfig.activo) return
+  await enCola(async () => {
+    try {
+      const dir = await carpeta($)
+      const h0 = await leerHistoricoArchivo($, dir)
+      if (h0 === null) return
+      const ahora = await $.clock.now()
+      const r = fn(h0, ahora)
+      const h = recortar(r.h, historicoConfig.retencionDias, ahora)
+      if (r.cambiado || h !== r.h) await escribirHistorico($, dir, h)
+      const s = await read($, sesionHist)
+      await update($, acum, () => resumir(h, ahora, s?.id))
+    } catch {
+      // El histórico es opcional: un fallo no toca la sesión ni el resto del HUD.
+    }
+  })
+}
+
 type Apertura = { isOpen: true } | { isOpen: false; reason: string }
 
 // Escribe la página, los datos y el estado, y abre Edge (o Chrome) en modo --app.
@@ -265,7 +382,7 @@ async function abrirHud($: Ctx): Promise<Apertura> {
     return { isOpen: false, reason: `no se pudo escribir ${page} (${errorText(err)})` }
   }
   try {
-    await $.fs.write(unir(dir, 'datos.js'), payload(toData({ ...EMPTY, t: await read($, ledger), p: await read($, plan), k: await read($, comp), model: await $.session.model() }, await $.clock.now())))
+    await $.fs.write(unir(dir, 'datos.js'), payload(toData({ ...EMPTY, t: await read($, ledger), p: await read($, plan), k: await read($, comp), a: await read($, acum), model: await $.session.model() }, await $.clock.now())))
   } catch {
     // El latido lo vuelve a intentar cada 3 s.
   }
@@ -290,7 +407,9 @@ export const register: Register = (on, options) => {
   dataDirOption = typeof opt === 'string' && opt.trim() !== '' ? opt : DATA_DIR_DEFAULT
   const leida = leerConfig(options)
   hudConfig = leida.config
-  configAvisos = leida.avisos
+  const leidoHist = leerHistorico(options)
+  historicoConfig = leidoHist.config
+  configAvisos = [...leida.avisos, ...leidoHist.avisos]
 
   on('session.start', async ($, e, next) => {
     for (const aviso of configAvisos) {
@@ -315,6 +434,17 @@ export const register: Register = (on, options) => {
     } catch {
       // Sin contador todavía: el primer turno queda sin coste, no con todo lo acumulado.
     }
+
+    // Histórico: la sesión que empieza y el acumulado de días y sesiones anteriores (antes de abrir el HUD,
+    // para que la primera pintura ya lo traiga).
+    try {
+      const id = await $.session.id()
+      const inicio = await $.clock.now()
+      await update($, sesionHist, () => ({ id, inicio }))
+    } catch {
+      // Sin id de sesión, el primer turno la crea.
+    }
+    await conHistorico($, h => ({ h, cambiado: false }))
 
     try {
       const r = await abrirHud($)
@@ -360,6 +490,8 @@ export const register: Register = (on, options) => {
     const r = await next(e)
     if (r.agentId) {
       await update($, labels, l => ({ ...l, [r.agentId as string]: `${e.subagentType}: ${e.description}` }))
+      // Para el histórico solo el tipo de agente, nunca la descripción.
+      await update($, tipos, t => ({ ...t, [r.agentId as string]: e.subagentType || 'subagente' }))
     }
     return r
   }).catch(($, e, next) => next(e))
@@ -372,6 +504,7 @@ export const register: Register = (on, options) => {
     // Con subagentes en paralelo cada turno lee el contador una vez y no se pisan.
     const l = await update($, ledger, v => observe(v, s.cost?.usd, u ? e.turnId : undefined))
     const turn = u && l.turn && l.turn.id === e.turnId ? l.turn : null
+    let paraHistorico: TurnoHist | null = null
     if (u && turn && !turn.dup) {
       await update($, rows, r => {
         const cur = r[key] ?? { model: '', input: 0, output: 0, cacheRead: 0, turns: 0 }
@@ -424,13 +557,55 @@ export const register: Register = (on, options) => {
               },
             ].slice(-HIST_MAX),
       )
+      if (historicoConfig.activo) {
+        // Sesión del turno: tras /clear el id cambia sin session.start y empieza una sesión nueva en el histórico.
+        let ses = await read($, sesionHist)
+        try {
+          const sid = await $.session.id()
+          if (!ses || ses.id !== sid) {
+            const nueva = { id: sid, inicio: Math.max(0, at - (e.durationMs ?? 0)) }
+            ses = await update($, sesionHist, () => nueva)
+          }
+        } catch {
+          // Sin id: se usa la última conocida.
+        }
+        if (ses) {
+          paraHistorico = {
+            id: e.turnId,
+            sesion: ses.id,
+            inicio: ses.inicio,
+            at,
+            modelo: id,
+            agente: e.agentId ? ((await read($, tipos))[e.agentId] ?? 'subagente') : 'principal',
+            entrada: u.input_tokens,
+            salida: u.output_tokens,
+            cache: u.cache_read_input_tokens,
+            cacheEscritura: u.cache_creation_input_tokens,
+            coste: turn.cost,
+          }
+        }
+      }
     }
+    // Histórico: un turno nuevo se suma y se escribe en historico.json (uno repetido ya no llega aquí, y el
+    // archivo guarda además los ids sumados).
+    const ht = paraHistorico
+    if (ht) await conHistorico($, h => { const r = sumarTurno(h, ht); return { h: r.h, cambiado: r.nuevo } })
     await update($, ctx, () => ctxSnap(s.context))
     updatedAt = await $.clock.now()
     await writeData($)
     if (!beat) latir($)
     return next(e)
   })
+
+  // Fin de la sesión: se apunta la hora de cierre en el histórico. Todo session.end comparte un plazo corto
+  // (1,5 s por defecto, next.budget); los turnos ya están guardados, así que si no da tiempo solo se pierde la hora
+  // exacta de cierre (queda la del último turno).
+  on('session.end', async ($, e, next) => {
+    if (historicoConfig.activo) {
+      await conHistorico($, (h, ahora) => cerrarSesion(h, e.sessionId, ahora))
+    }
+    return next(e)
+  }).catch(($, e, next) => next(e))
 
   on('tool.call', async ($, e, next) => {
     const ran = await next(e)

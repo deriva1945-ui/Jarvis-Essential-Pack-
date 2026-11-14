@@ -15,6 +15,7 @@ Abre una ventana HUD en directo con lo que gasta la sesión: contexto, coste y t
 - Contexto usado y su porcentaje, coste acumulado y tokens por agente y por modelo.
 - Reparto del trabajo entre modelos, gráfica de tokens por turno y los últimos 20 turnos.
 - **Comparativa Haiku frente a Opus:** lo que costó la sesión y lo que habría costado si el trabajo enviado a Haiku hubiera ido a Opus, con el coste por token de tus propios turnos. Muestra el ahorro en USD y en %. Necesita más de 1000 tokens de cada modelo; si no, pone "sin datos de Opus todavía" (o de Haiku) y no estima nada.
+- **Acumulado entre sesiones:** guarda el consumo en `historico.json` y muestra el total desde el primer uso, el de hoy, el de esta semana y las últimas sesiones con su coste y su duración. Cerrar Claude Code no lo borra (ver [Histórico entre sesiones](#es-historico)).
 - **Comando `/jarvis`:** abre el HUD si está cerrado y lo cierra si está abierto.
 - Avisa cuando el contexto pasa del **70 %** y del **85 %**: por encima del 85 % el HUD entero pasa a rojo de alerta.
 - Si pasan 10 segundos sin latido nuevo **y** van 3 lecturas seguidas sin él, marca "Sin señal". Una lectura fallida suelta no enciende el aviso, y el primer latido nuevo lo apaga.
@@ -28,7 +29,7 @@ Se adapta al tamaño de la ventana (cada panel se ajusta además por dentro seg�
 
 | Ancho | Diseño |
 |---|---|
-| 1600 px o más y 1000 px de alto | todo cabe sin desplazar: plan arriba, tres columnas y abajo la gráfica junto a los últimos turnos |
+| 1600 px o más y 1000 px de alto | todo cabe sin desplazar: plan arriba, tres columnas y abajo la gráfica y los últimos turnos, con el acumulado a la derecha |
 | 1200 px o más | tres columnas: contexto, coste y comparativa, reparto y agentes |
 | 900 a 1199 px | dos columnas; reparto y agentes lado a lado |
 | 560 a 899 px | contexto a la izquierda, coste y comparativa a la derecha; el resto a todo el ancho |
@@ -97,7 +98,7 @@ Requisitos: Windows con Edge o Chrome.
 
 ## Carpeta de datos
 
-La opción **`dataDir`** dice dónde se escriben `index.html`, `datos.js`, `estado.json` y `estado.js`.
+La opción **`dataDir`** dice dónde se escriben `index.html`, `datos.js`, `estado.json`, `estado.js` y el histórico (`historico.json`, ver [Histórico entre sesiones](#es-historico)).
 
 - **Valor por defecto:** `~/CLAUDE/consumo`. `~` es tu carpeta de usuario: `%USERPROFILE%` en Windows (por ejemplo `C:\Users\<tú>\CLAUDE\consumo`), `$HOME` en macOS y Linux.
 - Acepta una ruta absoluta o una que empiece por `~`. Una ruta relativa cuenta desde tu carpeta de usuario.
@@ -124,11 +125,29 @@ También puedes cambiarla dentro de Claude Code con `/plugin configure consumo@j
 
 El cambio se aplica al reiniciar Claude Code.
 
+<a id="es-historico"></a>
+
+## Histórico entre sesiones
+
+Si trabajas 2 horas hoy y otras 2 mañana, el bloque **Acumulado** suma las dos: total desde el primer uso, hoy, esta semana (de lunes a hoy) y la lista de las últimas sesiones con su coste y su duración. Los paneles de la sesión actual siguen como siempre.
+
+- **Dónde:** `historico.json`, en la carpeta de datos (`dataDir`, por defecto `~/CLAUDE/consumo/historico.json`). Al lado queda `historico.tmp.json`, la copia que se escribe justo antes.
+- **Qué guarda:** solo cifras y nombres. Coste (la suma del coste de cada turno según el contador de la sesión), tokens de entrada, salida y caché, y turnos: en total, por modelo y por tipo de agente (`principal` o el tipo del subagente, como `Explore`); por día (fecha local `AAAA-MM-DD`); y las últimas 200 sesiones (id, inicio, fin, coste, turnos y modelo principal). **Nunca** guarda el texto de las peticiones, las respuestas ni la descripción de los subagentes.
+- **Cuándo escribe:** al terminar cada turno y al cerrar la sesión (para apuntar la hora de cierre). No escribe en cada herramienta. Un turno que llega dos veces solo cuenta una (se guarda su id).
+- **Cuándo lee:** al iniciar la sesión, y antes de cada escritura (así dos ventanas de Claude Code con la misma carpeta no se pisan los totales).
+- **Límite de tamaño:** guarda día a día los últimos `retencionDias` días (365 por defecto) y las últimas 200 sesiones. Lo más antiguo se suma en un total aparte y sigue contando en el acumulado.
+- **Si se corta:** primero se escribe `historico.tmp.json` entero y después `historico.json`. Si al leer `historico.json` no es un JSON válido, se guarda una copia en `historico.roto-<fecha>.json`, se sigue con `historico.tmp.json` si está bien y, si no, se empieza uno nuevo. El HUD no falla.
+- **En ventanas pequeñas** (densidad compacta) el bloque se queda con las tres cifras, sin la lista de sesiones.
+
+**Borrarlo:** cierra Claude Code y borra `historico.json` y `historico.tmp.json` de la carpeta de datos (y las copias `historico.roto-*.json` si las hay). El siguiente turno empieza uno nuevo. Para no guardar nada, pon la opción `historico` en `false`: no se lee ni se escribe el archivo y el bloque desaparece del HUD (el archivo que ya existía no se borra).
+
+**Si cambias `dataDir`:** el histórico se queda en la carpeta anterior (no se mueve ni se copia) y el HUD empieza uno nuevo en la carpeta nueva. Para conservarlo, copia tú `historico.json` a la carpeta nueva antes de reiniciar Claude Code.
+
 <a id="es-personalizacion"></a>
 
 ## Personalización
 
-Además de `dataDir`, el HUD tiene estas opciones. Todas van a `datos.js` en el campo `config` (ya validadas), y la página las aplica al leerlo.
+Además de `dataDir`, el HUD tiene estas opciones. Todas salvo `historico` y `retencionDias` van a `datos.js` en el campo `config` (ya validadas), y la página las aplica al leerlo.
 
 | Opción | Valores | Por defecto | Qué cambia |
 | --- | --- | --- | --- |
@@ -137,6 +156,8 @@ Además de `dataDir`, el HUD tiene estas opciones. Todas van a `datos.js` en el 
 | `idioma` | `es`, `en` | `es` | Idioma de las etiquetas, la hora y los números del HUD. Los nombres de agentes, modelos y tareas no se traducen. |
 | `actualizacion` | número de segundos, de 1 a 5 | `1` | Cada cuánto la página vuelve a leer `datos.js`. |
 | `paneles` | lista con `contexto`, `coste`, `reparto`, `agentes`, `historial`, `grafica`, `comparativa`, `plan` | todos | Paneles visibles. Si quitas alguno, los demás se recolocan sin huecos (en el orden del HUD). |
+| `historico` | `true`, `false` | `true` | Guarda el consumo entre sesiones en `historico.json` y muestra el bloque Acumulado. Con `false` no se lee ni se escribe nada. No va en `config` de `datos.js`: lo usa solo el mod. |
+| `retencionDias` | número entero de días, de 1 a 3650 | `365` | Días que el histórico guarda uno a uno; los anteriores se suman en un total. No va en `config` de `datos.js`. |
 
 Los temas:
 
@@ -194,6 +215,8 @@ También aparecen en `/config` dentro de Claude Code. Si cargas el mod con `--pl
 - `/jarvis` no puede forzar el cierre: si `window.close()` no funciona en tu Edge, cierra la ventana a mano.
 - La comparativa es una estimación, no una factura.
 - El coste por turno es aproximado cuando hay varios agentes a la vez.
+- El histórico usa la hora local que ve el mod para decidir el día; si el entorno del mod va en UTC, el cambio de día será a medianoche UTC.
+- Si Claude Code se cierra de golpe (o el cierre tarda más del plazo corto de `session.end`), la sesión se queda con la hora de su último turno como fin. Los turnos ya estaban guardados.
 
 ## Licencia
 
@@ -218,6 +241,7 @@ Opens a live HUD window with what the session spends: context, cost and tokens. 
 - Context used and its percentage, total cost, and tokens per agent and per model.
 - How work is split between models, a tokens-per-turn chart, and the last 20 turns.
 - **Haiku versus Opus comparison:** what the session cost and what it would have cost if the work sent to Haiku had gone to Opus, using the cost per token of your own turns. It shows the saving in USD and %. It needs more than 1000 tokens from each model; otherwise it shows "sin datos de Opus todavía" (no Opus data yet, or Haiku) and estimates nothing.
+- **Accumulated across sessions:** saves usage in `historico.json` and shows the total since first use, today, this week and the latest sessions with their cost and length. Closing Claude Code does not erase it (see [History across sessions](#en-history)).
 - **`/jarvis` command:** opens the HUD when it is closed and closes it when it is open.
 - It warns when context goes over **70 %** and **85 %**: above 85 % the whole HUD turns alert red.
 - After 10 seconds without a new heartbeat **and** 3 reads in a row without one, it shows "Sin señal" (no signal). A single failed read does not trigger it, and the first new heartbeat clears it.
@@ -231,7 +255,7 @@ It adapts to the window size (and each panel also adjusts inside to its own widt
 
 | Width | Layout |
 |---|---|
-| 1600 px or more and 1000 px tall | everything fits without scrolling: plan at the top, three columns, and the chart next to the latest turns at the bottom |
+| 1600 px or more and 1000 px tall | everything fits without scrolling: plan at the top, three columns, and the chart and latest turns at the bottom, with the accumulated block on the right |
 | 1200 px or more | three columns: context, cost and comparison, split and agents |
 | 900 to 1199 px | two columns; split by model and agents side by side |
 | 560 to 899 px | context on the left, cost and comparison on the right; the rest full width |
@@ -300,7 +324,7 @@ Requirements: Windows with Edge or Chrome.
 
 ## Data folder
 
-The **`dataDir`** option sets where `index.html`, `datos.js`, `estado.json` and `estado.js` are written.
+The **`dataDir`** option sets where `index.html`, `datos.js`, `estado.json`, `estado.js` and the history (`historico.json`, see [History across sessions](#en-history)) are written.
 
 - **Default:** `~/CLAUDE/consumo`. `~` is your user folder: `%USERPROFILE%` on Windows (for example `C:\Users\<you>\CLAUDE\consumo`), `$HOME` on macOS and Linux.
 - It takes an absolute path or one starting with `~`. A relative path counts from your user folder.
@@ -327,11 +351,29 @@ You can also change it inside Claude Code with `/plugin configure consumo@jarvis
 
 The change applies when you restart Claude Code.
 
+<a id="en-history"></a>
+
+## History across sessions
+
+If you work 2 hours today and 2 more tomorrow, the **Acumulado** (accumulated) block adds both: total since first use, today, this week (Monday to today) and the list of the latest sessions with their cost and length. The current session's panels stay as they were.
+
+- **Where:** `historico.json`, in the data folder (`dataDir`, by default `~/CLAUDE/consumo/historico.json`). Next to it sits `historico.tmp.json`, the copy written just before.
+- **What it keeps:** figures and names only. Cost (the sum of each turn's cost from the session's cost counter), input, output and cache tokens, and turns: in total, per model and per agent type (`principal` for the main loop, or the subagent type such as `Explore`); per day (local date `YYYY-MM-DD`); and the latest 200 sessions (id, start, end, cost, turns and main model). It **never** stores prompt text, answers or subagent descriptions.
+- **When it writes:** at the end of each turn and when the session closes (to record the closing time). It does not write on every tool call. A turn that arrives twice counts once (its id is kept).
+- **When it reads:** when the session starts, and before each write (so two Claude Code windows sharing the folder do not overwrite each other's totals).
+- **Size limit:** it keeps day-by-day figures for the last `retencionDias` days (365 by default) and the latest 200 sessions. Anything older is added into a separate total and still counts in the accumulated figures.
+- **If something cuts it off:** `historico.tmp.json` is written in full first, then `historico.json`. If `historico.json` is not valid JSON when read, a copy is saved as `historico.roto-<date>.json`, the HUD carries on from `historico.tmp.json` if that one is valid and otherwise starts a new history. The HUD does not fail.
+- **In small windows** (compact density) the block keeps the three figures and drops the session list.
+
+**Deleting it:** close Claude Code and delete `historico.json` and `historico.tmp.json` from the data folder (and any `historico.roto-*.json` copies). The next turn starts a new one. To keep nothing at all, set the `historico` option to `false`: the file is neither read nor written and the block disappears from the HUD (an existing file is not deleted).
+
+**If you change `dataDir`:** the history stays in the old folder (it is not moved or copied) and the HUD starts a new one in the new folder. To keep it, copy `historico.json` to the new folder yourself before restarting Claude Code.
+
 <a id="en-customisation"></a>
 
 ## Customisation
 
-Besides `dataDir`, the HUD has these options. All of them go into `datos.js` under the `config` field (already validated), and the page applies them when it reads it.
+Besides `dataDir`, the HUD has these options. All but `historico` and `retencionDias` go into `datos.js` under the `config` field (already validated), and the page applies them when it reads it.
 
 | Option | Values | Default | What it changes |
 | --- | --- | --- | --- |
@@ -340,6 +382,8 @@ Besides `dataDir`, the HUD has these options. All of them go into `datos.js` und
 | `idioma` | `es`, `en` | `es` | Language of the HUD labels, time and numbers. Agent, model and task names are not translated. |
 | `actualizacion` | number of seconds, 1 to 5 | `1` | How often the page re-reads `datos.js`. |
 | `paneles` | list of `contexto`, `coste`, `reparto` (split), `agentes` (agents), `historial` (history), `grafica` (chart), `comparativa` (comparison), `plan` | all | Visible panels. If you hide some, the rest move up with no gaps (in the HUD's own order). |
+| `historico` | `true`, `false` | `true` | Saves usage across sessions in `historico.json` and shows the Accumulated block. With `false` nothing is read or written. Not part of `config` in `datos.js`: only the mod uses it. |
+| `retencionDias` | whole number of days, 1 to 3650 | `365` | Days the history keeps one by one; older days are added into one total. Not part of `config` in `datos.js`. |
 
 The themes:
 
@@ -397,6 +441,8 @@ They also show up in `/config` inside Claude Code. If you load the mod with `--p
 - `/jarvis` cannot force the window shut: if `window.close()` does not work in your Edge, close the window by hand.
 - The comparison is an estimate, not a bill.
 - Cost per turn is approximate when several agents run at once.
+- The history uses the local time the mod sees to decide the day; if the mod's environment runs on UTC, the day changes at UTC midnight.
+- If Claude Code is killed (or closing takes longer than the short `session.end` window), the session keeps its last turn's time as its end. The turns were already saved.
 
 ## License
 
